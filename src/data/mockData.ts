@@ -1,5 +1,12 @@
 import type { Player, SquashMatch } from '../types/squash';
 
+export interface LettyTipItem {
+  category: 'RULE' | 'TACTIC' | 'FACT';
+  categoryLabel: string;
+  title: string;
+  text: string;
+}
+
 export const INITIAL_PLAYERS: Player[] = [
   {
     id: 'p1',
@@ -184,12 +191,49 @@ export const INITIAL_MATCHES: SquashMatch[] = [
   },
 ];
 
-export const LETTY_TIPS = [
-  'In Squash NZ, player grades range from F (Novice) up to A1 (Elite).',
-  'In squash, game scoring is to 11 points (PARS). At 10-10, play continues until a player leads by 2 points!',
-  'The server can choose to serve from either the Left or Right box after winning a point.',
-  'If your opponent prevents you from reaching or striking the ball, ask the referee for a LET!',
-  'If your opponent was directly in your swing path, that is a STROKE (point awarded to you)!',
-  'Always warm up the squash ball before starting — a cold ball bounces much less!',
-  'Letty recommends returning to the "T" center position after every shot to dominate the court!',
+export const LETTY_TIP_ITEMS: LettyTipItem[] = [
+  {
+    category: 'RULE',
+    categoryLabel: 'OFFICIAL WSF RULE',
+    title: 'WSF Rule 7.3 • Service Box Footing',
+    text: 'The server must keep at least one foot entirely inside the service box without touching any boundary lines when striking the ball.',
+  },
+  {
+    category: 'RULE',
+    categoryLabel: 'OFFICIAL WSF RULE',
+    title: 'WSF Rule 8.6 • Stroke Decision',
+    text: 'If your opponent is directly in your swing path or line of shot to the front wall, a STROKE (point to striker) is awarded.',
+  },
+  {
+    category: 'FACT',
+    categoryLabel: 'SQUASH FUN FACT ⚡',
+    title: '283 km/h World Speed Record',
+    text: 'Australian pro Cameron Pilley holds the world record for the fastest recorded squash shot at an astounding 283 km/h (176 mph)!',
+  },
+  {
+    category: 'TACTIC',
+    categoryLabel: 'TACTICAL STRATEGY 🎯',
+    title: 'Dominating the "T" Position',
+    text: 'Returning to the center court "T" intersection after every shot gives you maximum reach to control all 4 corners of the court.',
+  },
+  {
+    category: 'FACT',
+    categoryLabel: 'HEALTH STATISTIC 🔥',
+    title: 'Forbes #1 Healthiest Sport',
+    text: 'Forbes Magazine ranked Squash as the #1 healthiest sport in the world — an intense 45-min match burns over 800-1000 calories!',
+  },
+  {
+    category: 'RULE',
+    categoryLabel: 'OFFICIAL WSF RULE',
+    title: 'WSF Rule 8.5 • Yes Let Replay',
+    text: 'If you refrain from striking the ball due to reasonable fear of hitting your opponent, a YES LET is granted and the point is replayed.',
+  },
+  {
+    category: 'FACT',
+    categoryLabel: 'HISTORICAL TRIVIA 🏛️',
+    title: 'Origin of the Name "Squash"',
+    text: 'Invented around 1830 at Harrow School in England when students noticed a punctured rubber ball "squashed" on impact, making shots unpredictable!',
+  },
 ];
+
+export const LETTY_TIPS = LETTY_TIP_ITEMS.map((item) => `${item.title}: ${item.text}`);

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
-import { LETTY_TIPS } from '../data/mockData';
-import { RefreshCw, Play } from 'lucide-react';
+import { LETTY_TIP_ITEMS, LETTY_TIPS } from '../data/mockData';
+import { RefreshCw } from 'lucide-react';
 
 interface LettyBannerProps {
   customMessage?: string;
@@ -18,7 +18,7 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({ customMessage, variant
   }
 
   const nextTip = () => {
-    setTipIndex((prev) => (prev + 1) % LETTY_TIPS.length);
+    setTipIndex((prev) => (prev + 1) % LETTY_TIP_ITEMS.length);
   };
 
   // Dedicated compact live match status bar (uses letty_play.png with NO title tag)
@@ -41,7 +41,7 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({ customMessage, variant
     );
   }
 
-  // Hero Home Banner: Peeking Letty + Greeting + Striking "Start New Match" CTA Button inside the SINGLE card!
+  // Hero Home Banner: Peeking Letty + Greeting + High-contrast "Start New Match" CTA Button INSIDE single card
   if (variant === 'home') {
     return (
       <div className="relative rounded-3xl p-4 min-h-[115px] overflow-hidden bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-blue-950 shadow-xl border border-amber-300/80 flex items-center mb-3">
@@ -72,7 +72,6 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({ customMessage, variant
               onClick={onStartMatch}
               className="mt-2 py-2.5 px-4 bg-blue-950 hover:bg-slate-900 text-amber-400 font-black text-xs rounded-xl shadow-md flex items-center space-x-2 transition-transform active:scale-98 border border-blue-900/40"
             >
-              <Play className="w-3.5 h-3.5 fill-current" />
               <span>Start New Match</span>
             </button>
           )}
@@ -81,33 +80,64 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({ customMessage, variant
     );
   }
 
-  // Separate Letty Tips Card (Standalone)
+  const currentItem = LETTY_TIP_ITEMS[tipIndex];
+
+  const getCategoryStyle = (cat: string) => {
+    switch (cat) {
+      case 'RULE':
+        return 'bg-blue-900 text-amber-400 border border-blue-800';
+      case 'TACTIC':
+        return 'bg-emerald-100 text-emerald-900 border border-emerald-200';
+      case 'FACT':
+        return 'bg-purple-100 text-purple-900 border border-purple-200';
+      default:
+        return 'bg-slate-100 text-slate-800';
+    }
+  };
+
+  // Standalone Letty Tips Card (Categorized with micro-headers, mascot on RIGHT pressed tightly against text)
   return (
-    <div className="ios-glass-card rounded-2xl p-3.5 mb-3 border border-slate-200/80 shadow-sm bg-gradient-to-br from-white via-amber-50/20 to-blue-50/20">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-900 bg-blue-100/90 px-2.5 py-0.5 rounded-md">
-          Tips from Letty
-        </span>
+    <div className="ios-card rounded-3xl p-4 mb-3 border border-slate-200/90 shadow-md bg-gradient-to-br from-white via-slate-50 to-amber-50/30 overflow-hidden relative">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center space-x-2">
+          <span className="text-[10px] font-black uppercase tracking-wider text-blue-950 bg-amber-400 px-3 py-0.5 rounded-full shadow-2xs">
+            Tips from Letty
+          </span>
+          <span className={`text-[9px] font-extrabold px-2.5 py-0.5 rounded-md uppercase tracking-wider ${getCategoryStyle(currentItem.category)}`}>
+            {currentItem.categoryLabel}
+          </span>
+        </div>
+
         <button
           onClick={nextTip}
-          className="text-slate-400 hover:text-blue-900 transition-colors p-1 rounded-full hover:bg-slate-100"
-          title="Next tip"
+          className="text-slate-400 hover:text-blue-900 transition-colors p-1.5 rounded-full hover:bg-slate-100"
+          title="Next Tip or Fact"
         >
-          <RefreshCw className="w-3.5 h-3.5" />
+          <RefreshCw className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="flex items-center space-x-3">
-        <div className="w-10 h-10 rounded-xl overflow-hidden shadow-xs ring-1 ring-amber-500/20 bg-slate-100 flex-shrink-0">
+      <div className="flex items-center justify-between pt-1">
+        {/* Tip Content Container pressed right up against mascot boundary */}
+        <div className="flex-1 min-w-0 pr-1 z-10">
+          <div className="bg-white/95 p-3 rounded-2xl border border-slate-100 shadow-2xs space-y-1">
+            <h4 className="text-xs font-black text-slate-900 leading-tight">
+              {currentItem.title}
+            </h4>
+            <p className="text-[11px] font-medium text-slate-600 leading-relaxed">
+              {customMessage || currentItem.text}
+            </p>
+          </div>
+        </div>
+
+        {/* Mascot Image on FAR RIGHT, pressed right up against text container with its natural transparent padding */}
+        <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 pointer-events-none -mr-3 sm:-mr-4 -my-2 flex items-center justify-end z-20">
           <img
-            src="/assets/letty_avatar.jpg"
-            alt="Letty Mascot"
-            className="w-full h-full object-cover"
+            src="/assets/letty_think.png"
+            alt="Letty Thinking"
+            className="w-full h-full object-contain drop-shadow-sm"
           />
         </div>
-        <p className="text-xs font-medium text-slate-700 leading-relaxed flex-1">
-          {customMessage || LETTY_TIPS[tipIndex]}
-        </p>
       </div>
     </div>
   );
