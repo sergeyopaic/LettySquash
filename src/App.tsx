@@ -7,6 +7,7 @@ import { MatchHistoryView } from './components/MatchHistoryView';
 import { NavigationTabBar } from './components/NavigationTabBar';
 import type { TabType } from './components/NavigationTabBar';
 import { NewMatchModal } from './components/NewMatchModal';
+import { NewCompetitionModal } from './components/NewCompetitionModal';
 import { AddPlayerModal } from './components/AddPlayerModal';
 import { MatchDetailModal } from './components/MatchDetailModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -17,6 +18,7 @@ const MainContainer: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [isNewMatchOpen, setIsNewMatchOpen] = useState<boolean>(false);
+  const [isNewCompetitionOpen, setIsNewCompetitionOpen] = useState<boolean>(false);
   const [isAddPlayerOpen, setIsAddPlayerOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
@@ -73,6 +75,7 @@ const MainContainer: React.FC = () => {
           {activeTab === 'home' && (
             <DashboardView
               openNewMatchModal={() => setIsNewMatchOpen(true)}
+              openNewCompetitionModal={() => setIsNewCompetitionOpen(true)}
               openAddPlayerModal={() => setIsAddPlayerOpen(true)}
               openSettingsModal={() => setIsSettingsOpen(true)}
               setActiveTab={setActiveTab}
@@ -100,32 +103,37 @@ const MainContainer: React.FC = () => {
           hasActiveMatch={Boolean(activeMatchState)}
           openNewMatchModal={() => setIsNewMatchOpen(true)}
         />
-
-        {/* Central Modals */}
-        <NewMatchModal
-          isOpen={isNewMatchOpen}
-          onClose={() => setIsNewMatchOpen(false)}
-          onStart={() => {
-            setIsNewMatchOpen(false);
-            setActiveTab('match');
-          }}
-        />
-
-        <AddPlayerModal
-          isOpen={isAddPlayerOpen}
-          onClose={() => setIsAddPlayerOpen(false)}
-        />
-
-        <SettingsModal
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-        />
-
-        <MatchDetailModal
-          match={selectedMatch}
-          onClose={() => setSelectedMatchId(null)}
-        />
       </div>
+
+      {/* Modals */}
+      <NewMatchModal
+        isOpen={isNewMatchOpen}
+        onClose={() => setIsNewMatchOpen(false)}
+        onStart={() => {
+          setIsNewMatchOpen(false);
+          setActiveTab('match');
+        }}
+      />
+
+      <NewCompetitionModal
+        isOpen={isNewCompetitionOpen}
+        onClose={() => setIsNewCompetitionOpen(false)}
+      />
+
+      <AddPlayerModal
+        isOpen={isAddPlayerOpen}
+        onClose={() => setIsAddPlayerOpen(false)}
+      />
+
+      <MatchDetailModal
+        match={selectedMatch}
+        onClose={() => setSelectedMatchId(null)}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
     </div>
   );
 };

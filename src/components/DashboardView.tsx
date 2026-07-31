@@ -1,10 +1,11 @@
 import React from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
-import { Play, Plus, Activity, ChevronRight, Clock, Settings } from 'lucide-react';
+import { Play, Plus, Activity, ChevronRight, Clock, Settings, Trophy } from 'lucide-react';
 
 interface DashboardViewProps {
   openNewMatchModal: () => void;
+  openNewCompetitionModal: () => void;
   openAddPlayerModal: () => void;
   openSettingsModal: () => void;
   setActiveTab: (tab: 'home' | 'match' | 'players' | 'history') => void;
@@ -21,6 +22,7 @@ export const SquashBallIcon: React.FC<{ className?: string }> = ({ className = '
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   openNewMatchModal,
+  openNewCompetitionModal,
   openAddPlayerModal,
   openSettingsModal,
   setActiveTab,
@@ -119,7 +121,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* Main Action Callouts */}
+      {/* Main Action Callouts: New Match (Left) & New Competition (Right) */}
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={openNewMatchModal}
@@ -135,15 +137,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </button>
 
         <button
-          onClick={openAddPlayerModal}
+          onClick={openNewCompetitionModal}
           className="ios-card p-4 text-left flex flex-col justify-between hover:border-amber-500/30 transition-all group shadow-sm bg-gradient-to-br from-white to-amber-50/40"
         >
           <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center mb-3 shadow-md group-hover:scale-105 transition-transform">
-            <Plus className="w-5 h-5 stroke-[3]" />
+            <Trophy className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-900 text-sm">New Player</h3>
-            <p className="text-[11px] text-slate-500 mt-0.5">Add profile & country flag</p>
+            <h3 className="font-bold text-slate-900 text-sm">New Competition</h3>
+            <p className="text-[11px] text-slate-500 mt-0.5">League, Playoff & Cups</p>
           </div>
         </button>
       </div>
@@ -178,52 +180,51 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             className="text-xs font-semibold text-blue-900 hover:underline flex items-center"
           >
             <span>All Profiles</span>
-            <ChevronRight className="w-3 h-3 ml-0.5" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="space-y-2">
-          {topPlayers.map((player, idx) => (
-            <div
-              key={player.id}
-              className="ios-card p-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
-            >
-              <div className="flex items-center space-x-3">
-                <span className="text-xs font-bold text-slate-400 w-4 text-center">
-                  #{idx + 1}
-                </span>
-                <div className="relative">
+        <div className="ios-card divide-y divide-slate-100 p-0 overflow-hidden">
+          {topPlayers.map((player) => {
+            const winRate =
+              player.totalMatches > 0
+                ? Math.round((player.wins / player.totalMatches) * 100)
+                : 0;
+
+            return (
+              <div
+                key={player.id}
+                className="p-3 flex items-center justify-between hover:bg-slate-50/80 transition-colors"
+              >
+                <div className="flex items-center space-x-3">
                   <div
-                    className="w-9 h-9 rounded-full text-white font-bold flex items-center justify-center text-xs shadow-sm"
+                    className="w-10 h-10 rounded-full text-white font-bold flex items-center justify-center text-xs shadow-xs"
                     style={{ backgroundColor: player.avatarBgColor }}
                   >
                     {player.name.charAt(0)}
                   </div>
-                  <span className="absolute -bottom-1 -right-1 text-[11px]">
-                    {player.countryFlag || '🇳🇿'}
-                  </span>
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900">{player.name}</h4>
-                  <div className="flex items-center space-x-1.5 text-[10px] text-slate-500 mt-0.5">
-                    <span className="font-extrabold text-blue-900 bg-blue-50 px-1.5 py-0.5 rounded">{player.skillGrade}</span>
-                    <span>•</span>
-                    <span>{player.handedness === 'Right' ? 'Right-handed' : 'Left-handed'}</span>
+                  <div>
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-sm font-bold text-slate-900">
+                        {player.name}
+                      </span>
+                      <span className="text-xs">{player.countryFlag}</span>
+                      <span className="text-[10px] text-amber-600 font-extrabold bg-amber-50 px-1.5 py-0.5 rounded">
+                        {player.skillGrade}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {player.wins}W / {player.losses}L • Win Rate {winRate}%
+                    </p>
                   </div>
                 </div>
               </div>
-
-              <div className="text-right">
-                <span className="text-xs font-extrabold text-blue-900 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
-                  {player.wins} W / {player.losses} L
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* Recent Matches */}
+      {/* Recent Matches Activity */}
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
           <h3 className="text-sm font-bold text-slate-900">Recent Matches</h3>
@@ -231,73 +232,58 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => setActiveTab('history')}
             className="text-xs font-semibold text-blue-900 hover:underline flex items-center"
           >
-            <span>All Games</span>
-            <ChevronRight className="w-3 h-3 ml-0.5" />
+            <span>Match Log</span>
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        <div className="space-y-2.5">
-          {recentMatches.map((match) => (
+        <div className="space-y-2">
+          {recentMatches.map((m) => (
             <div
-              key={match.id}
-              onClick={() => selectMatchDetail(match.id)}
-              className="ios-card p-3.5 hover:shadow-md transition-all cursor-pointer border border-slate-100"
+              key={m.id}
+              onClick={() => selectMatchDetail(m.id)}
+              className="ios-card p-3 flex items-center justify-between hover:border-slate-300 transition-colors cursor-pointer"
             >
-              <div className="flex items-center justify-between text-[11px] text-slate-400 mb-2 border-b border-slate-100 pb-1.5">
-                <span className="font-semibold text-slate-600">
-                  {new Date(match.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </span>
-                <div className="flex items-center space-x-1">
-                  <Clock className="w-3 h-3 text-slate-400" />
-                  <span>{formatDuration(match.totalDurationSeconds)}</span>
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-bold text-slate-900">
+                    {m.player1.countryFlag} {m.player1.name}
+                  </span>
+                  <span className="text-xs text-slate-400 font-bold">vs</span>
+                  <span className="text-xs font-bold text-slate-900">
+                    {m.player2.countryFlag} {m.player2.name}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-3 text-[11px] text-slate-500">
+                  <span className="flex items-center space-x-1">
+                    <Clock className="w-3 h-3" />
+                    <span>{formatDuration(m.totalDurationSeconds)}</span>
+                  </span>
+                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-semibold">
+                    {m.matchFormat === 'BEST_OF_5' ? 'Best of 5' : 'Best of 3'}
+                  </span>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                {/* Player 1 */}
-                <div className="flex-1 flex items-center space-x-2">
-                  <div
-                    className="w-7 h-7 rounded-full text-white font-bold flex items-center justify-center text-[10px]"
-                    style={{ backgroundColor: match.player1.avatarBgColor }}
-                  >
-                    {match.player1.name.charAt(0)}
-                  </div>
-                  <span
-                    className={`text-xs flex items-center space-x-1 ${
-                      match.winnerId === match.player1.id ? 'font-bold text-slate-900' : 'text-slate-500'
-                    }`}
-                  >
-                    <span>{match.player1.countryFlag}</span>
-                    <span>{match.player1.name}</span>
-                  </span>
-                </div>
-
-                {/* Score */}
-                <div className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-black text-slate-800 tracking-wider">
-                  {match.p1SetsWon} : {match.p2SetsWon}
-                </div>
-
-                {/* Player 2 */}
-                <div className="flex-1 flex items-center justify-end space-x-2">
-                  <span
-                    className={`text-xs flex items-center space-x-1 ${
-                      match.winnerId === match.player2.id ? 'font-bold text-slate-900' : 'text-slate-500'
-                    }`}
-                  >
-                    <span>{match.player2.name}</span>
-                    <span>{match.player2.countryFlag}</span>
-                  </span>
-                  <div
-                    className="w-7 h-7 rounded-full text-white font-bold flex items-center justify-center text-[10px]"
-                    style={{ backgroundColor: match.player2.avatarBgColor }}
-                  >
-                    {match.player2.name.charAt(0)}
-                  </div>
-                </div>
+              <div className="text-right">
+                <span className="text-base font-black text-slate-900 bg-slate-100 px-3 py-1 rounded-xl">
+                  {m.p1SetsWon} : {m.p2SetsWon}
+                </span>
               </div>
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Small Compact Button Row to Add Player Profile (Bottom string row) */}
+      <div className="text-center pt-2">
+        <button
+          onClick={openAddPlayerModal}
+          className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-blue-900 hover:bg-slate-100 py-1.5 px-3 rounded-full transition-colors border border-dashed border-slate-200"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Add New Player Profile</span>
+        </button>
       </div>
     </div>
   );
