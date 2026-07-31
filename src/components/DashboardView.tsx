@@ -39,17 +39,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="pb-24 pt-2 px-4 space-y-5">
-      {/* Top Header */}
-      <div className="flex items-center justify-between">
+    <div className="pb-24 pt-2 px-4 space-y-4">
+      {/* Clean Top Header */}
+      <div className="flex items-center justify-between pt-1">
         <div>
-          <div className="flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
-            <span className="text-xs font-semibold text-amber-600 uppercase tracking-widest">
-              Squash Scorekeeper
-            </span>
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-0.5">
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             Letty Squash
           </h1>
         </div>
@@ -68,7 +62,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Mascot Banner */}
+      {/* Hero Mascot Greeting Banner: Letty peeking from far left edge saying "Hi, I'm Letty! Let's play together!" */}
       <LettyBanner variant="home" />
 
       {/* Active Game Alert Banner (if match in progress) */}
@@ -121,34 +115,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* Main Action Callouts: New Match (Left) & New Competition (Right) */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Centered Main Action Buttons Section */}
+      <div className="space-y-2 text-center pt-1">
+        {/* Large Prominent Primary Button */}
         <button
           onClick={openNewMatchModal}
-          className="ios-card p-4 text-left flex flex-col justify-between hover:border-blue-900/30 transition-all group shadow-sm bg-gradient-to-br from-white to-blue-50/50"
+          className="w-full py-4 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 text-blue-950 font-black text-base rounded-2xl shadow-lg flex items-center justify-center space-x-2 transition-transform active:scale-98 border border-amber-300/60"
         >
-          <div className="w-10 h-10 rounded-xl bg-blue-900 text-white flex items-center justify-center mb-3 shadow-md group-hover:scale-105 transition-transform">
-            <Play className="w-5 h-5 fill-current ml-0.5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900 text-sm">New Match</h3>
-            <p className="text-[11px] text-slate-500 mt-0.5">Start & referee game</p>
-          </div>
+          <Play className="w-5 h-5 fill-current" />
+          <span>Start New Match</span>
         </button>
 
+        {/* Secondary Smaller Subtle Competition Button */}
         <button
           onClick={openNewCompetitionModal}
-          className="ios-card p-4 text-left flex flex-col justify-between hover:border-amber-500/30 transition-all group shadow-sm bg-gradient-to-br from-white to-amber-50/40"
+          className="text-xs font-bold text-slate-600 hover:text-blue-900 bg-slate-100 hover:bg-slate-200/80 py-2 px-4 rounded-xl transition-colors inline-flex items-center space-x-1.5 border border-slate-200/60"
         >
-          <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center mb-3 shadow-md group-hover:scale-105 transition-transform">
-            <Trophy className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900 text-sm">New Competition</h3>
-            <p className="text-[11px] text-slate-500 mt-0.5">League, Playoff & Cups</p>
-          </div>
+          <Trophy className="w-3.5 h-3.5 text-amber-600" />
+          <span>Create Competition</span>
         </button>
       </div>
+
+      {/* Standalone Letty Tips Card (Separate Block) */}
+      <LettyBanner variant="tips" />
 
       {/* Overview Stats */}
       <div className="ios-card p-4 space-y-3">
