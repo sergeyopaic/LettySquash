@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
-import { Play, Plus, Activity, ChevronRight, Clock, Settings, Trophy } from 'lucide-react';
+import { Plus, Activity, ChevronRight, Clock, Settings, Trophy } from 'lucide-react';
 
 interface DashboardViewProps {
   openNewMatchModal: () => void;
@@ -62,8 +62,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Hero Mascot Greeting Banner: Letty peeking from far left edge saying "Hi, I'm Letty! Let's play together!" */}
-      <LettyBanner variant="home" />
+      {/* Unified Hero Mascot Banner: Letty peeking + Greeting + High-contrast "Start New Match" CTA Button INSIDE single card */}
+      <LettyBanner variant="home" onStartMatch={openNewMatchModal} />
+
+      {/* Secondary Smaller Subtle Competition Button */}
+      <div className="text-center pt-0 pb-1">
+        <button
+          onClick={openNewCompetitionModal}
+          className="text-xs font-bold text-slate-600 hover:text-blue-900 bg-slate-100 hover:bg-slate-200/80 py-2 px-4 rounded-xl transition-colors inline-flex items-center space-x-1.5 border border-slate-200/60"
+        >
+          <Trophy className="w-3.5 h-3.5 text-amber-600" />
+          <span>Create Competition</span>
+        </button>
+      </div>
 
       {/* Active Game Alert Banner (if match in progress) */}
       {activeMatchState && (
@@ -114,27 +125,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       )}
-
-      {/* Centered Main Action Buttons Section */}
-      <div className="space-y-2 text-center pt-1">
-        {/* Large Prominent Primary Button */}
-        <button
-          onClick={openNewMatchModal}
-          className="w-full py-4 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 text-blue-950 font-black text-base rounded-2xl shadow-lg flex items-center justify-center space-x-2 transition-transform active:scale-98 border border-amber-300/60"
-        >
-          <Play className="w-5 h-5 fill-current" />
-          <span>Start New Match</span>
-        </button>
-
-        {/* Secondary Smaller Subtle Competition Button */}
-        <button
-          onClick={openNewCompetitionModal}
-          className="text-xs font-bold text-slate-600 hover:text-blue-900 bg-slate-100 hover:bg-slate-200/80 py-2 px-4 rounded-xl transition-colors inline-flex items-center space-x-1.5 border border-slate-200/60"
-        >
-          <Trophy className="w-3.5 h-3.5 text-amber-600" />
-          <span>Create Competition</span>
-        </button>
-      </div>
 
       {/* Standalone Letty Tips Card (Separate Block) */}
       <LettyBanner variant="tips" />
