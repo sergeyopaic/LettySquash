@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
-import { LETTY_TIPS } from '../data/mockData';
+import { LETTY_TIP_ITEMS } from '../data/mockData';
 import { RefreshCw } from 'lucide-react';
 
 interface LettyBannerProps {
@@ -12,19 +12,19 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({ customMessage, variant
   const { settings } = useSquash();
   const [tipIndex, setTipIndex] = useState(0);
 
-  if (!settings.showMascotTips && variant === 'tips') {
+  if (settings.showMascotTips === false && variant === 'tips') {
     return null;
   }
 
   const nextTip = () => {
-    setTipIndex((prev) => (prev + 1) % LETTY_TIPS.length);
+    setTipIndex((prev) => (prev + 1) % LETTY_TIP_ITEMS.length);
   };
 
-  // Dedicated compact live match status bar (uses letty_play.png with NO title tag)
+  // Dedicated compact live match status bar
   if (variant === 'match') {
     return (
-      <div className="ios-glass-card rounded-2xl p-2.5 mb-2 border border-slate-200/80 shadow-2xs flex items-center space-x-3 bg-gradient-to-r from-white via-amber-50/20 to-blue-50/20">
-        <div className="w-9 h-9 rounded-xl overflow-hidden shadow-xs ring-1 ring-amber-500/30 bg-slate-100 flex-shrink-0">
+      <div className="ios-glass-card rounded-xl p-2.5 mb-3 border border-slate-200/80 shadow-2xs flex items-center space-x-3 bg-gradient-to-r from-white via-amber-50/20 to-slate-50">
+        <div className="w-9 h-9 rounded-lg overflow-hidden shadow-xs ring-1 ring-amber-500/30 bg-slate-100 flex-shrink-0">
           <img
             src="/assets/letty_play.png"
             alt="Letty Play"
@@ -33,17 +33,17 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({ customMessage, variant
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold text-slate-800 leading-tight">
-            {customMessage || LETTY_TIPS[0]}
+            {customMessage || LETTY_TIP_ITEMS[0].text}
           </p>
         </div>
       </div>
     );
   }
 
-  // Hero Home Greeting Banner: Peeking Letty + Greeting
+  // Hero Home Greeting Banner: 24px Radius (Banner Tier)
   if (variant === 'home') {
     return (
-      <div className="relative rounded-3xl p-4 min-h-[100px] overflow-hidden bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-blue-950 shadow-xl border border-amber-300/80 flex items-center mb-3">
+      <div className="relative rounded-3xl p-4 min-h-[100px] overflow-hidden bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 shadow-lg border border-amber-300/80 flex items-center mb-4">
         {/* Ambient background glow */}
         <div className="absolute left-0 top-0 bottom-0 w-32 bg-white/20 rounded-full blur-xl pointer-events-none" />
 
@@ -58,10 +58,10 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({ customMessage, variant
 
         {/* Clean Greeting Text shifted right */}
         <div className="pl-14 sm:pl-16 pr-2 flex-1 z-20 space-y-0.5">
-          <h2 className="text-base sm:text-lg font-black text-blue-950 leading-tight tracking-tight">
+          <h2 className="text-base sm:text-lg font-black text-slate-950 leading-tight tracking-tight">
             Hi, I'm Letty! Let's play together!
           </h2>
-          <p className="text-[11px] font-bold text-blue-950/80">
+          <p className="text-[11px] font-bold text-slate-950/80">
             Court referee counter & match scorekeeper
           </p>
         </div>
@@ -69,32 +69,56 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({ customMessage, variant
     );
   }
 
-  // Separate Standalone Letty Tips Card
+  const currentItem = LETTY_TIP_ITEMS[tipIndex];
+
+  const getCategoryStyle = (cat: string) => {
+    switch (cat) {
+      case 'RULE':
+        return 'bg-slate-900 text-amber-400 border border-slate-800';
+      case 'TACTIC':
+        return 'bg-emerald-100 text-emerald-900 border border-emerald-200';
+      case 'FACT':
+        return 'bg-purple-100 text-purple-900 border border-purple-200';
+      default:
+        return 'bg-slate-100 text-slate-800';
+    }
+  };
+
+  // Clean Standalone Letty Tips Card (Card Tier: 16px Radius, Chips: 8px Radius)
   return (
-    <div className="ios-card rounded-3xl p-4 mb-3 border border-slate-200/90 shadow-md bg-gradient-to-br from-white via-slate-50 to-blue-50/30 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-950 bg-amber-400 px-3 py-1 rounded-full shadow-2xs">
-          Tips from Letty
-        </span>
+    <div className="ios-card rounded-2xl p-4 mb-4 border border-slate-200/90 shadow-md bg-gradient-to-br from-white via-slate-50 to-amber-50/40 overflow-hidden relative">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2">
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-950 bg-amber-400 px-2.5 py-1 rounded-lg shadow-2xs">
+            Tips from Letty
+          </span>
+          <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-lg uppercase tracking-wider ${getCategoryStyle(currentItem.category)}`}>
+            {currentItem.categoryLabel}
+          </span>
+        </div>
+
         <button
           onClick={nextTip}
-          className="text-slate-400 hover:text-blue-900 transition-colors p-1.5 rounded-full hover:bg-slate-100"
-          title="Next WSF Tip"
+          className="text-slate-400 hover:text-slate-900 transition-colors p-1.5 rounded-lg hover:bg-slate-100"
+          title="Next Tip or Fact"
         >
           <RefreshCw className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="flex items-center space-x-3 pt-1">
-        {/* Tip Text Box on Left */}
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-slate-800 leading-relaxed bg-white/90 p-3 rounded-2xl border border-slate-100 shadow-2xs">
-            {customMessage || LETTY_TIPS[tipIndex]}
+      <div className="flex items-center justify-between pt-1">
+        {/* Tip Content */}
+        <div className="flex-1 min-w-0 pr-1 z-10 space-y-1">
+          <h4 className="text-xs font-black text-slate-900 leading-tight">
+            {currentItem.title}
+          </h4>
+          <p className="text-[11px] font-medium text-slate-600 leading-relaxed">
+            {customMessage || currentItem.text}
           </p>
         </div>
 
-        {/* Mascot Image on RIGHT side */}
-        <div className="w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 pointer-events-none">
+        {/* Mascot Image on FAR RIGHT */}
+        <div className="w-28 h-28 sm:w-32 sm:h-32 flex-shrink-0 pointer-events-none -mr-3 sm:-mr-4 -my-3 flex items-center justify-end z-20">
           <img
             src="/assets/letty_think.png"
             alt="Letty Thinking"

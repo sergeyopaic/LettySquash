@@ -17,15 +17,16 @@ export const NavigationTabBar: React.FC<NavigationTabBarProps> = ({
   openNewMatchModal,
 }) => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-40 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 px-4 py-2.5 flex justify-around items-center shadow-lg">
+    <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200/80 px-4 py-2 flex justify-around items-center shadow-lg">
       <button
         onClick={() => setActiveTab('home')}
-        className={`flex flex-col items-center space-y-1 transition-colors ${
-          activeTab === 'home' ? 'text-blue-900 font-semibold' : 'text-slate-400 hover:text-slate-600'
+        className={`flex flex-col items-center space-y-0.5 transition-colors ${
+          activeTab === 'home' ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-600'
         }`}
       >
         <Home className="w-5 h-5" />
         <span className="text-[10px]">Home</span>
+        {activeTab === 'home' && <div className="w-1 h-1 rounded-full bg-amber-500" />}
       </button>
 
       <button
@@ -40,10 +41,10 @@ export const NavigationTabBar: React.FC<NavigationTabBarProps> = ({
       >
         <div className={`w-13 h-13 rounded-full p-0.5 shadow-md flex items-center justify-center transition-transform active:scale-95 ${
           hasActiveMatch 
-            ? 'bg-gradient-to-r from-amber-500 to-amber-600 ring-4 ring-amber-100 animate-pulse'
-            : 'bg-gradient-to-r from-blue-900 to-slate-800'
+            ? 'bg-gradient-to-r from-amber-400 to-amber-500 ring-4 ring-amber-100 animate-pulse'
+            : 'bg-slate-900 border-2 border-slate-800'
         }`}>
-          <div className="w-full h-full rounded-full flex flex-col items-center justify-center text-white">
+          <div className="w-full h-full rounded-full flex flex-col items-center justify-center text-amber-400">
             <Play className="w-5 h-5 fill-current ml-0.5" />
           </div>
         </div>
@@ -54,22 +55,24 @@ export const NavigationTabBar: React.FC<NavigationTabBarProps> = ({
 
       <button
         onClick={() => setActiveTab('players')}
-        className={`flex flex-col items-center space-y-1 transition-colors ${
-          activeTab === 'players' ? 'text-blue-900 font-semibold' : 'text-slate-400 hover:text-slate-600'
+        className={`flex flex-col items-center space-y-0.5 transition-colors ${
+          activeTab === 'players' ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-600'
         }`}
       >
         <Users className="w-5 h-5" />
         <span className="text-[10px]">Players</span>
+        {activeTab === 'players' && <div className="w-1 h-1 rounded-full bg-amber-500" />}
       </button>
 
       <button
         onClick={() => setActiveTab('history')}
-        className={`flex flex-col items-center space-y-1 transition-colors ${
-          activeTab === 'history' ? 'text-blue-900 font-semibold' : 'text-slate-400 hover:text-slate-600'
+        className={`flex flex-col items-center space-y-0.5 transition-colors ${
+          activeTab === 'history' ? 'text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-600'
         }`}
       >
         <History className="w-5 h-5" />
         <span className="text-[10px]">History</span>
+        {activeTab === 'history' && <div className="w-1 h-1 rounded-full bg-amber-500" />}
       </button>
     </div>
   );
