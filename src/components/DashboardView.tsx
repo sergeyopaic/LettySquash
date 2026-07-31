@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
-import { Plus, Activity, ChevronRight, Clock, Settings, Trophy, MapPin, BarChart3 } from 'lucide-react';
+import { Play, Plus, Activity, ChevronRight, Clock, Settings, Trophy, MapPin, BarChart3 } from 'lucide-react';
 
 interface DashboardViewProps {
   openNewMatchModal: () => void;
@@ -127,11 +127,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Unified Hero Mascot Banner: Letty peeking + Greeting + High-contrast "Start New Match" CTA Button INSIDE single card */}
-      <LettyBanner variant="home" onStartMatch={openNewMatchModal} />
+      {/* Hero Mascot Banner: Peeking Letty + Greeting */}
+      <LettyBanner variant="home" />
 
-      {/* Secondary Smaller Subtle Competition Button */}
-      <div className="text-center pt-0 pb-1">
+      {/* Centered Main Actions Section (Start New Match & Create Competition aligned on center axis) */}
+      <div className="flex flex-col items-center justify-center space-y-2.5 text-center pt-0 pb-1">
+        {/* Centered Primary Action Button */}
+        <button
+          onClick={openNewMatchModal}
+          className="w-full py-3.5 bg-gradient-to-r from-blue-950 via-slate-900 to-blue-950 hover:from-slate-900 hover:to-blue-900 text-amber-400 font-black text-sm rounded-2xl shadow-lg flex items-center justify-center space-x-2 transition-transform active:scale-98 border border-blue-900/40"
+        >
+          <Play className="w-4 h-4 fill-current" />
+          <span>Start New Match</span>
+        </button>
+
+        {/* Centered Secondary Action Button */}
         <button
           onClick={openNewCompetitionModal}
           className="text-xs font-bold text-slate-600 hover:text-blue-900 bg-slate-100 hover:bg-slate-200/80 py-2 px-4 rounded-xl transition-colors inline-flex items-center space-x-1.5 border border-slate-200/60"
@@ -224,7 +234,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <p className="text-[10px] text-slate-500 font-medium mt-0.5">Club Roster</p>
           </div>
 
-          {/* Dynamic Highlight Fact Tile (No truncation, first name on top line, last name below) */}
+          {/* Dynamic Highlight Fact Tile */}
           <div className="bg-gradient-to-br from-amber-500/15 via-amber-50 to-blue-50/40 p-2 rounded-xl border border-amber-300/70 flex flex-col justify-between items-center text-center overflow-hidden min-h-[64px]">
             <p className="text-[9px] font-black uppercase tracking-wider text-amber-800 leading-tight">
               {randomFact?.subtitle || '🔥 Win Rate'}
