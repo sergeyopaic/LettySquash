@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
 import { ClubSelectorModal, CLUBS_LIST } from './ClubSelectorModal';
-import type { Club } from '../types/squash';
-import { Play, Plus, Activity, ChevronRight, ChevronDown, Clock, Settings, Trophy, MapPin, BarChart3 } from 'lucide-react';
+import type { Club, Player } from '../types/squash';
+import { Play, Plus, Activity, ChevronRight, ChevronDown, Clock, Settings, Trophy, MapPin, Check } from 'lucide-react';
+import { formatMatchDateGroup } from '../utils/dateUtils';
 
 interface DashboardViewProps {
   openNewMatchModal: () => void;
@@ -11,6 +12,8 @@ interface DashboardViewProps {
   openAddPlayerModal: () => void;
   openSettingsModal: () => void;
   openAdvancedStatsModal: () => void;
+  openHowToPlayModal: () => void;
+  onSelectPlayerProfile: (player: Player) => void;
   setActiveTab: (tab: 'home' | 'match' | 'players' | 'history') => void;
   selectMatchDetail: (matchId: string) => void;
 }
@@ -29,6 +32,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   openAddPlayerModal,
   openSettingsModal,
   openAdvancedStatsModal,
+  openHowToPlayModal,
+  onSelectPlayerProfile,
   setActiveTab,
   selectMatchDetail,
 }) => {
@@ -38,16 +43,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [isClubSelectorOpen, setIsClubSelectorOpen] = useState<boolean>(false);
 
   const [randomFact, setRandomFact] = useState<{
-    firstName: string;
-    lastName: string;
+    fullName: string;
     flag: string;
     subtitle: string;
+    icon: string;
+    playerObj?: Player;
   } | null>(null);
 
   const recentMatches = matches.slice(0, 3);
   const topPlayers = [...players].sort((a, b) => b.wins - a.wins).slice(0, 3);
 
-  // Generate randomized club highlight fact on mount/render
+  // Calculate average match duration in minutes
+  const avgMatchDurationMins =
+    matches.length > 0
+      ? Math.round(
+          matches.reduce((acc, m) => acc + m.totalDurationSeconds, 0) / matches.length / 60
+        )
+      : 32;
+
+  // Generate randomized club highlight spotlight leader
   useEffect(() => {
     const topWinRatePlayer = [...players]
       .filter((p) => p.totalMatches > 0)
@@ -60,40 +74,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     if (topWinRatePlayer) {
       const wr = Math.round((topWinRatePlayer.wins / topWinRatePlayer.totalMatches) * 100);
-      const parts = topWinRatePlayer.name.split(' ');
       facts.push({
-        firstName: parts[0] || topWinRatePlayer.name,
-        lastName: parts.slice(1).join(' '),
+        fullName: topWinRatePlayer.name,
         flag: topWinRatePlayer.countryFlag,
-        subtitle: `🔥 Win Rate (${wr}%)`,
+        subtitle: `Win Rate Leader (${wr}%)`,
+        icon: '👑',
+        playerObj: topWinRatePlayer,
       });
     }
 
     if (mostWinsPlayer) {
-      const parts = mostWinsPlayer.name.split(' ');
       facts.push({
-        firstName: parts[0] || mostWinsPlayer.name,
-        lastName: parts.slice(1).join(' '),
+        fullName: mostWinsPlayer.name,
         flag: mostWinsPlayer.countryFlag,
-        subtitle: `🏆 Wins Leader (${mostWinsPlayer.wins}W)`,
+        subtitle: `Most Wins Leader (${mostWinsPlayer.wins} Wins)`,
+        icon: '🏆',
+        playerObj: mostWinsPlayer,
       });
     }
 
     if (rookiePlayer) {
-      const parts = rookiePlayer.name.split(' ');
       facts.push({
-        firstName: parts[0] || rookiePlayer.name,
-        lastName: parts.slice(1).join(' '),
+        fullName: rookiePlayer.name,
         flag: rookiePlayer.countryFlag,
-        subtitle: `🌟 Rookie Spotlight`,
+        subtitle: `Rookie Spotlight (0 matches)`,
+        icon: '🌟',
+        playerObj: rookiePlayer,
       });
     }
 
     const selected = facts[Math.floor(Math.random() * facts.length)] || {
-      firstName: 'Devonport',
-      lastName: 'Squash',
+      fullName: 'Liam Walker',
       flag: '🇳🇿',
-      subtitle: 'Auckland NZ',
+      subtitle: 'Club Leader',
+      icon: '👑',
     };
 
     setRandomFact(selected);
@@ -106,7 +120,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="pb-24 pt-2 px-4 space-y-4">
-      {/* Clean Top Header: Title FIRST with SquashBallIcon next to it, ONLY Settings button on top right */}
+      {/* Clean Top Header */}
       <div className="flex items-center justify-between pt-1 mb-1">
         <div className="space-y-0.5">
           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none flex items-center space-x-2">
@@ -114,7 +128,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <SquashBallIcon className="w-6 h-6 inline-block" />
           </h1>
 
-          {/* Clickable Club Selector with Chevron & Truncation */}
+          {/* Clickable Club Selector */}
           <button
             onClick={() => setIsClubSelectorOpen(true)}
             className="group flex items-center space-x-1 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors pt-0.5"
@@ -128,7 +142,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
 
-        {/* ONLY Settings Button in Top-Right Corner */}
+        {/* Settings Button */}
         <button
           onClick={openSettingsModal}
           className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-sm"
@@ -138,12 +152,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </button>
       </div>
 
-      {/* Hero Mascot Banner: 24px Banner Radius */}
-      <LettyBanner variant="home" />
+      {/* Hero Mascot Banner */}
+      <LettyBanner variant="home" onOpenHowToPlay={openHowToPlayModal} />
 
-      {/* Centered Main Actions Section (16px Button Radius, 48px HIG Touch Target) */}
+      {/* Centered Main Actions Section */}
       <div className="flex flex-col items-center justify-center space-y-3 text-center pt-0 pb-1">
-        {/* Primary Action Button (16px Radius) */}
         <button
           onClick={openNewMatchModal}
           className="w-full min-h-[48px] py-3.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-black text-sm rounded-2xl shadow-md flex items-center justify-center space-x-2 transition-transform active:scale-98 border border-slate-800"
@@ -152,7 +165,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <span>Start New Match</span>
         </button>
 
-        {/* Secondary Action Button (16px Radius) */}
         <button
           onClick={openNewCompetitionModal}
           className="w-full min-h-[48px] py-3.5 bg-white hover:bg-slate-50 text-slate-900 font-black text-sm rounded-2xl shadow-2xs border-2 border-slate-900 flex items-center justify-center space-x-2 transition-all active:scale-98"
@@ -212,13 +224,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* 1. Recent Matches Activity (16px Card Radius, 12px Inner Item Radius) */}
+      {/* 1. Recent Matches Activity (Standard Sports Scorecard Layout with Clear Winner Highlight) */}
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-sm font-bold text-slate-900">Recent Matches</h3>
+          <h3 className="text-sm font-black text-slate-900 tracking-tight">Recent Matches</h3>
           <button
             onClick={() => setActiveTab('history')}
-            className="text-xs font-bold text-slate-900 hover:underline flex items-center"
+            className="text-xs font-bold text-slate-500 hover:text-slate-900 inline-flex items-center space-x-0.5 transition-colors"
           >
             <span>Match Log</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -226,50 +238,95 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="space-y-2">
-          {recentMatches.map((m) => (
-            <div
-              key={m.id}
-              onClick={() => selectMatchDetail(m.id)}
-              className="ios-card rounded-2xl p-3 flex items-center justify-between hover:border-slate-300 transition-colors cursor-pointer"
-            >
-              <div className="space-y-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs font-bold text-slate-900">
-                    {m.player1.countryFlag} {m.player1.name}
-                  </span>
-                  <span className="text-xs text-slate-400 font-bold">vs</span>
-                  <span className="text-xs font-bold text-slate-900">
-                    {m.player2.countryFlag} {m.player2.name}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-3 text-[11px] text-slate-500">
-                  <span className="flex items-center space-x-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{formatDuration(m.totalDurationSeconds)}</span>
-                  </span>
-                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg font-semibold">
-                    {m.matchFormat === 'BEST_OF_5' ? 'Best of 5' : 'Best of 3'}
-                  </span>
-                </div>
-              </div>
+          {recentMatches.map((m) => {
+            const isP1Winner = m.winnerId === m.player1.id || m.p1SetsWon > m.p2SetsWon;
+            const isP2Winner = m.winnerId === m.player2.id || m.p2SetsWon > m.p1SetsWon;
 
-              <div className="text-right">
-                <span className="text-base font-black text-slate-900 bg-slate-100 px-3 py-1 rounded-xl">
-                  {m.p1SetsWon} : {m.p2SetsWon}
-                </span>
+            return (
+              <div
+                key={m.id}
+                onClick={() => selectMatchDetail(m.id)}
+                className="group ios-card rounded-2xl p-3 space-y-2 hover:border-slate-300 transition-colors cursor-pointer"
+              >
+                {/* Meta Header Row */}
+                <div className="flex items-center justify-between text-[10px] text-slate-500 pb-1.5 border-b border-slate-100">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-extrabold text-slate-800 bg-amber-100/90 text-amber-900 px-2 py-0.5 rounded-lg">
+                      {formatMatchDateGroup(m.date)}
+                    </span>
+                    <span className="flex items-center space-x-1 font-medium">
+                      <Clock className="w-3 h-3 text-slate-400" />
+                      <span>{formatDuration(m.totalDurationSeconds)}</span>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-1.5">
+                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg font-bold">
+                      {m.matchFormat === 'BEST_OF_5' ? 'Best of 5' : 'Best of 3'}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-transform flex-shrink-0" />
+                  </div>
+                </div>
+
+                {/* Scorecard Players & Score Rows */}
+                <div className="space-y-1">
+                  {/* Player 1 Row */}
+                  <div
+                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl transition-colors ${
+                      isP1Winner
+                        ? 'bg-amber-500/10 border border-amber-300/70 font-black text-slate-900'
+                        : 'bg-slate-50/60 text-slate-600 font-semibold'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <span className="text-xs">{m.player1.countryFlag}</span>
+                      <span className="text-xs truncate">{m.player1.name}</span>
+                      {isP1Winner && (
+                        <span className="inline-flex items-center justify-center bg-amber-200/90 text-amber-950 p-0.5 rounded-md">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </span>
+                      )}
+                    </div>
+                    <span className={`text-sm font-black ${isP1Winner ? 'text-slate-900' : 'text-slate-400'}`}>
+                      {m.p1SetsWon}
+                    </span>
+                  </div>
+
+                  {/* Player 2 Row */}
+                  <div
+                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl transition-colors ${
+                      isP2Winner
+                        ? 'bg-amber-500/10 border border-amber-300/70 font-black text-slate-900'
+                        : 'bg-slate-50/60 text-slate-600 font-semibold'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <span className="text-xs">{m.player2.countryFlag}</span>
+                      <span className="text-xs truncate">{m.player2.name}</span>
+                      {isP2Winner && (
+                        <span className="inline-flex items-center justify-center bg-amber-200/90 text-amber-950 p-0.5 rounded-md">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </span>
+                      )}
+                    </div>
+                    <span className={`text-sm font-black ${isP2Winner ? 'text-slate-900' : 'text-slate-400'}`}>
+                      {m.p2SetsWon}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* 2. Top Players Highlight (Court Leaders - 16px Card Radius) */}
+      {/* 2. Top Players Highlight (Court Leaders) */}
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-sm font-bold text-slate-900">Court Leaders</h3>
+          <h3 className="text-sm font-black text-slate-900 tracking-tight">Court Leaders</h3>
           <button
             onClick={() => setActiveTab('players')}
-            className="text-xs font-bold text-slate-900 hover:underline flex items-center"
+            className="text-xs font-bold text-slate-500 hover:text-slate-900 inline-flex items-center space-x-0.5 transition-colors"
           >
             <span>All Profiles</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -286,7 +343,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             return (
               <div
                 key={player.id}
-                className="p-3 flex items-center justify-between hover:bg-slate-50/80 transition-colors"
+                onClick={() => onSelectPlayerProfile(player)}
+                className="group p-3 flex items-center justify-between hover:bg-slate-50/80 transition-colors cursor-pointer"
               >
                 <div className="flex items-center space-x-3">
                   <div
@@ -297,7 +355,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                   <div>
                     <div className="flex items-center space-x-1.5">
-                      <span className="text-sm font-bold text-slate-900">
+                      <span className="text-xs font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
                         {player.name}
                       </span>
                       <span className="text-xs">{player.countryFlag}</span>
@@ -310,31 +368,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </p>
                   </div>
                 </div>
+
+                <div className="flex items-center space-x-1">
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-transform flex-shrink-0" />
+                </div>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* 3. Active Club Statistics (16px Card Radius, 12px Sub-tile Radius) */}
+      {/* 3. Active Club Statistics */}
       <div className="ios-card rounded-2xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="min-w-0 pr-2">
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center space-x-1 truncate">
-              <span>{activeClub.name} Stats</span>
+            <h3 className="text-sm font-black text-slate-900 tracking-tight truncate">
+              {activeClub.name} Stats
             </h3>
             <p className="text-[10px] text-slate-400 font-semibold truncate">{activeClub.city}, {activeClub.country}</p>
           </div>
 
           <button
             onClick={openAdvancedStatsModal}
-            className="text-xs font-bold text-slate-900 hover:bg-slate-200 flex items-center space-x-1 bg-slate-100 px-2.5 py-1 rounded-xl transition-colors flex-shrink-0"
+            className="text-xs font-bold text-slate-500 hover:text-slate-900 inline-flex items-center space-x-0.5 transition-colors flex-shrink-0"
           >
-            <BarChart3 className="w-3.5 h-3.5 text-amber-500" />
             <span>Full Stats</span>
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
+        {/* 3-Tile Aggregate Metrics Grid */}
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-center">
             <p className="text-lg font-black text-slate-900">{matches.length}</p>
@@ -346,33 +409,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <p className="text-[10px] text-slate-500 font-medium mt-0.5">Club Roster</p>
           </div>
 
-          {/* Dynamic Highlight Fact Tile (12px Radius) */}
-          <div className="bg-amber-50 p-2 rounded-xl border border-amber-200 flex flex-col justify-between items-center text-center overflow-hidden min-h-[64px]">
-            <p className="text-[9px] font-black uppercase tracking-wider text-amber-800 leading-tight">
-              {randomFact?.subtitle || '🔥 Win Rate'}
-            </p>
+          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-center">
+            <p className="text-lg font-black text-slate-900">{avgMatchDurationMins} min</p>
+            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Avg Match Duration</p>
+          </div>
+        </div>
 
-            <div className="my-auto py-0.5 w-full">
-              <div className="flex items-center justify-center space-x-1">
-                <span className="text-xs">{randomFact?.flag}</span>
-                <span className="text-[11px] font-black text-slate-900 leading-none">
-                  {randomFact?.firstName}
-                </span>
-              </div>
-              {randomFact?.lastName && (
-                <span className="text-[10px] font-extrabold text-slate-800 leading-tight block mt-0.5">
-                  {randomFact?.lastName}
-                </span>
-              )}
+        {/* Dedicated Separate "Club Spotlight Leader" Card */}
+        <div
+          onClick={() => randomFact?.playerObj && onSelectPlayerProfile(randomFact.playerObj)}
+          className="group bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-slate-50 p-3 rounded-xl border border-amber-200/80 flex items-center justify-between cursor-pointer hover:border-amber-300 transition-colors"
+        >
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <span className="text-base flex-shrink-0">{randomFact?.icon || '👑'}</span>
+            <div className="min-w-0">
+              <span className="text-[9px] font-black uppercase tracking-wider text-amber-800 block">
+                {randomFact?.subtitle || 'Club Leader'}
+              </span>
+              <p className="text-xs font-bold text-slate-900 truncate">
+                {randomFact?.flag} {randomFact?.fullName}
+              </p>
             </div>
+          </div>
+
+          <div className="flex items-center space-x-1 flex-shrink-0">
+            <span className="text-[10px] font-extrabold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-lg">
+              Profile
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 transition-transform" />
           </div>
         </div>
       </div>
 
-      {/* 4. Tips from Letty Card (Positioned at bottom of main feed) */}
+      {/* 4. Tips from Letty Card */}
       <LettyBanner variant="tips" />
 
-      {/* Small Compact Button Row to Add Player Profile (Bottom string row) */}
+      {/* Small Compact Button Row to Add Player Profile */}
       <div className="text-center pt-2">
         <button
           onClick={openAddPlayerModal}

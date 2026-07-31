@@ -12,6 +12,9 @@ import { AddPlayerModal } from './components/AddPlayerModal';
 import { MatchDetailModal } from './components/MatchDetailModal';
 import { SettingsModal } from './components/SettingsModal';
 import { AdvancedStatsModal } from './components/AdvancedStatsModal';
+import { HowToPlayModal } from './components/HowToPlayModal';
+import { PlayerProfileModal } from './components/PlayerProfileModal';
+import type { Player } from './types/squash';
 import { Smartphone, Monitor } from 'lucide-react';
 
 const MainContainer: React.FC = () => {
@@ -23,6 +26,8 @@ const MainContainer: React.FC = () => {
   const [isAddPlayerOpen, setIsAddPlayerOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isAdvancedStatsOpen, setIsAdvancedStatsOpen] = useState<boolean>(false);
+  const [isHowToPlayOpen, setIsHowToPlayOpen] = useState<boolean>(false);
+  const [selectedPlayerProfile, setSelectedPlayerProfile] = useState<Player | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(true);
 
@@ -81,6 +86,8 @@ const MainContainer: React.FC = () => {
               openAddPlayerModal={() => setIsAddPlayerOpen(true)}
               openSettingsModal={() => setIsSettingsOpen(true)}
               openAdvancedStatsModal={() => setIsAdvancedStatsOpen(true)}
+              openHowToPlayModal={() => setIsHowToPlayOpen(true)}
+              onSelectPlayerProfile={(p) => setSelectedPlayerProfile(p)}
               setActiveTab={setActiveTab}
               selectMatchDetail={(id) => setSelectedMatchId(id)}
             />
@@ -91,7 +98,10 @@ const MainContainer: React.FC = () => {
           )}
 
           {activeTab === 'players' && (
-            <PlayersView openAddPlayerModal={() => setIsAddPlayerOpen(true)} />
+            <PlayersView
+              openAddPlayerModal={() => setIsAddPlayerOpen(true)}
+              onSelectPlayerProfile={(p) => setSelectedPlayerProfile(p)}
+            />
           )}
 
           {activeTab === 'history' && (
@@ -133,14 +143,27 @@ const MainContainer: React.FC = () => {
         onClose={() => setSelectedMatchId(null)}
       />
 
+      <PlayerProfileModal
+        player={selectedPlayerProfile}
+        onClose={() => setSelectedPlayerProfile(null)}
+        onSelectMatchDetail={(id) => setSelectedMatchId(id)}
+      />
+
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        onOpenHowToPlay={() => setIsHowToPlayOpen(true)}
       />
 
       <AdvancedStatsModal
         isOpen={isAdvancedStatsOpen}
         onClose={() => setIsAdvancedStatsOpen(false)}
+      />
+
+      <HowToPlayModal
+        isOpen={isHowToPlayOpen}
+        onClose={() => setIsHowToPlayOpen(false)}
+        openNewMatch={() => setIsNewMatchOpen(true)}
       />
     </div>
   );

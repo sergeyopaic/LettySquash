@@ -1,12 +1,14 @@
 import React from 'react';
 import { useSquash } from '../context/SquashContext';
-import { Plus, Trash2 } from 'lucide-react';
+import type { Player } from '../types/squash';
+import { Plus, Trash2, ChevronRight } from 'lucide-react';
 
 interface PlayersViewProps {
   openAddPlayerModal: () => void;
+  onSelectPlayerProfile?: (player: Player) => void;
 }
 
-export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal }) => {
+export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, onSelectPlayerProfile }) => {
   const { players, deletePlayer } = useSquash();
 
   const getWinRate = (wins: number, total: number) => {
@@ -23,7 +25,7 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal }) 
         </div>
         <button
           onClick={openAddPlayerModal}
-          className="bg-blue-900 hover:bg-slate-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center space-x-1.5 shadow-sm transition-transform active:scale-95"
+          className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center space-x-1.5 shadow-sm transition-transform active:scale-95 border border-slate-800"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Add Player</span>
@@ -34,7 +36,13 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal }) 
         {players.map((player) => {
           const winRate = getWinRate(player.wins, player.totalMatches);
           return (
-            <div key={player.id} className="ios-card p-4 space-y-3">
+            <div
+              key={player.id}
+              onClick={() => {
+                if (onSelectPlayerProfile) onSelectPlayerProfile(player);
+              }}
+              className="group ios-card p-4 space-y-3 hover:border-slate-300 transition-colors cursor-pointer"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="relative">
@@ -51,10 +59,12 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal }) 
 
                   <div>
                     <div className="flex items-center space-x-1.5">
-                      <h3 className="font-bold text-slate-900 text-sm">{player.name}</h3>
+                      <h3 className="font-bold text-slate-900 text-sm group-hover:text-amber-700 transition-colors">
+                        {player.name}
+                      </h3>
                     </div>
                     <div className="flex items-center space-x-2 text-[10px] text-slate-500 mt-0.5">
-                      <span className="bg-blue-900 text-amber-400 font-extrabold px-2 py-0.5 rounded-md">
+                      <span className="bg-slate-900 text-amber-400 font-extrabold px-2 py-0.5 rounded-lg">
                         {player.skillGrade}
                       </span>
                       <span>•</span>
@@ -63,16 +73,21 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal }) 
                   </div>
                 </div>
 
-                <button
-                  onClick={() => {
-                    if (confirm(`Delete profile for ${player.name}?`)) {
-                      deletePlayer(player.id);
-                    }
-                  }}
-                  className="text-slate-300 hover:text-rose-500 p-1.5 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="flex items-center space-x-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Delete profile for ${player.name}?`)) {
+                        deletePlayer(player.id);
+                      }
+                    }}
+                    className="text-slate-300 hover:text-rose-500 p-1.5 rounded-lg transition-colors mr-1"
+                    title="Delete profile"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-transform flex-shrink-0" />
+                </div>
               </div>
 
               {/* Player Stats Grid */}
@@ -81,14 +96,14 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal }) 
                   <p className="text-[10px] font-semibold text-slate-400">Matches</p>
                   <p className="text-xs font-bold text-slate-800 mt-0.5">{player.totalMatches}</p>
                 </div>
-                <div className="bg-emerald-50/50 p-2 rounded-xl border border-emerald-100/50">
-                  <p className="text-[10px] font-semibold text-emerald-700">Wins / Losses</p>
-                  <p className="text-xs font-bold text-emerald-900 mt-0.5">
+                <div className="bg-slate-50 p-2 rounded-xl">
+                  <p className="text-[10px] font-semibold text-slate-400">Wins / Losses</p>
+                  <p className="text-xs font-bold text-slate-900 mt-0.5">
                     {player.wins} W / {player.losses} L
                   </p>
                 </div>
-                <div className="bg-amber-50/50 p-2 rounded-xl border border-amber-100/50">
-                  <p className="text-[10px] font-semibold text-amber-700">Win Rate</p>
+                <div className="bg-amber-50 p-2 rounded-xl border border-amber-100">
+                  <p className="text-[10px] font-semibold text-amber-800">Win Rate</p>
                   <p className="text-xs font-bold text-amber-900 mt-0.5">{winRate}</p>
                 </div>
               </div>

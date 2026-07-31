@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
-import type { DecisionType } from '../types/squash';
+import type { DecisionType, SetResult } from '../types/squash';
 import {
   RotateCcw,
   Pause,
@@ -91,7 +91,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
     isSetWonModalOpen,
     isSetBreakActive,
     isSetBreakPaused,
-    setBreakTimerSeconds,
+    setBreakTimerSeconds = 90,
     lastSetWon,
   } = activeMatchState;
 
@@ -337,7 +337,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
             Completed Sets Results
           </h4>
           <div className="space-y-1">
-            {match.sets.map((s) => (
+            {match.sets.map((s: SetResult) => (
               <div
                 key={s.setNumber}
                 className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-xl border border-slate-100"
@@ -575,7 +575,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                 Final Match Summary
               </p>
-              {match.sets.map((s) => (
+              {match.sets.map((s: SetResult) => (
                 <div key={s.setNumber} className="flex justify-between items-center px-2 py-0.5 text-slate-700 font-semibold">
                   <span>Set {s.setNumber}</span>
                   <span className="font-mono font-bold text-slate-900">{s.p1Score} - {s.p2Score}</span>

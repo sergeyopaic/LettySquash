@@ -43,6 +43,10 @@ export interface PointEvent {
   serverPlayerId: string;
   serveSide: ServeSide;
   setIndex: number;
+  serverId?: string;
+  currentSetIndex?: number;
+  p1SetsWon?: number;
+  p2SetsWon?: number;
 }
 
 export interface RefereeDecision {
@@ -85,12 +89,6 @@ export interface SquashMatch {
   notes?: string;
 }
 
-export interface AppSettings {
-  showMascotTips: boolean;
-  soundEffects: boolean;
-  hapticFeedback: boolean;
-}
-
 export interface SetWonInfo {
   setNumber: number;
   winnerId: string;
@@ -106,21 +104,28 @@ export interface LiveMatchState {
   p2CurrentScore: number;
   currentServerId: string;
   currentServeSide: ServeSide;
-  isHandout: boolean;
-  history: {
-    p1Score: number;
-    p2Score: number;
-    serverId: string;
-    serveSide: ServeSide;
-    p1SetsWon: number;
-    p2SetsWon: number;
-    currentSetIndex: number;
-  }[];
   timerSeconds: number;
-  isTimerRunning: boolean;
-  isSetWonModalOpen: boolean;
-  isSetBreakActive: boolean;
-  isSetBreakPaused: boolean;
-  setBreakTimerSeconds: number;
-  lastSetWon: SetWonInfo | null;
+  isPaused: boolean;
+  isTimerRunning?: boolean;
+  isSetWonModalOpen?: boolean;
+  isSetBreakActive?: boolean;
+  isSetBreakPaused?: boolean;
+  setBreakTimerSeconds?: number;
+  lastSetWon?: SetWonInfo | null;
+  isHandout?: boolean;
+  history: any[];
+  decisions: RefereeDecision[];
+}
+
+export interface AppSettings {
+  showMascotTips: boolean;
+  soundEffects: boolean;
+  hapticFeedback: boolean;
+}
+
+export interface LettyTipItem {
+  category: 'RULE' | 'TACTIC' | 'FACT';
+  categoryLabel: string;
+  title: string;
+  text: string;
 }

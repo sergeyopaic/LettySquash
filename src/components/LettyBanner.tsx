@@ -1,18 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LETTY_TIP_ITEMS } from '../data/mockData';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, X, BookOpen } from 'lucide-react';
 
 interface LettyBannerProps {
   customMessage?: string;
   variant?: 'home' | 'match' | 'tips' | 'victory';
+  onOpenHowToPlay?: () => void;
 }
 
-export const LettyBanner: React.FC<LettyBannerProps> = ({ customMessage, variant = 'home' }) => {
+export const LettyBanner: React.FC<LettyBannerProps> = ({
+  customMessage,
+  variant = 'home',
+  onOpenHowToPlay,
+}) => {
   const { settings } = useSquash();
   const [tipIndex, setTipIndex] = useState(0);
+  const [isDismissed, setIsDismissed] = useState<boolean>(false);
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem('welcomeBannerDismissed');
+    if (dismissed === 'true') {
+      setIsDismissed(true);
+    }
+  }, []);
+
+  const handleDismiss = () => {
+    localStorage.setItem('welcomeBannerDismissed', 'true');
+    setIsDismissed(true);
+  };
 
   if (settings.showMascotTips === false && variant === 'tips') {
+    return null;
+  }
+
+  // If onboarding banner was dismissed by tapping X, hide home variant
+  if (variant === 'home' && isDismissed) {
     return null;
   }
 
@@ -40,10 +63,10 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({ customMessage, variant
     );
   }
 
-  // Hero Home Greeting Banner: 24px Radius (Banner Tier)
+  // Functional Onboarding Banner: New to Letty? + How to Play button + 44x44px Touch Dismiss X
   if (variant === 'home') {
     return (
-      <div className="relative rounded-3xl p-4 min-h-[100px] overflow-hidden bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 shadow-lg border border-amber-300/80 flex items-center mb-4">
+      <div className="relative rounded-3xl p-4 min-h-[105px] overflow-hidden bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 shadow-lg border border-amber-300/80 flex items-center mb-4 z-10">
         {/* Ambient background glow */}
         <div className="absolute left-0 top-0 bottom-0 w-32 bg-white/20 rounded-full blur-xl pointer-events-none" />
 
@@ -56,14 +79,35 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({ customMessage, variant
           />
         </div>
 
-        {/* Clean Greeting Text shifted right */}
-        <div className="pl-14 sm:pl-16 pr-2 flex-1 z-20 space-y-0.5">
+        {/* Dismiss Button X (44x44px touch area compliant with Apple HIG) */}
+        <button
+          onClick={handleDismiss}
+          className="absolute top-1 right-1 z-30 w-11 h-11 flex items-center justify-center text-slate-950/70 hover:text-slate-950 transition-colors"
+          aria-label="Dismiss welcome message"
+          title="Dismiss banner"
+        >
+          <X className="w-4 h-4 stroke-[2.5]" />
+        </button>
+
+        {/* Text & Action Content */}
+        <div className="pl-14 sm:pl-16 pr-8 flex-1 z-20 space-y-1">
           <h2 className="text-base sm:text-lg font-black text-slate-950 leading-tight tracking-tight">
-            Hi, I'm Letty! Let's play together!
+            New to Letty?
           </h2>
-          <p className="text-[11px] font-bold text-slate-950/80">
-            Court referee counter & match scorekeeper
+          <p className="text-[11px] font-bold text-slate-950/80 leading-tight">
+            Learn scoring, rules, and how to track a match.
           </p>
+
+          {/* Compact Single How to Play Secondary Action Button */}
+          {onOpenHowToPlay && (
+            <button
+              onClick={onOpenHowToPlay}
+              className="mt-1.5 py-1.5 px-3.5 bg-slate-950 hover:bg-slate-900 text-amber-400 font-extrabold text-xs rounded-xl shadow-xs inline-flex items-center space-x-1.5 transition-transform active:scale-95 border border-slate-900/40"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+              <span>How to Play</span>
+            </button>
+          )}
         </div>
       </div>
     );
@@ -84,7 +128,7 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({ customMessage, variant
     }
   };
 
-  // Clean Standalone Letty Tips Card (Card Tier: 16px Radius, Chips: 8px Radius)
+  // Clean Standalone Letty Tips Card
   return (
     <div className="ios-card rounded-2xl p-4 mb-4 border border-slate-200/90 shadow-md bg-gradient-to-br from-white via-slate-50 to-amber-50/40 overflow-hidden relative">
       <div className="flex items-center justify-between mb-3">

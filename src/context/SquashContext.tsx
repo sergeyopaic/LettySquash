@@ -99,7 +99,7 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (activeMatchState && activeMatchState.match.status === 'IN_PROGRESS') {
       if (activeMatchState.isSetBreakActive && !activeMatchState.isSetBreakPaused) {
         interval = setInterval(() => {
-          setActiveMatchState((prev) => {
+          setActiveMatchState((prev: any) => {
             if (!prev || !prev.isSetBreakActive || prev.isSetBreakPaused) return prev;
             if (prev.setBreakTimerSeconds <= 1) {
               return {
@@ -118,7 +118,7 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }, 1000);
       } else if (activeMatchState.isTimerRunning && !activeMatchState.isSetWonModalOpen && !activeMatchState.isSetBreakActive) {
         interval = setInterval(() => {
-          setActiveMatchState((prev) => {
+          setActiveMatchState((prev: any) => {
             if (!prev || prev.isSetWonModalOpen || prev.isSetBreakActive) return prev;
             return {
               ...prev,
@@ -214,6 +214,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       p2CurrentScore: 0,
       currentServerId: serverId,
       currentServeSide: serveSide,
+      isPaused: false,
+      decisions: [],
       isHandout: false,
       history: [],
       timerSeconds: 0,
@@ -275,7 +277,7 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     let nextSetIndex = currentSetIndex;
     let matchWinnerId: string | undefined = undefined;
     let isMatchCompleted = false;
-    let setWonInfo: SetWonInfo | null = activeMatchState.lastSetWon;
+    let setWonInfo: SetWonInfo | null = activeMatchState.lastSetWon || null;
     let shouldOpenSetWonModal = false;
 
     if (setWinner) {
