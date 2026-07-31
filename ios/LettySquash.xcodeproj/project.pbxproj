@@ -1,0 +1,203 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000012C59A00000000001 /* LettySquashApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000012C59A00000000001 /* LettySquashApp.swift */; };
+		A10000022C59A00000000002 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000022C59A00000000002 /* Theme.swift */; };
+		A10000032C59A00000000003 /* Player.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000032C59A00000000003 /* Player.swift */; };
+		A10000042C59A00000000004 /* SquashMatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000042C59A00000000004 /* SquashMatch.swift */; };
+		A10000052C59A00000000005 /* SquashDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000052C59A00000000005 /* SquashDataStore.swift */; };
+		A10000062C59A00000000006 /* LettyBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000062C59A00000000006 /* LettyBannerView.swift */; };
+		A10000072C59A00000000007 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000072C59A00000000007 /* DashboardView.swift */; };
+		A10000082C59A00000000008 /* ScoreboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000082C59A00000000008 /* ScoreboardView.swift */; };
+		A10000092C59A00000000009 /* NewMatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000092C59A00000000009 /* NewMatchView.swift */; };
+		A10000102C59A00000000010 /* PlayersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000102C59A00000000010 /* PlayersView.swift */; };
+		A10000112C59A00000000011 /* MatchHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000112C59A00000000011 /* MatchHistoryView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		C10000002C59A00000000000 /* LettySquash.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LettySquash.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B10000012C59A00000000001 /* LettySquashApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/LettySquashApp.swift; sourceTree = "<group>"; };
+		B10000022C59A00000000002 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/Theme.swift; sourceTree = "<group>"; };
+		B10000032C59A00000000003 /* Player.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/Player.swift; sourceTree = "<group>"; };
+		B10000042C59A00000000004 /* SquashMatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/SquashMatch.swift; sourceTree = "<group>"; };
+		B10000052C59A00000000005 /* SquashDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/SquashDataStore.swift; sourceTree = "<group>"; };
+		B10000062C59A00000000006 /* LettyBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/LettyBannerView.swift; sourceTree = "<group>"; };
+		B10000072C59A00000000007 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/DashboardView.swift; sourceTree = "<group>"; };
+		B10000082C59A00000000008 /* ScoreboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ScoreboardView.swift; sourceTree = "<group>"; };
+		B10000092C59A00000000009 /* NewMatchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/NewMatchView.swift; sourceTree = "<group>"; };
+		B10000102C59A00000000010 /* PlayersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/PlayersView.swift; sourceTree = "<group>"; };
+		B10000112C59A00000000011 /* MatchHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/MatchHistoryView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		D10000002C59A00000000000 = {
+			isa = PBXGroup;
+			children = (
+				D10000012C59A00000000001 /* LettySquash */,
+				C10000002C59A00000000000 /* LettySquash.app */,
+			);
+			sourceTree = "<group>";
+		};
+		D10000012C59A00000000001 /* LettySquash */ = {
+			isa = PBXGroup;
+			children = (
+				B10000012C59A00000000001 /* LettySquashApp.swift */,
+				B10000022C59A00000000002 /* Theme.swift */,
+				B10000032C59A00000000003 /* Player.swift */,
+				B10000042C59A00000000004 /* SquashMatch.swift */,
+				B10000052C59A00000000005 /* SquashDataStore.swift */,
+				B10000062C59A00000000006 /* LettyBannerView.swift */,
+				B10000072C59A00000000007 /* DashboardView.swift */,
+				B10000082C59A00000000008 /* ScoreboardView.swift */,
+				B10000092C59A00000000009 /* NewMatchView.swift */,
+				B10000102C59A00000000010 /* PlayersView.swift */,
+				B10000112C59A00000000011 /* MatchHistoryView.swift */,
+			);
+			path = LettySquash;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E10000002C59A00000000000 /* LettySquash */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F10000002C59A00000000000 /* Build configuration list for PBXNativeTarget "LettySquash" */;
+			buildPhases = (
+				G10000002C59A00000000000 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LettySquash;
+			productName = LettySquash;
+			productReference = C10000002C59A00000000000 /* LettySquash.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		P10000002C59A00000000000 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1540;
+				LastUpgradeCheck = 1540;
+			};
+			buildConfigurationList = P10000012C59A00000000001 /* Build configuration list for PBXProject "LettySquash" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D10000002C59A00000000000;
+			productRefGroup = D10000002C59A00000000000;
+			targets = (
+				E10000002C59A00000000000 /* LettySquash */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		G10000002C59A00000000000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000012C59A00000000001 /* LettySquashApp.swift in Sources */,
+				A10000022C59A00000000002 /* Theme.swift in Sources */,
+				A10000032C59A00000000003 /* Player.swift in Sources */,
+				A10000042C59A00000000004 /* SquashMatch.swift in Sources */,
+				A10000052C59A00000000005 /* SquashDataStore.swift in Sources */,
+				A10000062C59A00000000006 /* LettyBannerView.swift in Sources */,
+				A10000072C59A00000000007 /* DashboardView.swift in Sources */,
+				A10000082C59A00000000008 /* ScoreboardView.swift in Sources */,
+				A10000092C59A00000000009 /* NewMatchView.swift in Sources */,
+				A10000102C59A00000000010 /* PlayersView.swift in Sources */,
+				A10000112C59A00000000011 /* MatchHistoryView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		XC1000012C59A00000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.letty.squash;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		XC1000012C59A00000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.letty.squash;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		P10000012C59A00000000001 /* Build configuration list for PBXProject "LettySquash" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				XC1000012C59A00000000001 /* Debug */,
+				XC1000012C59A00000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F10000002C59A00000000000 /* Build configuration list for PBXNativeTarget "LettySquash" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				XC1000012C59A00000000001 /* Debug */,
+				XC1000012C59A00000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = P10000002C59A00000000000 /* Project object */;
+}

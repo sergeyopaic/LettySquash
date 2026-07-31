@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-main: #F1F5F9;
+    --card-bg: #FFFFFF;
+    --navy-primary: #1E293B;
+    --navy-deep: #0F172A;
+    --navy-light: #334155;
+    --otter-brown: #9A6237;
+    --otter-warm: #B47846;
+    --squash-gold: #F59E0B;
+    --squash-yellow: #FACC15;
+    --text-primary: #0F172A;
+    --text-secondary: #64748B;
+    --text-muted: #94A3B8;
+    --border-light: #E2E8F0;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #0b1120;
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+  }
+}
+
+/* Rich Light Mesh Gradient & Ambient Glow Background */
+.app-bg-gradient {
+  background: 
+    radial-gradient(circle at 15% 15%, rgba(245, 158, 11, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 85% 75%, rgba(30, 58, 138, 0.10) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(180, 120, 70, 0.06) 0%, transparent 60%),
+    linear-gradient(180deg, #F1F5F9 0%, #F8FAFC 40%, #EEF2F7 100%);
+  background-attachment: fixed;
+  position: relative;
+}
+
+/* Subtle Squash Court Lines Pattern Overlay */
+.app-bg-gradient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(30, 41, 59, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(30, 41, 59, 0.02) 1px, transparent 1px);
+  background-size: 36px 36px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 99px;
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.4), 0 0 0 2px rgba(245, 158, 11, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.8), 0 0 0 4px rgba(245, 158, 11, 0.9);
+  }
+}
+
+.serve-glow {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+@keyframes bounceSoft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.letty-bounce {
+  animation: bounceSoft 2.5s infinite ease-in-out;
+}
+
+/* Premium Card Styles */
+.ios-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 
+    0 10px 30px -5px rgba(15, 23, 42, 0.05),
+    0 4px 12px -2px rgba(180, 120, 70, 0.04),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+}
+
+.ios-glass-card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 25px -4px rgba(15, 23, 42, 0.06);
+}
+
+.ios-pressable {
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease;
+}
+
+.ios-pressable:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+/* iPhone Frame styling */
+.iphone-frame {
+  width: 393px;
+  height: 852px;
+  background: #ffffff;
+  border-radius: 54px;
+  box-shadow: 0 0 0 12px #1e293b, 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dynamic-island {
+  width: 120px;
+  height: 35px;
+  background: #000000;
+  border-radius: 20px;
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+}
