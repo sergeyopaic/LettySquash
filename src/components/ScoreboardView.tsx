@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
-import type { DecisionType, SetResult } from '../types/squash';
+import type { DecisionType, GameResult } from '../types/squash';
 import {
   RotateCcw,
   Pause,
@@ -10,89 +10,71 @@ import {
   ShieldAlert,
   HelpCircle,
   XCircle,
-  Plus,
   Clock,
   ChevronRight,
   Trophy,
   Award,
+  MoreVertical,
+  RefreshCw,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
-import { SquashBallIcon } from './DashboardView';
 
 interface ScoreboardViewProps {
   openNewMatchModal?: () => void;
+  onExitToHome: () => void;
 }
 
-export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModal }) => {
+type DestructiveActionType = 'RESET_GAME' | 'RESET_MATCH' | 'ABANDON_MATCH' | null;
+
+export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModal, onExitToHome }) => {
   const {
     activeMatchState,
     recordPoint,
     recordDecision,
     undoLastAction,
     toggleTimer,
-    proceedToSetBreak,
-    skipSetBreak,
-    toggleSetBreakPause,
+    proceedToGameBreak,
+    skipGameBreak,
+    toggleGameBreakPause,
+    toggleServeSide,
+    resetCurrentGame,
+    resetWholeMatch,
     finishActiveMatch,
     cancelActiveMatch,
   } = useSquash();
 
   const [showDecisionModal, setShowDecisionModal] = useState<boolean>(false);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState<boolean>(false);
+  const [confirmActionType, setConfirmActionType] = useState<DestructiveActionType>(null);
+
+  // If active match ends or is cancelled, automatically return to main Home screen
+  useEffect(() => {
+    if (!activeMatchState) {
+      onExitToHome();
+    }
+  }, [activeMatchState, onExitToHome]);
 
   if (!activeMatchState) {
-    return (
-      <div className="pb-24 pt-4 px-4 max-w-md mx-auto space-y-5 animate-in fade-in duration-300">
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-slate-900 mx-auto flex items-center justify-center shadow-lg ring-4 ring-slate-100">
-            <SquashBallIcon className="w-8 h-8" />
-          </div>
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">Court Referee Counter</h2>
-          <p className="text-xs text-slate-500 max-w-xs mx-auto">
-            Live referee counter for World Squash Federation PARS 11 matches.
-          </p>
-        </div>
-
-        <LettyBanner
-          variant="home"
-          customMessage="No active game on court! Tap below to start refereeing a new squash match."
-        />
-
-        <div className="ios-card p-6 text-center space-y-4 bg-gradient-to-br from-white via-slate-50 to-blue-50/50">
-          <div className="w-16 h-16 rounded-full bg-blue-900/10 text-blue-900 mx-auto flex items-center justify-center">
-            <Play className="w-8 h-8 fill-current ml-1" />
-          </div>
-
-          <div>
-            <h3 className="font-bold text-slate-900 text-base">Start a New Match</h3>
-            <p className="text-xs text-slate-500 mt-1">Select players, serve box & match format</p>
-          </div>
-
-          <button
-            onClick={openNewMatchModal}
-            className="w-full py-3.5 bg-blue-900 hover:bg-slate-800 text-white font-extrabold text-sm rounded-2xl shadow-md flex items-center justify-center space-x-2 transition-transform active:scale-98"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Setup New Match</span>
-          </button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const {
     match,
-    currentSetIndex,
+    currentGameIndex,
     p1CurrentScore,
     p2CurrentScore,
     currentServerId,
     currentServeSide,
     isTimerRunning,
     timerSeconds,
-    isSetWonModalOpen,
-    isSetBreakActive,
-    isSetBreakPaused,
-    setBreakTimerSeconds = 90,
-    lastSetWon,
+    isGameWonModalOpen,
+    isGameBreakActive,
+    isGameBreakPaused,
+    gameBreakTimerSeconds = 90,
+    lastGameWon,
+    lastRallyLog,
   } = activeMatchState;
 
   const isP1Serving = currentServerId === match.player1.id;
@@ -119,6 +101,24 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
     setSelectedPlayerId(null);
   };
 
+  const executeConfirmedAction = () => {
+    if (confirmActionType === 'RESET_GAME') {
+      resetCurrentGame();
+    } else if (confirmActionType === 'RESET_MATCH') {
+      resetWholeMatch();
+    } else if (confirmActionType === 'ABANDON_MATCH') {
+      cancelActiveMatch();
+      onExitToHome();
+    }
+    setConfirmActionType(null);
+    setIsMoreMenuOpen(false);
+  };
+
+  const handleSaveAndExit = () => {
+    finishActiveMatch();
+    onExitToHome();
+  };
+
   const getLettyCommentary = () => {
     if (isMatchCompleted) {
       return `🎉 Match Victory! ${matchWinnerName} won the match!`;
@@ -127,10 +127,10 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
       return '🔥 Tie-break! Win by 2 points!';
     }
     if (p1CurrentScore >= 10 && p1CurrentScore - p2CurrentScore === 1) {
-      return `⚡ Set ball for ${match.player1.name}!`;
+      return `⚡ Game ball for ${match.player1.name}!`;
     }
     if (p2CurrentScore >= 10 && p2CurrentScore - p1CurrentScore === 1) {
-      return `⚡ Set ball for ${match.player2.name}!`;
+      return `⚡ Game ball for ${match.player2.name}!`;
     }
     const serverName = isP1Serving ? match.player1.name : match.player2.name;
     const sideName = currentServeSide === 'L' ? 'Left' : 'Right';
@@ -138,43 +138,132 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
   };
 
   return (
-    <div className="pb-24 pt-2 px-3 space-y-3 max-w-md mx-auto">
-      {/* Match Header Controls */}
-      <div className="ios-glass-card rounded-2xl p-2.5 flex items-center justify-between shadow-xs">
+    <div className="pb-24 pt-2 px-3 space-y-3 max-w-md mx-auto relative">
+      {/* Match Header Controls with high z-index stacking */}
+      <div className="ios-glass-card rounded-2xl p-2.5 flex items-center justify-between shadow-xs relative z-30">
         <div className="flex items-center space-x-2">
           <span className="px-2 py-0.5 bg-blue-900 text-amber-400 font-black text-[10px] rounded-md uppercase tracking-wider">
-            Set {currentSetIndex}
+            Game {currentGameIndex}
           </span>
           <span className="text-xs font-semibold text-slate-600">
-            {match.matchFormat === 'BEST_OF_5' ? 'Best of 5' : match.matchFormat === 'BEST_OF_3' ? 'Best of 3' : 'Single Set'}
+            {match.matchFormat === 'BEST_OF_5' ? 'Best of 5 Games' : match.matchFormat === 'BEST_OF_3' ? 'Best of 3 Games' : 'Single Game'}
           </span>
         </div>
 
-        {/* Timer */}
-        <div className="flex items-center space-x-2">
+        {/* Timer & Safe Overflow Menu Button */}
+        <div className="flex items-center space-x-2 relative">
           <button
             onClick={toggleTimer}
             className="p-1 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+            title={isTimerRunning ? 'Pause Match Timer' : 'Resume Match Timer'}
           >
             {isTimerRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
           </button>
+
           <span className="font-mono font-bold text-xs text-slate-800 bg-slate-100 px-2 py-1 rounded-lg">
             {formatTimer(timerSeconds)}
           </span>
+
+          {/* Safe Top-Right Menu Button (•••) */}
+          <button
+            onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+            className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 transition-colors ml-1"
+            title="Match Options"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+
+          {/* Backdrop to close dropdown on tap outside */}
+          {isMoreMenuOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-transparent"
+              onClick={() => setIsMoreMenuOpen(false)}
+            />
+          )}
+
+          {/* Top-Right Safe Dropdown Menu (Z-50 Layering On Top of Score Cards) */}
+          {isMoreMenuOpen && (
+            <div className="absolute right-0 top-9 z-50 bg-white rounded-2xl p-2 shadow-2xl border border-slate-200/90 w-56 space-y-1 animate-in fade-in zoom-in-95 duration-150 ring-1 ring-slate-900/10">
+              <div className="px-2.5 py-1 text-[10px] font-black uppercase text-slate-400 border-b border-slate-100">
+                Match Management
+              </div>
+
+              <button
+                onClick={() => {
+                  setIsMoreMenuOpen(false);
+                  setConfirmActionType('RESET_GAME');
+                }}
+                className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-900 flex items-center space-x-2 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
+                <span>Reset Current Game (0-0)</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMoreMenuOpen(false);
+                  setConfirmActionType('RESET_MATCH');
+                }}
+                className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-bold text-rose-700 hover:bg-rose-50 flex items-center space-x-2 transition-colors"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                <span>Reset Whole Match</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsMoreMenuOpen(false);
+                  setConfirmActionType('ABANDON_MATCH');
+                }}
+                className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 flex items-center space-x-2 transition-colors border-t border-slate-100 pt-2"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-slate-400" />
+                <span>Abandon & Exit to Home</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* COMPACT Letty Match Status Bar (using letty_play.png with NO title tag) */}
+      {/* COMPACT Letty Match Status Bar */}
       <LettyBanner
         customMessage={getLettyCommentary()}
         variant="match"
       />
 
-      {/* Sets Won Score Bar */}
+      {/* Rally Log Ticker (Shows exact rally outcome, score, and service transition) */}
+      <div className="bg-slate-900 text-white p-2 px-3 rounded-2xl flex items-center justify-between shadow-xs border border-slate-800 text-xs font-semibold">
+        <div className="flex items-center space-x-1.5 min-w-0">
+          <span className="text-[9px] font-black uppercase text-amber-400 tracking-wider bg-amber-400/10 px-1.5 py-0.5 rounded-md flex-shrink-0">
+            RALLY LOG
+          </span>
+          {lastRallyLog ? (
+            <span className="truncate text-slate-200">
+              <strong className="text-amber-400 font-mono">{lastRallyLog.p1Score}-{lastRallyLog.p2Score}</strong> • {lastRallyLog.scoringPlayerFlag} {lastRallyLog.scoringPlayerName}
+            </span>
+          ) : (
+            <span className="text-slate-400 text-[11px]">Match started • Awaiting first rally</span>
+          )}
+        </div>
+
+        {lastRallyLog && (
+          <span
+            className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md flex-shrink-0 ml-2 ${
+              lastRallyLog.isHandout
+                ? 'bg-rose-500 text-white shadow-2xs font-extrabold animate-pulse'
+                : 'bg-emerald-500 text-white font-extrabold'
+            }`}
+          >
+            {lastRallyLog.isHandout ? 'hand-out 🔄' : 'serve point 🎾'}
+          </span>
+        )}
+      </div>
+
+      {/* Games Won Score Bar */}
       <div className="flex items-center justify-between px-2 text-[11px] font-bold text-slate-500">
-        <span>Sets Won: {match.p1SetsWon}</span>
+        <span>Games Won: {match.p1GamesWon}</span>
         <span className="text-amber-600 font-extrabold">PARS 11</span>
-        <span>Sets Won: {match.p2SetsWon}</span>
+        <span>Games Won: {match.p2GamesWon}</span>
       </div>
 
       {/* Premium Dynamic Scoreboard Cards */}
@@ -188,15 +277,22 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
               : 'bg-white/90 border border-slate-200/90 shadow-md hover:border-slate-300'
           } active:scale-95`}
         >
-          {/* Dynamic Serve Box Badge */}
+          {/* Dynamic Serve Box Badge (Interactive Tap-to-Switch) */}
           {isP1Serving && (
-            <div
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleServeSide();
+              }}
               className={`absolute ${
                 currentServeSide === 'L' ? 'top-2.5 left-2.5' : 'top-2.5 right-2.5'
-              } bg-amber-400 text-blue-950 font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm ring-1 ring-amber-500/40 serve-glow animate-pulse z-10`}
+              } bg-amber-400 hover:bg-amber-300 text-blue-950 font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm ring-1 ring-amber-500/40 serve-glow animate-pulse z-20 transition-all cursor-pointer active:scale-90 flex items-center space-x-0.5`}
+              title="Tap to manually switch serve box (Left ↔ Right)"
             >
-              {currentServeSide === 'L' ? 'Left' : 'Right'}
-            </div>
+              <span>{currentServeSide === 'L' ? 'Left' : 'Right'}</span>
+              <span className="opacity-70 text-[8px] font-mono">⇄</span>
+            </button>
           )}
 
           <div className="mt-4 flex flex-col items-center">
@@ -245,15 +341,22 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
               : 'bg-white/90 border border-slate-200/90 shadow-md hover:border-slate-300'
           } active:scale-95`}
         >
-          {/* Dynamic Serve Box Badge */}
+          {/* Dynamic Serve Box Badge (Interactive Tap-to-Switch) */}
           {!isP1Serving && (
-            <div
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleServeSide();
+              }}
               className={`absolute ${
                 currentServeSide === 'L' ? 'top-2.5 left-2.5' : 'top-2.5 right-2.5'
-              } bg-amber-400 text-blue-950 font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm ring-1 ring-amber-500/40 serve-glow animate-pulse z-10`}
+              } bg-amber-400 hover:bg-amber-300 text-blue-950 font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm ring-1 ring-amber-500/40 serve-glow animate-pulse z-20 transition-all cursor-pointer active:scale-90 flex items-center space-x-0.5`}
+              title="Tap to manually switch serve box (Left ↔ Right)"
             >
-              {currentServeSide === 'L' ? 'Left' : 'Right'}
-            </div>
+              <span>{currentServeSide === 'L' ? 'Left' : 'Right'}</span>
+              <span className="opacity-70 text-[8px] font-mono">⇄</span>
+            </button>
           )}
 
           <div className="mt-4 flex flex-col items-center">
@@ -294,65 +397,108 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
         </div>
       </div>
 
-      {/* Referee Controls Footer Toolbar */}
+      {/* Referee Controls Footer Toolbar (Clean & Safe: ONLY Undo and Finish Match) */}
       <div className="ios-glass-card rounded-2xl p-2.5 flex items-center justify-between shadow-xs">
         <button
           onClick={undoLastAction}
           disabled={activeMatchState.history.length === 0}
-          className="flex items-center space-x-1 text-xs font-semibold text-slate-600 disabled:opacity-40 hover:text-slate-900 px-2.5 py-1.5 rounded-xl hover:bg-slate-100"
+          className="flex items-center space-x-1.5 text-xs font-bold text-slate-700 disabled:opacity-40 hover:text-slate-900 px-3 py-2 rounded-xl hover:bg-slate-100 transition-colors"
         >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>Undo</span>
+          <RotateCcw className="w-4 h-4" />
+          <span>Undo Point</span>
         </button>
 
         {isMatchCompleted ? (
           <button
-            onClick={finishActiveMatch}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm flex items-center space-x-1"
+            onClick={handleSaveAndExit}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-4 py-2 rounded-xl shadow-sm flex items-center space-x-1.5 transition-transform active:scale-95"
           >
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Save to History</span>
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Save & Exit to Home</span>
           </button>
         ) : (
           <button
-            onClick={finishActiveMatch}
-            className="bg-blue-900 hover:bg-slate-800 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-sm"
+            onClick={handleSaveAndExit}
+            className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-black text-xs px-4 py-2 rounded-xl shadow-sm flex items-center space-x-1.5 transition-transform active:scale-95 border border-slate-800"
           >
-            Finish Match
+            <span>Finish & Exit to Home</span>
           </button>
         )}
-
-        <button
-          onClick={cancelActiveMatch}
-          className="text-xs font-semibold text-rose-500 hover:text-rose-700 px-2.5 py-1.5 rounded-xl hover:bg-rose-50"
-        >
-          Reset
-        </button>
       </div>
 
-      {/* Previous Sets Breakdown Summary */}
-      {match.sets.length > 0 && (
+      {/* Previous Games Breakdown Summary */}
+      {match.games.length > 0 && (
         <div className="ios-card p-3 space-y-2">
           <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            Completed Sets Results
+            Completed Games Results
           </h4>
           <div className="space-y-1">
-            {match.sets.map((s: SetResult) => (
+            {match.games.map((g: GameResult) => (
               <div
-                key={s.setNumber}
+                key={g.gameNumber}
                 className="flex items-center justify-between text-xs p-2 bg-slate-50 rounded-xl border border-slate-100"
               >
                 <div className="flex items-center space-x-2">
-                  <span className="font-semibold text-slate-600">Set #{s.setNumber}</span>
+                  <span className="font-semibold text-slate-600">Game #{g.gameNumber}</span>
                 </div>
                 <span className="font-mono font-bold text-slate-900">
-                  {s.p1Score} : {s.p2Score}
+                  {g.p1Score} : {g.p2Score}
                 </span>
                 <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
-                  Winner: {s.winnerId === match.player1.id ? match.player1.name : match.player2.name}
+                  Winner: {g.winnerId === match.player1.id ? match.player1.name : match.player2.name}
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* SAFETY CONFIRMATION MODAL OVERLAY */}
+      {confirmActionType && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-5 max-w-xs w-full shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 text-center border border-slate-200">
+            <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-slate-900">
+                {confirmActionType === 'RESET_GAME'
+                  ? `Reset Game ${currentGameIndex}?`
+                  : confirmActionType === 'RESET_MATCH'
+                  ? 'Reset Entire Match?'
+                  : 'Abandon Match Session?'}
+              </h3>
+
+              <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                {confirmActionType === 'RESET_GAME' &&
+                  `Current game score (${p1CurrentScore} - ${p2CurrentScore}) will be reset back to 0-0. Completed games will remain saved.`}
+                {confirmActionType === 'RESET_MATCH' &&
+                  'All completed games and current scores will be completely cleared back to Game 1 (0-0).'}
+                {confirmActionType === 'ABANDON_MATCH' &&
+                  'The referee session will exit immediately and you will return to the main Home screen.'}
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <button
+                onClick={executeConfirmedAction}
+                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-transform active:scale-98"
+              >
+                {confirmActionType === 'RESET_GAME'
+                  ? 'Yes, Reset Game (0-0)'
+                  : confirmActionType === 'RESET_MATCH'
+                  ? 'Yes, Reset Entire Match'
+                  : 'Yes, Abandon & Return Home'}
+              </button>
+
+              <button
+                onClick={() => setConfirmActionType(null)}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors"
+              >
+                Cancel (Keep Playing)
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -419,15 +565,15 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
         </div>
       )}
 
-      {/* SCREEN 1: SET VICTORY CONGRATULATION MODAL (Static letty_thumbs_up.png) */}
-      {isSetWonModalOpen && lastSetWon && !isMatchCompleted && (
+      {/* SCREEN 1: GAME VICTORY CONGRATULATION MODAL (Static letty_thumbs_up.png) */}
+      {isGameWonModalOpen && lastGameWon && !isMatchCompleted && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-4 text-center animate-in zoom-in-95 duration-200 border border-slate-100">
             {/* Mascot Thumbs Up Artwork (STATIC: no letty-bounce) */}
             <div className="relative w-32 h-32 mx-auto rounded-3xl overflow-hidden shadow-xl border-2 border-amber-400 bg-amber-50">
               <img
                 src="/assets/letty_thumbs_up.png"
-                alt="Letty Set Won Thumbs Up"
+                alt="Letty Game Won Thumbs Up"
                 className="w-full h-full object-cover"
               />
               <div className="absolute top-2 right-2 bg-amber-400 text-blue-950 p-1.5 rounded-full shadow">
@@ -437,23 +583,23 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
 
             <div>
               <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-950 bg-amber-400 px-3 py-1 rounded-full shadow-xs">
-                Set {lastSetWon.setNumber} Completed 🎉
+                Game {lastGameWon.gameNumber} Completed 🎉
               </span>
               <h3 className="text-xl font-black text-slate-900 mt-2">
-                Set Won by {lastSetWon.winnerName}!
+                Game Won by {lastGameWon.winnerName}!
               </h3>
               <p className="text-sm font-extrabold text-blue-900 mt-1 bg-blue-50 py-1 px-3 rounded-xl inline-block border border-blue-100">
-                Final Set Score: {lastSetWon.p1Score} - {lastSetWon.p2Score}
+                Final Game Score: {lastGameWon.p1Score} - {lastGameWon.p2Score}
               </p>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-              Great play! Tap below to start the official 90-second WSF rest break before Set {currentSetIndex}.
+              Great play! Tap below to start the official 90-second WSF rest break before Game {currentGameIndex}.
             </p>
 
             <div className="space-y-2">
               <button
-                onClick={proceedToSetBreak}
+                onClick={proceedToGameBreak}
                 className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm rounded-2xl shadow-md flex items-center justify-center space-x-2 transition-transform active:scale-98"
               >
                 <span>Proceed to 90s Rest Break</span>
@@ -461,18 +607,18 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
               </button>
 
               <button
-                onClick={skipSetBreak}
+                onClick={skipGameBreak}
                 className="w-full py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800"
               >
-                Skip Break & Play Set {currentSetIndex} Immediately
+                Skip Break & Play Game {currentGameIndex} Immediately
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* SCREEN 2: BETWEEN-SETS REST BREAK MODAL (Single container featuring letty_break.png) */}
-      {isSetBreakActive && !isMatchCompleted && (
+      {/* SCREEN 2: BETWEEN-GAMES REST BREAK MODAL (Single container featuring letty_break.png) */}
+      {isGameBreakActive && !isMatchCompleted && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-4 text-center animate-in zoom-in-95 duration-200 border border-slate-100">
             {/* Single Container featuring letty_break.png */}
@@ -483,7 +629,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
                 className="w-full h-full object-cover"
               />
               <div className="absolute top-2 right-2 bg-blue-900 text-amber-400 p-1.5 rounded-full shadow">
-                <Clock className={`w-4 h-4 ${isSetBreakPaused ? '' : 'animate-spin'}`} />
+                <Clock className={`w-4 h-4 ${isGameBreakPaused ? '' : 'animate-spin'}`} />
               </div>
             </div>
 
@@ -491,10 +637,10 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
               <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-900 bg-blue-100 px-2.5 py-0.5 rounded-full">
                 WSF Rest Break • 90 Seconds
               </span>
-              <h3 className="text-lg font-black text-slate-900 mt-1">Between-Sets Interval</h3>
-              {lastSetWon && (
+              <h3 className="text-lg font-black text-slate-900 mt-1">Between-Games Interval</h3>
+              {lastGameWon && (
                 <p className="text-xs font-extrabold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg inline-block mt-1">
-                  Previous Set Won by {lastSetWon.winnerName} ({lastSetWon.p1Score} - {lastSetWon.p2Score})
+                  Previous Game Won by {lastGameWon.winnerName} ({lastGameWon.p1Score} - {lastGameWon.p2Score})
                 </p>
               )}
             </div>
@@ -503,38 +649,38 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
             <div className="bg-slate-900 text-white p-3 rounded-2xl flex items-center justify-between px-5 shadow-inner">
               <div className="text-left">
                 <span className="text-4xl font-mono font-black text-amber-400 tracking-wider">
-                  {formatTimer(setBreakTimerSeconds)}
+                  {formatTimer(gameBreakTimerSeconds)}
                 </span>
                 <p className="text-[10px] text-slate-400 font-semibold">
-                  {isSetBreakPaused ? '⏸ Rest Timer Paused' : '⏱ Rest Time Remaining'}
+                  {isGameBreakPaused ? '⏸ Rest Timer Paused' : '⏱ Rest Time Remaining'}
                 </p>
               </div>
 
               <button
-                onClick={toggleSetBreakPause}
+                onClick={toggleGameBreakPause}
                 className={`p-3 rounded-xl flex items-center space-x-1.5 font-bold text-xs transition-all ${
-                  isSetBreakPaused
+                  isGameBreakPaused
                     ? 'bg-amber-400 text-slate-950 hover:bg-amber-300 font-black scale-105'
                     : 'bg-white/10 hover:bg-white/20 text-white'
                 }`}
-                title={isSetBreakPaused ? 'Resume Rest Break' : 'Pause Rest Break'}
+                title={isGameBreakPaused ? 'Resume Rest Break' : 'Pause Rest Break'}
               >
-                {isSetBreakPaused ? <Play className="w-4 h-4 fill-current text-slate-950" /> : <Pause className="w-4 h-4" />}
-                <span>{isSetBreakPaused ? 'Resume' : 'Pause'}</span>
+                {isGameBreakPaused ? <Play className="w-4 h-4 fill-current text-slate-950" /> : <Pause className="w-4 h-4" />}
+                <span>{isGameBreakPaused ? 'Resume' : 'Pause'}</span>
               </button>
             </div>
 
             {/* Mascot Advice */}
             <p className="text-xs font-medium text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed">
-              💡 <span className="font-bold text-slate-900">Letty's Rest Tip:</span> Drink water, towel off sweat, and discuss strategy before Set {currentSetIndex}!
+              💡 <span className="font-bold text-slate-900">Letty's Rest Tip:</span> Drink water, towel off sweat, and discuss strategy before Game {currentGameIndex}!
             </p>
 
             {/* Skip Break Action Button */}
             <button
-              onClick={skipSetBreak}
+              onClick={skipGameBreak}
               className="w-full py-3.5 bg-gradient-to-r from-blue-900 to-slate-900 hover:from-slate-800 hover:to-blue-950 text-white font-extrabold text-xs rounded-2xl shadow-lg flex items-center justify-center space-x-2 transition-transform active:scale-98"
             >
-              <span>Skip Rest & Start Set {currentSetIndex}</span>
+              <span>Skip Rest & Start Game {currentGameIndex}</span>
               <ChevronRight className="w-4 h-4 text-amber-400" />
             </button>
           </div>
@@ -566,19 +712,19 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
                 <span>{matchWinnerName}</span>
               </h2>
               <p className="text-sm font-extrabold text-blue-900 mt-1 bg-blue-50 py-1.5 px-4 rounded-xl inline-block border border-blue-100">
-                Sets Won: {match.p1SetsWon} : {match.p2SetsWon}
+                Games Won: {match.p1GamesWon} : {match.p2GamesWon}
               </p>
             </div>
 
-            {/* Set Scores Breakdown */}
+            {/* Game Scores Breakdown */}
             <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-1 text-xs">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                 Final Match Summary
               </p>
-              {match.sets.map((s: SetResult) => (
-                <div key={s.setNumber} className="flex justify-between items-center px-2 py-0.5 text-slate-700 font-semibold">
-                  <span>Set {s.setNumber}</span>
-                  <span className="font-mono font-bold text-slate-900">{s.p1Score} - {s.p2Score}</span>
+              {match.games.map((g: GameResult) => (
+                <div key={g.gameNumber} className="flex justify-between items-center px-2 py-0.5 text-slate-700 font-semibold">
+                  <span>Game #{g.gameNumber}</span>
+                  <span className="font-mono font-bold text-slate-900">{g.p1Score} - {g.p2Score}</span>
                 </div>
               ))}
             </div>
@@ -586,11 +732,11 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ openNewMatchModa
             {/* Action Buttons */}
             <div className="space-y-2 pt-1">
               <button
-                onClick={finishActiveMatch}
+                onClick={handleSaveAndExit}
                 className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-2xl shadow-lg flex items-center justify-center space-x-2 transition-transform active:scale-98"
               >
                 <Award className="w-4 h-4" />
-                <span>Save Match to History</span>
+                <span>Save Match & Exit to Home</span>
               </button>
 
               <button

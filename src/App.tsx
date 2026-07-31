@@ -94,7 +94,10 @@ const MainContainer: React.FC = () => {
           )}
 
           {activeTab === 'match' && (
-            <ScoreboardView openNewMatchModal={() => setIsNewMatchOpen(true)} />
+            <ScoreboardView
+              openNewMatchModal={() => setIsNewMatchOpen(true)}
+              onExitToHome={() => setActiveTab('home')}
+            />
           )}
 
           {activeTab === 'players' && (

@@ -42,32 +42,32 @@ export interface PointEvent {
   p2Score: number;
   serverPlayerId: string;
   serveSide: ServeSide;
-  setIndex: number;
+  gameIndex: number;
   serverId?: string;
-  currentSetIndex?: number;
-  p1SetsWon?: number;
-  p2SetsWon?: number;
+  currentGameIndex?: number;
+  p1GamesWon?: number;
+  p2GamesWon?: number;
 }
 
 export interface RefereeDecision {
   id: string;
   timestamp: string;
-  setIndex: number;
+  gameIndex: number;
   requestingPlayerId: string;
   decision: DecisionType;
   p1Score: number;
   p2Score: number;
 }
 
-export interface SetResult {
-  setNumber: number;
+export interface GameResult {
+  gameNumber: number;
   p1Score: number;
   p2Score: number;
   winnerId: string;
   durationSeconds: number;
 }
 
-export type MatchFormat = 'BEST_OF_5' | 'BEST_OF_3' | 'SINGLE_SET';
+export type MatchFormat = 'BEST_OF_5' | 'BEST_OF_3' | 'SINGLE_GAME';
 export type MatchType = 'FRIENDLY' | 'TOURNAMENT' | 'LEAGUE' | 'PRACTICE';
 export type MatchStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'PAUSED';
 
@@ -76,9 +76,9 @@ export interface SquashMatch {
   date: string;
   player1: Player;
   player2: Player;
-  p1SetsWon: number;
-  p2SetsWon: number;
-  sets: SetResult[];
+  p1GamesWon: number;
+  p2GamesWon: number;
+  games: GameResult[];
   decisions: RefereeDecision[];
   matchFormat: MatchFormat;
   matchType: MatchType;
@@ -89,17 +89,26 @@ export interface SquashMatch {
   notes?: string;
 }
 
-export interface SetWonInfo {
-  setNumber: number;
+export interface GameWonInfo {
+  gameNumber: number;
   winnerId: string;
   winnerName: string;
   p1Score: number;
   p2Score: number;
 }
 
+export interface RallyEventLog {
+  p1Score: number;
+  p2Score: number;
+  scoringPlayerName: string;
+  scoringPlayerFlag: string;
+  isHandout: boolean;
+  timestamp: string;
+}
+
 export interface LiveMatchState {
   match: SquashMatch;
-  currentSetIndex: number;
+  currentGameIndex: number;
   p1CurrentScore: number;
   p2CurrentScore: number;
   currentServerId: string;
@@ -107,11 +116,12 @@ export interface LiveMatchState {
   timerSeconds: number;
   isPaused: boolean;
   isTimerRunning?: boolean;
-  isSetWonModalOpen?: boolean;
-  isSetBreakActive?: boolean;
-  isSetBreakPaused?: boolean;
-  setBreakTimerSeconds?: number;
-  lastSetWon?: SetWonInfo | null;
+  isGameWonModalOpen?: boolean;
+  isGameBreakActive?: boolean;
+  isGameBreakPaused?: boolean;
+  gameBreakTimerSeconds?: number;
+  lastGameWon?: GameWonInfo | null;
+  lastRallyLog?: RallyEventLog | null;
   isHandout?: boolean;
   history: any[];
   decisions: RefereeDecision[];

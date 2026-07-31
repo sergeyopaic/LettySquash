@@ -22,13 +22,13 @@ export const AdvancedStatsModal: React.FC<AdvancedStatsModalProps> = ({ isOpen, 
 
     matches.forEach((m) => {
       if (m.status === 'COMPLETED') {
-        m.sets.forEach((s) => {
+        m.games.forEach((g) => {
           if (m.player1.id === p.id) {
-            totalPointsScored += s.p1Score;
-            totalPointsConceded += s.p2Score;
+            totalPointsScored += g.p1Score;
+            totalPointsConceded += g.p2Score;
           } else if (m.player2.id === p.id) {
-            totalPointsScored += s.p2Score;
-            totalPointsConceded += s.p1Score;
+            totalPointsScored += g.p2Score;
+            totalPointsConceded += g.p1Score;
           }
         });
       }

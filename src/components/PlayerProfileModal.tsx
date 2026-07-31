@@ -150,12 +150,12 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                           <Clock className="w-3 h-3" />
                           <span>{formatDuration(m.totalDurationSeconds)}</span>
                         </span>
-                        <span>• {m.matchFormat === 'BEST_OF_5' ? 'Best of 5' : 'Best of 3'}</span>
+                        <span>• {m.matchFormat === 'BEST_OF_5' ? 'Best of 5 Games' : 'Best of 3 Games'}</span>
                       </p>
                     </div>
 
                     <span className="text-sm font-black text-slate-900 bg-white px-2.5 py-1 rounded-xl shadow-2xs">
-                      {m.p1SetsWon} : {m.p2SetsWon}
+                      {m.p1GamesWon} : {m.p2GamesWon}
                     </span>
                   </div>
                 );

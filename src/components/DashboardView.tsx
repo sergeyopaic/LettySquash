@@ -183,7 +183,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-2">
               <span className="bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg">
-                Match Live • Set {activeMatchState.currentSetIndex}
+                Match Live • Game {activeMatchState.currentGameIndex}
               </span>
               <span className="text-xs font-mono text-slate-300">
                 {Math.floor(activeMatchState.timerSeconds / 60)}:
@@ -201,7 +201,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="px-3 py-1 bg-white/10 rounded-xl text-xs font-bold text-slate-300">
-                {activeMatchState.match.p1SetsWon} : {activeMatchState.match.p2SetsWon}
+                {activeMatchState.match.p1GamesWon} : {activeMatchState.match.p2GamesWon}
               </div>
 
               <div className="text-right">
@@ -224,7 +224,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* 1. Recent Matches Activity (Standard Sports Scorecard Layout with Clear Winner Highlight) */}
+      {/* 1. Recent Matches Activity (Official WSF Games Terminology) */}
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
           <h3 className="text-sm font-black text-slate-900 tracking-tight">Recent Matches</h3>
@@ -232,15 +232,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => setActiveTab('history')}
             className="text-xs font-bold text-slate-500 hover:text-slate-900 inline-flex items-center space-x-0.5 transition-colors"
           >
-            <span>Match Log</span>
+            <span>History</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
         <div className="space-y-2">
           {recentMatches.map((m) => {
-            const isP1Winner = m.winnerId === m.player1.id || m.p1SetsWon > m.p2SetsWon;
-            const isP2Winner = m.winnerId === m.player2.id || m.p2SetsWon > m.p1SetsWon;
+            const isP1Winner = m.winnerId === m.player1.id || m.p1GamesWon > m.p2GamesWon;
+            const isP2Winner = m.winnerId === m.player2.id || m.p2GamesWon > m.p1GamesWon;
 
             return (
               <div
@@ -262,13 +262,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                   <div className="flex items-center space-x-1.5">
                     <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg font-bold">
-                      {m.matchFormat === 'BEST_OF_5' ? 'Best of 5' : 'Best of 3'}
+                      {m.matchFormat === 'BEST_OF_5' ? 'Best of 5 Games' : 'Best of 3 Games'}
                     </span>
                     <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-transform flex-shrink-0" />
                   </div>
                 </div>
 
-                {/* Scorecard Players & Score Rows */}
+                {/* Scorecard Players & Games Score Rows */}
                 <div className="space-y-1">
                   {/* Player 1 Row */}
                   <div
@@ -288,7 +288,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       )}
                     </div>
                     <span className={`text-sm font-black ${isP1Winner ? 'text-slate-900' : 'text-slate-400'}`}>
-                      {m.p1SetsWon}
+                      {m.p1GamesWon}
                     </span>
                   </div>
 
@@ -310,7 +310,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       )}
                     </div>
                     <span className={`text-sm font-black ${isP2Winner ? 'text-slate-900' : 'text-slate-400'}`}>
-                      {m.p2SetsWon}
+                      {m.p2GamesWon}
                     </span>
                   </div>
                 </div>
@@ -328,7 +328,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             onClick={() => setActiveTab('players')}
             className="text-xs font-bold text-slate-500 hover:text-slate-900 inline-flex items-center space-x-0.5 transition-colors"
           >
-            <span>All Profiles</span>
+            <span>Players</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -401,17 +401,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-center">
             <p className="text-lg font-black text-slate-900">{matches.length}</p>
-            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Club Matches</p>
+            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Matches</p>
           </div>
 
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-center">
             <p className="text-lg font-black text-amber-500">{players.length}</p>
-            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Club Roster</p>
+            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Players</p>
           </div>
 
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-center">
             <p className="text-lg font-black text-slate-900">{avgMatchDurationMins} min</p>
-            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Avg Match Duration</p>
+            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Avg Duration</p>
           </div>
         </div>
 
@@ -451,7 +451,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 py-1.5 px-3 rounded-full transition-colors border border-dashed border-slate-200"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Add New Player Profile</span>
+          <span>Add Player</span>
         </button>
       </div>
 

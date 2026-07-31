@@ -33,7 +33,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
   return (
     <div className="pb-24 pt-2 px-4 space-y-4">
       <div>
-        <h1 className="text-xl font-black text-slate-900 tracking-tight">Match History</h1>
+        <h1 className="text-xl font-black text-slate-900 tracking-tight">History</h1>
         <p className="text-xs text-slate-500">{matches.length} recorded matches</p>
       </div>
 
@@ -81,8 +81,8 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
               {/* Match Items under Date Group */}
               <div className="space-y-2">
                 {groupMatches.map((match) => {
-                  const isP1Winner = match.winnerId === match.player1.id || match.p1SetsWon > match.p2SetsWon;
-                  const isP2Winner = match.winnerId === match.player2.id || match.p2SetsWon > match.p1SetsWon;
+                  const isP1Winner = match.winnerId === match.player1.id || match.p1GamesWon > match.p2GamesWon;
+                  const isP2Winner = match.winnerId === match.player2.id || match.p2GamesWon > match.p1GamesWon;
 
                   return (
                     <div
@@ -126,7 +126,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
                         </div>
                       </div>
 
-                      {/* Scorecard Players & Score Rows */}
+                      {/* Scorecard Players & Games Score Rows */}
                       <div className="space-y-1 pt-0.5">
                         {/* Player 1 Row */}
                         <div
@@ -146,7 +146,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
                             )}
                           </div>
                           <span className={`text-sm font-black ${isP1Winner ? 'text-slate-900' : 'text-slate-400'}`}>
-                            {match.p1SetsWon}
+                            {match.p1GamesWon}
                           </span>
                         </div>
 
@@ -168,7 +168,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
                             )}
                           </div>
                           <span className={`text-sm font-black ${isP2Winner ? 'text-slate-900' : 'text-slate-400'}`}>
-                            {match.p2SetsWon}
+                            {match.p2GamesWon}
                           </span>
                         </div>
                       </div>

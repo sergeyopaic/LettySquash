@@ -129,9 +129,9 @@ export const NewMatchModal: React.FC<NewMatchModalProps> = ({ isOpen, onClose, o
             <label className="text-xs font-bold text-slate-600 block">Match Format</label>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { id: 'BEST_OF_5', label: 'Best of 5', desc: 'First to 3 wins' },
-                { id: 'BEST_OF_3', label: 'Best of 3', desc: 'First to 2 wins' },
-                { id: 'SINGLE_SET', label: 'Single Set', desc: 'To 11 points' },
+                { id: 'BEST_OF_5', label: 'Best of 5 Games', desc: 'First to 3 games' },
+                { id: 'BEST_OF_3', label: 'Best of 3 Games', desc: 'First to 2 games' },
+                { id: 'SINGLE_GAME', label: 'Single Game', desc: 'To 11 points' },
               ].map((f) => (
                 <button
                   type="button"

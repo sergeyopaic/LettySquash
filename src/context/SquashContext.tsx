@@ -10,7 +10,7 @@ import type {
   NZSquashGrade,
   Handedness,
   AppSettings,
-  SetWonInfo,
+  GameWonInfo,
 } from '../types/squash';
 import { INITIAL_PLAYERS, INITIAL_MATCHES } from '../data/mockData';
 import confetti from 'canvas-confetti';
@@ -42,9 +42,12 @@ interface SquashContextType {
   recordDecision: (requestingPlayerId: string, decision: DecisionType) => void;
   undoLastAction: () => void;
   toggleTimer: () => void;
-  proceedToSetBreak: () => void;
-  skipSetBreak: () => void;
-  toggleSetBreakPause: () => void;
+  proceedToGameBreak: () => void;
+  skipGameBreak: () => void;
+  toggleGameBreakPause: () => void;
+  toggleServeSide: () => void;
+  resetCurrentGame: () => void;
+  resetWholeMatch: () => void;
   finishActiveMatch: () => void;
   cancelActiveMatch: () => void;
   deleteMatch: (matchId: string) => void;
@@ -97,29 +100,29 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     let interval: any = null;
 
     if (activeMatchState && activeMatchState.match.status === 'IN_PROGRESS') {
-      if (activeMatchState.isSetBreakActive && !activeMatchState.isSetBreakPaused) {
+      if (activeMatchState.isGameBreakActive && !activeMatchState.isGameBreakPaused) {
         interval = setInterval(() => {
           setActiveMatchState((prev: any) => {
-            if (!prev || !prev.isSetBreakActive || prev.isSetBreakPaused) return prev;
-            if (prev.setBreakTimerSeconds <= 1) {
+            if (!prev || !prev.isGameBreakActive || prev.isGameBreakPaused) return prev;
+            if ((prev.gameBreakTimerSeconds ?? 90) <= 1) {
               return {
                 ...prev,
-                isSetBreakActive: false,
-                isSetBreakPaused: false,
-                setBreakTimerSeconds: 0,
+                isGameBreakActive: false,
+                isGameBreakPaused: false,
+                gameBreakTimerSeconds: 0,
                 isTimerRunning: true,
               };
             }
             return {
               ...prev,
-              setBreakTimerSeconds: prev.setBreakTimerSeconds - 1,
+              gameBreakTimerSeconds: (prev.gameBreakTimerSeconds ?? 90) - 1,
             };
           });
         }, 1000);
-      } else if (activeMatchState.isTimerRunning && !activeMatchState.isSetWonModalOpen && !activeMatchState.isSetBreakActive) {
+      } else if (activeMatchState.isTimerRunning && !activeMatchState.isGameWonModalOpen && !activeMatchState.isGameBreakActive) {
         interval = setInterval(() => {
           setActiveMatchState((prev: any) => {
-            if (!prev || prev.isSetWonModalOpen || prev.isSetBreakActive) return prev;
+            if (!prev || prev.isGameWonModalOpen || prev.isGameBreakActive) return prev;
             return {
               ...prev,
               timerSeconds: prev.timerSeconds + 1,
@@ -136,9 +139,9 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => clearInterval(interval);
   }, [
     activeMatchState?.isTimerRunning,
-    activeMatchState?.isSetBreakActive,
-    activeMatchState?.isSetBreakPaused,
-    activeMatchState?.isSetWonModalOpen,
+    activeMatchState?.isGameBreakActive,
+    activeMatchState?.isGameBreakPaused,
+    activeMatchState?.isGameWonModalOpen,
     activeMatchState?.match.status,
   ]);
 
@@ -196,9 +199,9 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       date: new Date().toISOString(),
       player1: p1,
       player2: p2,
-      p1SetsWon: 0,
-      p2SetsWon: 0,
-      sets: [],
+      p1GamesWon: 0,
+      p2GamesWon: 0,
+      games: [],
       decisions: [],
       matchFormat: format,
       matchType: matchType,
@@ -209,7 +212,7 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     setActiveMatchState({
       match: newMatch,
-      currentSetIndex: 1,
+      currentGameIndex: 1,
       p1CurrentScore: 0,
       p2CurrentScore: 0,
       currentServerId: serverId,
@@ -220,15 +223,15 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       history: [],
       timerSeconds: 0,
       isTimerRunning: true,
-      isSetWonModalOpen: false,
-      isSetBreakActive: false,
-      isSetBreakPaused: false,
-      setBreakTimerSeconds: 90,
-      lastSetWon: null,
+      isGameWonModalOpen: false,
+      isGameBreakActive: false,
+      isGameBreakPaused: false,
+      gameBreakTimerSeconds: 90,
+      lastGameWon: null,
     });
   };
 
-  const checkSetWinner = (p1Score: number, p2Score: number, target: number): 'p1' | 'p2' | null => {
+  const checkGameWinner = (p1Score: number, p2Score: number, target: number): 'p1' | 'p2' | null => {
     if (p1Score >= target && p1Score - p2Score >= 2) return 'p1';
     if (p2Score >= target && p2Score - p1Score >= 2) return 'p2';
     return null;
@@ -237,16 +240,17 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const recordPoint = (scoringPlayerId: string) => {
     if (!activeMatchState) return;
 
-    const { match, currentSetIndex, p1CurrentScore, p2CurrentScore, currentServerId, currentServeSide } = activeMatchState;
+    const { match, currentGameIndex, p1CurrentScore, p2CurrentScore, currentServerId, currentServeSide } = activeMatchState;
 
     const historyEntry = {
       p1Score: p1CurrentScore,
       p2Score: p2CurrentScore,
       serverId: currentServerId,
       serveSide: currentServeSide,
-      p1SetsWon: match.p1SetsWon,
-      p2SetsWon: match.p2SetsWon,
-      currentSetIndex,
+      p1GamesWon: match.p1GamesWon,
+      p2GamesWon: match.p2GamesWon,
+      currentGameIndex,
+      lastRallyLog: activeMatchState.lastRallyLog || null,
     };
 
     let newP1Score = p1CurrentScore;
@@ -269,53 +273,63 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       isHandout = true;
     }
 
-    const setWinner = checkSetWinner(newP1Score, newP2Score, match.targetPoints);
+    const scoringPlayer = scoringPlayerId === match.player1.id ? match.player1 : match.player2;
+    const rallyLog = {
+      p1Score: newP1Score,
+      p2Score: newP2Score,
+      scoringPlayerName: scoringPlayer.name,
+      scoringPlayerFlag: scoringPlayer.countryFlag,
+      isHandout,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
 
-    let updatedP1SetsWon = match.p1SetsWon;
-    let updatedP2SetsWon = match.p2SetsWon;
-    let updatedSets = [...match.sets];
-    let nextSetIndex = currentSetIndex;
+    const gameWinner = checkGameWinner(newP1Score, newP2Score, match.targetPoints);
+
+    let updatedP1GamesWon = match.p1GamesWon;
+    let updatedP2GamesWon = match.p2GamesWon;
+    let updatedGames = [...match.games];
+    let nextGameIndex = currentGameIndex;
     let matchWinnerId: string | undefined = undefined;
     let isMatchCompleted = false;
-    let setWonInfo: SetWonInfo | null = activeMatchState.lastSetWon || null;
-    let shouldOpenSetWonModal = false;
+    let gameWonInfo: GameWonInfo | null = activeMatchState.lastGameWon || null;
+    let shouldOpenGameWonModal = false;
 
-    if (setWinner) {
-      const winnerPlayerId = setWinner === 'p1' ? match.player1.id : match.player2.id;
-      const winnerPlayerName = setWinner === 'p1' ? match.player1.name : match.player2.name;
+    if (gameWinner) {
+      const winnerPlayerId = gameWinner === 'p1' ? match.player1.id : match.player2.id;
+      const winnerPlayerName = gameWinner === 'p1' ? match.player1.name : match.player2.name;
 
-      updatedSets.push({
-        setNumber: currentSetIndex,
+      updatedGames.push({
+        gameNumber: currentGameIndex,
         p1Score: newP1Score,
         p2Score: newP2Score,
         winnerId: winnerPlayerId,
         durationSeconds: activeMatchState.timerSeconds,
       });
 
-      if (setWinner === 'p1') updatedP1SetsWon += 1;
-      else updatedP2SetsWon += 1;
+      if (gameWinner === 'p1') updatedP1GamesWon += 1;
+      else updatedP2GamesWon += 1;
 
-      setWonInfo = {
-        setNumber: currentSetIndex,
+      gameWonInfo = {
+        gameNumber: currentGameIndex,
         winnerId: winnerPlayerId,
         winnerName: winnerPlayerName,
         p1Score: newP1Score,
         p2Score: newP2Score,
       };
 
-      const setsNeeded = match.matchFormat === 'BEST_OF_5' ? 3 : match.matchFormat === 'BEST_OF_3' ? 2 : 1;
+      const gamesNeeded = match.matchFormat === 'BEST_OF_5' ? 3 : match.matchFormat === 'BEST_OF_3' ? 2 : 1;
 
-      if (updatedP1SetsWon >= setsNeeded) {
+      if (updatedP1GamesWon >= gamesNeeded) {
         matchWinnerId = match.player1.id;
         isMatchCompleted = true;
-      } else if (updatedP2SetsWon >= setsNeeded) {
+      } else if (updatedP2GamesWon >= gamesNeeded) {
         matchWinnerId = match.player2.id;
         isMatchCompleted = true;
       } else {
-        nextSetIndex += 1;
+        nextGameIndex += 1;
         newP1Score = 0;
         newP2Score = 0;
-        shouldOpenSetWonModal = true;
+        shouldOpenGameWonModal = true;
       }
     }
 
@@ -325,7 +339,7 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         spread: 70,
         origin: { y: 0.6 },
       });
-    } else if (setWinner) {
+    } else if (gameWinner) {
       confetti({
         particleCount: 60,
         spread: 60,
@@ -335,9 +349,9 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const updatedMatch: SquashMatch = {
       ...match,
-      p1SetsWon: updatedP1SetsWon,
-      p2SetsWon: updatedP2SetsWon,
-      sets: updatedSets,
+      p1GamesWon: updatedP1GamesWon,
+      p2GamesWon: updatedP2GamesWon,
+      games: updatedGames,
       status: isMatchCompleted ? 'COMPLETED' : 'IN_PROGRESS',
       winnerId: matchWinnerId,
     };
@@ -345,19 +359,20 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setActiveMatchState({
       ...activeMatchState,
       match: updatedMatch,
-      currentSetIndex: nextSetIndex,
+      currentGameIndex: nextGameIndex,
       p1CurrentScore: newP1Score,
       p2CurrentScore: newP2Score,
       currentServerId: newServerId,
       currentServeSide: newServeSide,
       isHandout,
       history: [...activeMatchState.history, historyEntry],
-      isTimerRunning: !isMatchCompleted && !shouldOpenSetWonModal,
-      isSetWonModalOpen: shouldOpenSetWonModal,
-      isSetBreakActive: false,
-      isSetBreakPaused: false,
-      setBreakTimerSeconds: 90,
-      lastSetWon: setWonInfo,
+      isTimerRunning: !isMatchCompleted && !shouldOpenGameWonModal,
+      isGameWonModalOpen: shouldOpenGameWonModal,
+      isGameBreakActive: false,
+      isGameBreakPaused: false,
+      gameBreakTimerSeconds: 90,
+      lastGameWon: gameWonInfo,
+      lastRallyLog: rallyLog,
     });
   };
 
@@ -367,7 +382,7 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const newDecision = {
       id: `d_${Date.now()}`,
       timestamp: new Date().toISOString(),
-      setIndex: activeMatchState.currentSetIndex,
+      gameIndex: activeMatchState.currentGameIndex,
       requestingPlayerId,
       decision,
       p1Score: activeMatchState.p1CurrentScore,
@@ -403,14 +418,15 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       p2CurrentScore: lastState.p2Score,
       currentServerId: lastState.serverId,
       currentServeSide: lastState.serveSide,
-      currentSetIndex: lastState.currentSetIndex,
-      isSetWonModalOpen: false,
-      isSetBreakActive: false,
-      isSetBreakPaused: false,
+      currentGameIndex: lastState.currentGameIndex,
+      lastRallyLog: lastState.lastRallyLog || null,
+      isGameWonModalOpen: false,
+      isGameBreakActive: false,
+      isGameBreakPaused: false,
       match: {
         ...activeMatchState.match,
-        p1SetsWon: lastState.p1SetsWon,
-        p2SetsWon: lastState.p2SetsWon,
+        p1GamesWon: lastState.p1GamesWon,
+        p2GamesWon: lastState.p2GamesWon,
         status: 'IN_PROGRESS',
         winnerId: undefined,
       },
@@ -426,33 +442,82 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
 
-  const proceedToSetBreak = () => {
+  const proceedToGameBreak = () => {
     if (!activeMatchState) return;
     setActiveMatchState({
       ...activeMatchState,
-      isSetWonModalOpen: false,
-      isSetBreakActive: true,
-      isSetBreakPaused: false,
-      setBreakTimerSeconds: 90,
+      isGameWonModalOpen: false,
+      isGameBreakActive: true,
+      isGameBreakPaused: false,
+      gameBreakTimerSeconds: 90,
     });
   };
 
-  const toggleSetBreakPause = () => {
+  const toggleGameBreakPause = () => {
     if (!activeMatchState) return;
     setActiveMatchState({
       ...activeMatchState,
-      isSetBreakPaused: !activeMatchState.isSetBreakPaused,
+      isGameBreakPaused: !activeMatchState.isGameBreakPaused,
     });
   };
 
-  const skipSetBreak = () => {
+  const toggleServeSide = () => {
+    if (!activeMatchState) return;
+    const newSide: ServeSide = activeMatchState.currentServeSide === 'L' ? 'R' : 'L';
+    setActiveMatchState({
+      ...activeMatchState,
+      currentServeSide: newSide,
+    });
+  };
+
+  const skipGameBreak = () => {
     if (!activeMatchState) return;
     setActiveMatchState({
       ...activeMatchState,
-      isSetWonModalOpen: false,
-      isSetBreakActive: false,
-      isSetBreakPaused: false,
+      isGameWonModalOpen: false,
+      isGameBreakActive: false,
+      isGameBreakPaused: false,
       isTimerRunning: true,
+    });
+  };
+
+  const resetCurrentGame = () => {
+    if (!activeMatchState) return;
+    setActiveMatchState({
+      ...activeMatchState,
+      p1CurrentScore: 0,
+      p2CurrentScore: 0,
+      currentServeSide: 'R',
+      isHandout: false,
+      isGameWonModalOpen: false,
+      isGameBreakActive: false,
+    });
+  };
+
+  const resetWholeMatch = () => {
+    if (!activeMatchState) return;
+    setActiveMatchState({
+      ...activeMatchState,
+      currentGameIndex: 1,
+      p1CurrentScore: 0,
+      p2CurrentScore: 0,
+      currentServeSide: 'R',
+      timerSeconds: 0,
+      isHandout: false,
+      isGameWonModalOpen: false,
+      isGameBreakActive: false,
+      lastGameWon: null,
+      history: [],
+      match: {
+        ...activeMatchState.match,
+        p1GamesWon: 0,
+        p2GamesWon: 0,
+        games: [],
+        decisions: [],
+        status: 'IN_PROGRESS',
+        winnerId: undefined,
+        totalDurationSeconds: 0,
+      },
     });
   };
 
@@ -511,9 +576,12 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         recordDecision,
         undoLastAction,
         toggleTimer,
-        proceedToSetBreak,
-        skipSetBreak,
-        toggleSetBreakPause,
+        proceedToGameBreak,
+        skipGameBreak,
+        toggleGameBreakPause,
+        toggleServeSide,
+        resetCurrentGame,
+        resetWholeMatch,
         finishActiveMatch,
         cancelActiveMatch,
         deleteMatch,

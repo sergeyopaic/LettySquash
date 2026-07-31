@@ -103,7 +103,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose,
                   <span>How Letty Works</span>
                 </h4>
                 <p>
-                  Letty is your court referee assistant! Select two players, choose your set format (Best of 3 or 5), and let Letty track serve box alternation, scores, rest intervals, and referee decisions.
+                  Letty is your court referee assistant! Select two players, choose your game format (Best of 3 or 5 Games), and let Letty track serve box alternation, scores, rest intervals, and referee decisions.
                 </p>
               </div>
 
@@ -128,14 +128,14 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose,
               <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-1">
                 <h4 className="font-extrabold text-slate-900">2-Point Advantage Rule</h4>
                 <p>
-                  If a set reaches 10-10, play continues until one player gains a 2-point lead (e.g. 12-10, 15-13).
+                  If a game reaches 10-10, play continues until one player gains a 2-point lead (e.g. 12-10, 15-13).
                 </p>
               </div>
 
               <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-1">
-                <h4 className="font-extrabold text-slate-900">90s Between-Sets Rest Break</h4>
+                <h4 className="font-extrabold text-slate-900">90s Between-Games Rest Break</h4>
                 <p>
-                  A standard 90-second rest interval is granted between consecutive sets for recovery and coaching advice.
+                  A standard 90-second rest interval is granted between consecutive games for recovery and coaching advice.
                 </p>
               </div>
             </div>
@@ -171,7 +171,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose,
               <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-1">
                 <h4 className="font-extrabold text-slate-900">League (Round-Robin)</h4>
                 <p>
-                  All players play against every other participant. Standings are ranked by total points and set differentials.
+                  All players play against every other participant. Standings are ranked by total points and game differentials.
                 </p>
               </div>
 

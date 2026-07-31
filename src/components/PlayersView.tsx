@@ -20,7 +20,7 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, on
     <div className="pb-24 pt-2 px-4 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight">Club Roster</h1>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight">Players</h1>
           <p className="text-xs text-slate-500">{players.length} active profiles</p>
         </div>
         <button
