@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
-import { Plus, Activity, ChevronRight, Clock, Settings, Trophy } from 'lucide-react';
+import { Plus, Activity, ChevronRight, Clock, Settings, Trophy, MapPin, BarChart3 } from 'lucide-react';
 
 interface DashboardViewProps {
   openNewMatchModal: () => void;
   openNewCompetitionModal: () => void;
   openAddPlayerModal: () => void;
   openSettingsModal: () => void;
+  openAdvancedStatsModal: () => void;
   setActiveTab: (tab: 'home' | 'match' | 'players' | 'history') => void;
   selectMatchDetail: (matchId: string) => void;
 }
@@ -25,13 +26,73 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   openNewCompetitionModal,
   openAddPlayerModal,
   openSettingsModal,
+  openAdvancedStatsModal,
   setActiveTab,
   selectMatchDetail,
 }) => {
   const { matches, players, activeMatchState } = useSquash();
 
+  const [randomFact, setRandomFact] = useState<{
+    firstName: string;
+    lastName: string;
+    flag: string;
+    subtitle: string;
+  } | null>(null);
+
   const recentMatches = matches.slice(0, 3);
   const topPlayers = [...players].sort((a, b) => b.wins - a.wins).slice(0, 3);
+
+  // Generate randomized club highlight fact on mount/render
+  useEffect(() => {
+    const topWinRatePlayer = [...players]
+      .filter((p) => p.totalMatches > 0)
+      .sort((a, b) => b.wins / b.totalMatches - a.wins / a.totalMatches)[0];
+
+    const mostWinsPlayer = [...players].sort((a, b) => b.wins - a.wins)[0];
+    const rookiePlayer = players.find((p) => p.totalMatches === 0);
+
+    const facts = [];
+
+    if (topWinRatePlayer) {
+      const wr = Math.round((topWinRatePlayer.wins / topWinRatePlayer.totalMatches) * 100);
+      const parts = topWinRatePlayer.name.split(' ');
+      facts.push({
+        firstName: parts[0] || topWinRatePlayer.name,
+        lastName: parts.slice(1).join(' '),
+        flag: topWinRatePlayer.countryFlag,
+        subtitle: `🔥 Win Rate (${wr}%)`,
+      });
+    }
+
+    if (mostWinsPlayer) {
+      const parts = mostWinsPlayer.name.split(' ');
+      facts.push({
+        firstName: parts[0] || mostWinsPlayer.name,
+        lastName: parts.slice(1).join(' '),
+        flag: mostWinsPlayer.countryFlag,
+        subtitle: `🏆 Wins Leader (${mostWinsPlayer.wins}W)`,
+      });
+    }
+
+    if (rookiePlayer) {
+      const parts = rookiePlayer.name.split(' ');
+      facts.push({
+        firstName: parts[0] || rookiePlayer.name,
+        lastName: parts.slice(1).join(' '),
+        flag: rookiePlayer.countryFlag,
+        subtitle: `🌟 Rookie Spotlight`,
+      });
+    }
+
+    const selected = facts[Math.floor(Math.random() * facts.length)] || {
+      firstName: 'Devonport',
+      lastName: 'Squash',
+      flag: '🇳🇿',
+      subtitle: 'Auckland NZ',
+    };
+
+    setRandomFact(selected);
+  }, [players]);
 
   const formatDuration = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
@@ -40,10 +101,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="pb-24 pt-2 px-4 space-y-4">
-      {/* Clean Top Header */}
+      {/* Clean Top Header with Active Club Badge */}
       <div className="flex items-center justify-between pt-1">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+          <div className="flex items-center space-x-1 text-xs font-bold text-amber-600">
+            <MapPin className="w-3.5 h-3.5" />
+            <span>Devonport Squash Club (Auckland)</span>
+          </div>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight mt-0.5">
             Letty Squash
           </h1>
         </div>
@@ -129,23 +194,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Standalone Letty Tips Card (Separate Block) */}
       <LettyBanner variant="tips" />
 
-      {/* Overview Stats */}
+      {/* Devonport Club Statistics with Dynamic Highlight Fact & Advanced Stats Button */}
       <div className="ios-card p-4 space-y-3">
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-          Club Statistics
-        </h3>
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center space-x-1">
+              <span>Devonport Squash Club Stats</span>
+            </h3>
+            <p className="text-[10px] text-slate-400 font-semibold">Auckland, New Zealand</p>
+          </div>
+
+          <button
+            onClick={openAdvancedStatsModal}
+            className="text-xs font-bold text-blue-900 hover:bg-blue-100 flex items-center space-x-1 bg-blue-50 px-2 py-1 rounded-xl transition-colors"
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            <span>Full Stats</span>
+          </button>
+        </div>
+
         <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-center">
             <p className="text-lg font-black text-blue-900">{matches.length}</p>
-            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Total Matches</p>
+            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Club Matches</p>
           </div>
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+
+          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-center">
             <p className="text-lg font-black text-amber-600">{players.length}</p>
-            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Players</p>
+            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Club Roster</p>
           </div>
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-            <p className="text-lg font-black text-emerald-600">Squash NZ</p>
-            <p className="text-[10px] text-slate-500 font-medium mt-0.5">A1 – J4 Grades</p>
+
+          {/* Dynamic Highlight Fact Tile (No truncation, first name on top line, last name below) */}
+          <div className="bg-gradient-to-br from-amber-500/15 via-amber-50 to-blue-50/40 p-2 rounded-xl border border-amber-300/70 flex flex-col justify-between items-center text-center overflow-hidden min-h-[64px]">
+            <p className="text-[9px] font-black uppercase tracking-wider text-amber-800 leading-tight">
+              {randomFact?.subtitle || '🔥 Win Rate'}
+            </p>
+
+            <div className="my-auto py-0.5 w-full">
+              <div className="flex items-center justify-center space-x-1">
+                <span className="text-xs">{randomFact?.flag}</span>
+                <span className="text-[11px] font-black text-slate-900 leading-none">
+                  {randomFact?.firstName}
+                </span>
+              </div>
+              {randomFact?.lastName && (
+                <span className="text-[10px] font-extrabold text-slate-800 leading-tight block mt-0.5">
+                  {randomFact?.lastName}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

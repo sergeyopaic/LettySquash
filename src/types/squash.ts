@@ -11,6 +11,14 @@ export type Handedness = 'Right' | 'Left';
 export type ServeSide = 'L' | 'R';
 export type DecisionType = 'YES_LET' | 'STROKE' | 'NO_LET';
 
+export interface Club {
+  id: string;
+  name: string;
+  city: string;
+  country: string;
+  countryFlag: string;
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -20,6 +28,7 @@ export interface Player {
   countryFlag: string;
   countryCode: string;
   handedness: Handedness;
+  clubId?: string;
   totalMatches: number;
   wins: number;
   losses: number;

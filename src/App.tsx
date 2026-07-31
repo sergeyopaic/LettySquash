@@ -11,6 +11,7 @@ import { NewCompetitionModal } from './components/NewCompetitionModal';
 import { AddPlayerModal } from './components/AddPlayerModal';
 import { MatchDetailModal } from './components/MatchDetailModal';
 import { SettingsModal } from './components/SettingsModal';
+import { AdvancedStatsModal } from './components/AdvancedStatsModal';
 import { Smartphone, Monitor } from 'lucide-react';
 
 const MainContainer: React.FC = () => {
@@ -21,6 +22,7 @@ const MainContainer: React.FC = () => {
   const [isNewCompetitionOpen, setIsNewCompetitionOpen] = useState<boolean>(false);
   const [isAddPlayerOpen, setIsAddPlayerOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isAdvancedStatsOpen, setIsAdvancedStatsOpen] = useState<boolean>(false);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(true);
 
@@ -78,6 +80,7 @@ const MainContainer: React.FC = () => {
               openNewCompetitionModal={() => setIsNewCompetitionOpen(true)}
               openAddPlayerModal={() => setIsAddPlayerOpen(true)}
               openSettingsModal={() => setIsSettingsOpen(true)}
+              openAdvancedStatsModal={() => setIsAdvancedStatsOpen(true)}
               setActiveTab={setActiveTab}
               selectMatchDetail={(id) => setSelectedMatchId(id)}
             />
@@ -133,6 +136,11 @@ const MainContainer: React.FC = () => {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+      />
+
+      <AdvancedStatsModal
+        isOpen={isAdvancedStatsOpen}
+        onClose={() => setIsAdvancedStatsOpen(false)}
       />
     </div>
   );
