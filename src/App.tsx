@@ -13,9 +13,10 @@ import { MatchDetailModal } from './components/MatchDetailModal';
 import { SettingsModal } from './components/SettingsModal';
 import { AdvancedStatsModal } from './components/AdvancedStatsModal';
 import { HowToPlayModal } from './components/HowToPlayModal';
+import { HowToUseAppModal } from './components/HowToUseAppModal';
 import { PlayerProfileModal } from './components/PlayerProfileModal';
 import type { Player } from './types/squash';
-import { Smartphone, Monitor } from 'lucide-react';
+import { Smartphone, Monitor, Wifi, Signal, BatteryMedium } from 'lucide-react';
 
 const MainContainer: React.FC = () => {
   const { activeMatchState, getMatchById } = useSquash();
@@ -27,6 +28,7 @@ const MainContainer: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isAdvancedStatsOpen, setIsAdvancedStatsOpen] = useState<boolean>(false);
   const [isHowToPlayOpen, setIsHowToPlayOpen] = useState<boolean>(false);
+  const [isHowToUseAppOpen, setIsHowToUseAppOpen] = useState<boolean>(false);
   const [selectedPlayerProfile, setSelectedPlayerProfile] = useState<Player | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [isPhoneFrame, setIsPhoneFrame] = useState<boolean>(true);
@@ -58,26 +60,40 @@ const MainContainer: React.FC = () => {
         </button>
       </div>
 
-      {/* Screen Frame Container */}
+      {/* Screen Frame Container Matching Main Window Color #F1F5F9 */}
       <div
         className={`${
           isPhoneFrame
-            ? 'iphone-frame shadow-2xl relative'
-            : 'w-full max-w-md min-h-screen sm:min-h-[852px] bg-slate-50 sm:rounded-[44px] shadow-2xl relative overflow-hidden flex flex-col'
+            ? 'iphone-frame bg-[#F1F5F9] shadow-2xl relative'
+            : 'w-full max-w-md min-h-screen sm:min-h-[852px] bg-[#F1F5F9] sm:rounded-[44px] shadow-2xl relative overflow-hidden flex flex-col'
         }`}
       >
-        {/* Dynamic Island on iPhone Frame */}
-        {isPhoneFrame && (
-          <div className="dynamic-island">
-            <span className="text-[10px] text-slate-400 font-mono">9:41</span>
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+        {/* Transparent Native iPhone Dynamic Island & Status Bar Area over #F1F5F9 */}
+        {isPhoneFrame ? (
+          <div className="h-[50px] bg-[#F1F5F9] flex items-center justify-between px-7 relative flex-shrink-0 z-30 select-none">
+            {/* Left: iOS Clock */}
+            <span className="text-xs font-black text-slate-900 tracking-tight font-mono">9:41</span>
+
+            {/* Center: Dynamic Island Pill */}
+            <div className="dynamic-island flex items-center justify-between px-3">
+              <div className="w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-800" />
+              <div className="flex items-center space-x-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              </div>
+            </div>
+
+            {/* Right: iOS System Icons (Signal, Wifi, Battery) */}
+            <div className="flex items-center space-x-1.5 text-slate-900">
+              <Signal className="w-3.5 h-3.5 fill-current" />
+              <Wifi className="w-3.5 h-3.5" />
+              <BatteryMedium className="w-4 h-4 fill-current" />
+            </div>
           </div>
+        ) : (
+          <div className="h-3 bg-[#F1F5F9] flex-shrink-0" />
         )}
 
-        {/* Status Bar spacing */}
-        <div className="h-10 bg-white/80 backdrop-blur-md flex-shrink-0" />
-
-        {/* Scrollable View Content with Rich Ambient Mesh Background */}
+        {/* Scrollable View Content with Unified #F1F5F9 Background */}
         <div className="flex-1 overflow-y-auto app-bg-gradient relative">
           {activeTab === 'home' && (
             <DashboardView
@@ -87,6 +103,7 @@ const MainContainer: React.FC = () => {
               openSettingsModal={() => setIsSettingsOpen(true)}
               openAdvancedStatsModal={() => setIsAdvancedStatsOpen(true)}
               openHowToPlayModal={() => setIsHowToPlayOpen(true)}
+              openHowToUseAppModal={() => setIsHowToUseAppOpen(true)}
               onSelectPlayerProfile={(p) => setSelectedPlayerProfile(p)}
               setActiveTab={setActiveTab}
               selectMatchDetail={(id) => setSelectedMatchId(id)}
@@ -112,6 +129,60 @@ const MainContainer: React.FC = () => {
           )}
         </div>
 
+        {/* Modals Container inside Phone Frame */}
+        <NewMatchModal
+          isOpen={isNewMatchOpen}
+          onClose={() => setIsNewMatchOpen(false)}
+          onStart={() => {
+            setIsNewMatchOpen(false);
+            setActiveTab('match');
+          }}
+        />
+
+        <NewCompetitionModal
+          isOpen={isNewCompetitionOpen}
+          onClose={() => setIsNewCompetitionOpen(false)}
+        />
+
+        <AddPlayerModal
+          isOpen={isAddPlayerOpen}
+          onClose={() => setIsAddPlayerOpen(false)}
+        />
+
+        <MatchDetailModal
+          match={selectedMatch}
+          onClose={() => setSelectedMatchId(null)}
+        />
+
+        <PlayerProfileModal
+          player={selectedPlayerProfile}
+          onClose={() => setSelectedPlayerProfile(null)}
+          onSelectMatchDetail={(id) => setSelectedMatchId(id)}
+        />
+
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          onOpenHowToPlay={() => setIsHowToPlayOpen(true)}
+        />
+
+        <AdvancedStatsModal
+          isOpen={isAdvancedStatsOpen}
+          onClose={() => setIsAdvancedStatsOpen(false)}
+        />
+
+        <HowToPlayModal
+          isOpen={isHowToPlayOpen}
+          onClose={() => setIsHowToPlayOpen(false)}
+          openNewMatch={() => setIsNewMatchOpen(true)}
+        />
+
+        <HowToUseAppModal
+          isOpen={isHowToUseAppOpen}
+          onClose={() => setIsHowToUseAppOpen(false)}
+          openNewMatch={() => setIsNewMatchOpen(true)}
+        />
+
         {/* Bottom Tab Bar Navigation */}
         <NavigationTabBar
           activeTab={activeTab}
@@ -120,54 +191,6 @@ const MainContainer: React.FC = () => {
           openNewMatchModal={() => setIsNewMatchOpen(true)}
         />
       </div>
-
-      {/* Modals */}
-      <NewMatchModal
-        isOpen={isNewMatchOpen}
-        onClose={() => setIsNewMatchOpen(false)}
-        onStart={() => {
-          setIsNewMatchOpen(false);
-          setActiveTab('match');
-        }}
-      />
-
-      <NewCompetitionModal
-        isOpen={isNewCompetitionOpen}
-        onClose={() => setIsNewCompetitionOpen(false)}
-      />
-
-      <AddPlayerModal
-        isOpen={isAddPlayerOpen}
-        onClose={() => setIsAddPlayerOpen(false)}
-      />
-
-      <MatchDetailModal
-        match={selectedMatch}
-        onClose={() => setSelectedMatchId(null)}
-      />
-
-      <PlayerProfileModal
-        player={selectedPlayerProfile}
-        onClose={() => setSelectedPlayerProfile(null)}
-        onSelectMatchDetail={(id) => setSelectedMatchId(id)}
-      />
-
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onOpenHowToPlay={() => setIsHowToPlayOpen(true)}
-      />
-
-      <AdvancedStatsModal
-        isOpen={isAdvancedStatsOpen}
-        onClose={() => setIsAdvancedStatsOpen(false)}
-      />
-
-      <HowToPlayModal
-        isOpen={isHowToPlayOpen}
-        onClose={() => setIsHowToPlayOpen(false)}
-        openNewMatch={() => setIsNewMatchOpen(true)}
-      />
     </div>
   );
 };

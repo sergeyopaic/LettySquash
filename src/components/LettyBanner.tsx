@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LETTY_TIP_ITEMS } from '../data/mockData';
-import { RefreshCw, X, BookOpen } from 'lucide-react';
+import { RefreshCw, X, BookOpen, Smartphone } from 'lucide-react';
 
 interface LettyBannerProps {
   customMessage?: string;
   variant?: 'home' | 'match' | 'tips' | 'victory';
   onOpenHowToPlay?: () => void;
+  onOpenHowToUseApp?: () => void;
 }
 
 export const LettyBanner: React.FC<LettyBannerProps> = ({
   customMessage,
   variant = 'home',
   onOpenHowToPlay,
+  onOpenHowToUseApp,
 }) => {
   const { settings } = useSquash();
   const [tipIndex, setTipIndex] = useState(0);
@@ -63,10 +65,10 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({
     );
   }
 
-  // Functional Onboarding Banner: New to Letty? + How to Play button + 44x44px Touch Dismiss X
+  // Functional Onboarding Banner: New to Letty? + Dual Action Buttons + 44x44px Touch Dismiss X
   if (variant === 'home') {
     return (
-      <div className="relative rounded-3xl p-4 min-h-[105px] overflow-hidden bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 shadow-lg border border-amber-300/80 flex items-center mb-4 z-10">
+      <div className="relative rounded-3xl p-4 min-h-[110px] overflow-hidden bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 shadow-lg border border-amber-300/80 flex items-center mb-4 z-10">
         {/* Ambient background glow */}
         <div className="absolute left-0 top-0 bottom-0 w-32 bg-white/20 rounded-full blur-xl pointer-events-none" />
 
@@ -75,7 +77,7 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({
           <img
             src="/assets/letty_wants_to_play.png"
             alt="Letty Peeking"
-            className="h-[105px] w-auto object-contain drop-shadow-md"
+            className="h-[110px] w-auto object-contain drop-shadow-md"
           />
         </div>
 
@@ -89,25 +91,37 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({
           <X className="w-4 h-4 stroke-[2.5]" />
         </button>
 
-        {/* Text & Action Content */}
+        {/* Text & Dual Action Content */}
         <div className="pl-14 sm:pl-16 pr-8 flex-1 z-20 space-y-1">
           <h2 className="text-base sm:text-lg font-black text-slate-950 leading-tight tracking-tight">
             New to Letty?
           </h2>
           <p className="text-[11px] font-bold text-slate-950/80 leading-tight">
-            Learn scoring, rules, and how to track a match.
+            Learn squash rules or check how to referee with the app.
           </p>
 
-          {/* Compact Single How to Play Secondary Action Button */}
-          {onOpenHowToPlay && (
-            <button
-              onClick={onOpenHowToPlay}
-              className="mt-1.5 py-1.5 px-3.5 bg-slate-950 hover:bg-slate-900 text-amber-400 font-extrabold text-xs rounded-xl shadow-xs inline-flex items-center space-x-1.5 transition-transform active:scale-95 border border-slate-900/40"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-              <span>How to Play</span>
-            </button>
-          )}
+          {/* Equal Secondary Outline Action Buttons (Identical Outline Navy Style) */}
+          <div className="pt-1 flex items-center space-x-2 flex-wrap gap-y-1.5">
+            {onOpenHowToPlay && (
+              <button
+                onClick={onOpenHowToPlay}
+                className="py-1.5 px-3 bg-transparent hover:bg-slate-950/10 text-slate-950 border border-slate-950/80 font-black text-[11px] rounded-xl shadow-2xs inline-flex items-center space-x-1.5 transition-all active:scale-95"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
+                <span>How to Play Squash?</span>
+              </button>
+            )}
+
+            {onOpenHowToUseApp && (
+              <button
+                onClick={onOpenHowToUseApp}
+                className="py-1.5 px-3 bg-transparent hover:bg-slate-950/10 text-slate-950 border border-slate-950/80 font-black text-[11px] rounded-xl shadow-2xs inline-flex items-center space-x-1.5 transition-all active:scale-95"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-slate-950 stroke-[2.5]" />
+                <span>How to Use App?</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

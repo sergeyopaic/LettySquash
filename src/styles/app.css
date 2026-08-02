@@ -130,17 +130,18 @@
 }
 
 .dynamic-island {
-  width: 120px;
+  width: 125px;
   height: 35px;
   background: #000000;
   border-radius: 20px;
   position: absolute;
-  top: 11px;
+  top: 10px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 50;
   display: flex;
-  items-center: center;
+  align-items: center;
   justify-content: space-between;
   padding: 0 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }

@@ -81,8 +81,12 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
               {/* Match Items under Date Group */}
               <div className="space-y-2">
                 {groupMatches.map((match) => {
-                  const isP1Winner = match.winnerId === match.player1.id || match.p1GamesWon > match.p2GamesWon;
-                  const isP2Winner = match.winnerId === match.player2.id || match.p2GamesWon > match.p1GamesWon;
+                  const p1 = match.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🎾' };
+                  const p2 = match.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🎾' };
+                  const p1Games = match.p1GamesWon ?? 0;
+                  const p2Games = match.p2GamesWon ?? 0;
+                  const isP1Winner = match.winnerId ? match.winnerId === p1.id : p1Games > p2Games;
+                  const isP2Winner = match.winnerId ? match.winnerId === p2.id : p2Games > p1Games;
 
                   return (
                     <div
@@ -109,7 +113,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
                         <div className="flex items-center space-x-2">
                           <div className="flex items-center space-x-1 font-medium text-slate-500">
                             <Clock className="w-3 h-3 text-slate-400" />
-                            <span>{formatDuration(match.totalDurationSeconds)}</span>
+                            <span>{formatDuration(match.totalDurationSeconds || 0)}</span>
                           </div>
                           <button
                             onClick={(e) => {
@@ -118,7 +122,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
                                 deleteMatch(match.id);
                               }
                             }}
-                            className="text-slate-300 hover:text-rose-500 p-1 rounded transition-colors"
+                            className="text-slate-300 hover:text-rose-500 p-1 rounded transition-colors cursor-pointer"
                             title="Delete match"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -137,8 +141,8 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
                           }`}
                         >
                           <div className="flex items-center space-x-2 min-w-0">
-                            <span className="text-xs">{match.player1.countryFlag}</span>
-                            <span className="text-xs truncate">{match.player1.name}</span>
+                            <span className="text-xs">{p1.countryFlag}</span>
+                            <span className="text-xs truncate">{p1.name}</span>
                             {isP1Winner && (
                               <span className="inline-flex items-center justify-center bg-amber-200/90 text-amber-950 p-0.5 rounded-md">
                                 <Check className="w-3 h-3 stroke-[3]" />
@@ -146,7 +150,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
                             )}
                           </div>
                           <span className={`text-sm font-black ${isP1Winner ? 'text-slate-900' : 'text-slate-400'}`}>
-                            {match.p1GamesWon}
+                            {p1Games}
                           </span>
                         </div>
 
@@ -159,8 +163,8 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
                           }`}
                         >
                           <div className="flex items-center space-x-2 min-w-0">
-                            <span className="text-xs">{match.player2.countryFlag}</span>
-                            <span className="text-xs truncate">{match.player2.name}</span>
+                            <span className="text-xs">{p2.countryFlag}</span>
+                            <span className="text-xs truncate">{p2.name}</span>
                             {isP2Winner && (
                               <span className="inline-flex items-center justify-center bg-amber-200/90 text-amber-950 p-0.5 rounded-md">
                                 <Check className="w-3 h-3 stroke-[3]" />
@@ -168,7 +172,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
                             )}
                           </div>
                           <span className={`text-sm font-black ${isP2Winner ? 'text-slate-900' : 'text-slate-400'}`}>
-                            {match.p2GamesWon}
+                            {p2Games}
                           </span>
                         </div>
                       </div>

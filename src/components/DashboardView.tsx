@@ -13,6 +13,7 @@ interface DashboardViewProps {
   openSettingsModal: () => void;
   openAdvancedStatsModal: () => void;
   openHowToPlayModal: () => void;
+  openHowToUseAppModal?: () => void;
   onSelectPlayerProfile: (player: Player) => void;
   setActiveTab: (tab: 'home' | 'match' | 'players' | 'history') => void;
   selectMatchDetail: (matchId: string) => void;
@@ -33,6 +34,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   openSettingsModal,
   openAdvancedStatsModal,
   openHowToPlayModal,
+  openHowToUseAppModal,
   onSelectPlayerProfile,
   setActiveTab,
   selectMatchDetail,
@@ -153,7 +155,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Hero Mascot Banner */}
-      <LettyBanner variant="home" onOpenHowToPlay={openHowToPlayModal} />
+      <LettyBanner
+        variant="home"
+        onOpenHowToPlay={openHowToPlayModal}
+        onOpenHowToUseApp={openHowToUseAppModal}
+      />
 
       {/* Centered Main Actions Section */}
       <div className="flex flex-col items-center justify-center space-y-3 text-center pt-0 pb-1">
@@ -174,51 +180,69 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </button>
       </div>
 
-      {/* Active Game Alert Banner (if match in progress) */}
+      {/* Active Game Alert Card (Entire Banner Clickable -> Navigates to Live Refereeing) */}
       {activeMatchState && (
-        <div className="ios-card rounded-2xl bg-slate-900 text-white p-4 relative overflow-hidden shadow-lg border-none">
-          <div className="absolute right-0 bottom-0 opacity-15 translate-x-4 translate-y-4">
-            <Activity className="w-36 h-36" />
+        <div
+          onClick={() => setActiveTab('match')}
+          className="rounded-2xl bg-slate-950 text-white p-4 relative overflow-hidden shadow-xl border border-slate-800 space-y-3 cursor-pointer hover:border-slate-700 transition-all active:scale-98 group"
+        >
+          <div className="absolute right-0 bottom-0 opacity-10 translate-x-4 translate-y-4 pointer-events-none">
+            <Activity className="w-36 h-36 text-amber-400" />
           </div>
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-2">
-              <span className="bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg">
-                Match Live • Game {activeMatchState.currentGameIndex}
-              </span>
-              <span className="text-xs font-mono text-slate-300">
+
+          <div className="relative z-10 space-y-3">
+            {/* Top Status Row */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center space-x-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
+                  LIVE MATCH • GAME {activeMatchState.currentGameIndex}
+                </span>
+              </div>
+
+              <span className="text-xs font-mono font-bold text-slate-200 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
                 {Math.floor(activeMatchState.timerSeconds / 60)}:
                 {String(activeMatchState.timerSeconds % 60).padStart(2, '0')}
               </span>
             </div>
 
-            <div className="flex items-center justify-between my-3">
-              <div className="text-left">
-                <p className="text-sm font-bold text-slate-100 flex items-center space-x-1">
-                  <span>{activeMatchState.match.player1.countryFlag}</span>
-                  <span>{activeMatchState.match.player1.name}</span>
+            {/* Scoreboard Players Row */}
+            <div className="flex items-center justify-between py-1">
+              <div className="text-left max-w-[120px] min-w-0">
+                <p className="text-xs font-black text-white flex items-center space-x-1.5 truncate">
+                  <span className="text-sm">{activeMatchState.match.player1.countryFlag}</span>
+                  <span className="truncate">{activeMatchState.match.player1.name}</span>
                 </p>
-                <p className="text-2xl font-black text-amber-400">{activeMatchState.p1CurrentScore}</p>
+                <p className="text-3xl font-black text-amber-400 tracking-tight mt-0.5">
+                  {activeMatchState.p1CurrentScore}
+                </p>
               </div>
 
-              <div className="px-3 py-1 bg-white/10 rounded-xl text-xs font-bold text-slate-300">
-                {activeMatchState.match.p1GamesWon} : {activeMatchState.match.p2GamesWon}
+              <div className="px-3 py-1 bg-slate-900/90 border border-slate-800 rounded-xl text-center">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Games</span>
+                <span className="text-xs font-black text-amber-400">
+                  {activeMatchState.match.p1GamesWon} - {activeMatchState.match.p2GamesWon}
+                </span>
               </div>
 
-              <div className="text-right">
-                <p className="text-sm font-bold text-slate-100 flex items-center justify-end space-x-1">
-                  <span>{activeMatchState.match.player2.name}</span>
-                  <span>{activeMatchState.match.player2.countryFlag}</span>
+              <div className="text-right max-w-[120px] min-w-0">
+                <p className="text-xs font-black text-white flex items-center justify-end space-x-1.5 truncate">
+                  <span className="truncate">{activeMatchState.match.player2.name}</span>
+                  <span className="text-sm">{activeMatchState.match.player2.countryFlag}</span>
                 </p>
-                <p className="text-2xl font-black text-amber-400">{activeMatchState.p2CurrentScore}</p>
+                <p className="text-3xl font-black text-amber-400 tracking-tight mt-0.5">
+                  {activeMatchState.p2CurrentScore}
+                </p>
               </div>
             </div>
 
+            {/* Primary Action Button */}
             <button
               onClick={() => setActiveTab('match')}
-              className="w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-xl text-sm flex items-center justify-center space-x-2 transition-transform active:scale-98 shadow-sm"
+              className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center space-x-1.5 transition-transform active:scale-98 shadow-md border border-amber-300"
             >
               <span>Resume Refereeing</span>
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4 stroke-[3] text-slate-950" />
             </button>
           </div>
         </div>
@@ -239,14 +263,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div className="space-y-2">
           {recentMatches.map((m) => {
-            const isP1Winner = m.winnerId === m.player1.id || m.p1GamesWon > m.p2GamesWon;
-            const isP2Winner = m.winnerId === m.player2.id || m.p2GamesWon > m.p1GamesWon;
+            const p1 = m.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🎾' };
+            const p2 = m.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🎾' };
+            const p1Games = m.p1GamesWon ?? 0;
+            const p2Games = m.p2GamesWon ?? 0;
+            const isP1Winner = m.winnerId ? m.winnerId === p1.id : p1Games > p2Games;
+            const isP2Winner = m.winnerId ? m.winnerId === p2.id : p2Games > p1Games;
 
             return (
               <div
                 key={m.id}
                 onClick={() => selectMatchDetail(m.id)}
-                className="group ios-card rounded-2xl p-3 space-y-2 hover:border-slate-300 transition-colors cursor-pointer"
+                className="group ios-card rounded-2xl p-3 space-y-2 hover:border-amber-300 hover:shadow-md transition-all active:scale-98 cursor-pointer border border-slate-200/90"
               >
                 {/* Meta Header Row */}
                 <div className="flex items-center justify-between text-[10px] text-slate-500 pb-1.5 border-b border-slate-100">
@@ -256,16 +284,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </span>
                     <span className="flex items-center space-x-1 font-medium">
                       <Clock className="w-3 h-3 text-slate-400" />
-                      <span>{formatDuration(m.totalDurationSeconds)}</span>
+                      <span>{formatDuration(m.totalDurationSeconds || 0)}</span>
                     </span>
                   </div>
 
-                  <div className="flex items-center space-x-1.5">
-                    <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg font-bold">
-                      {m.matchFormat === 'BEST_OF_5' ? 'Best of 5 Games' : 'Best of 3 Games'}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-transform flex-shrink-0" />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selectMatchDetail(m.id);
+                    }}
+                    className="flex items-center space-x-1 font-extrabold text-slate-600 group-hover:text-amber-800 hover:text-amber-900 transition-colors cursor-pointer"
+                  >
+                    <span>Match Report</span>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-700 transition-transform group-hover:translate-x-0.5 flex-shrink-0" />
+                  </button>
                 </div>
 
                 {/* Scorecard Players & Games Score Rows */}
@@ -279,8 +312,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     }`}
                   >
                     <div className="flex items-center space-x-2 min-w-0">
-                      <span className="text-xs">{m.player1.countryFlag}</span>
-                      <span className="text-xs truncate">{m.player1.name}</span>
+                      <span className="text-xs">{p1.countryFlag}</span>
+                      <span className="text-xs truncate">{p1.name}</span>
                       {isP1Winner && (
                         <span className="inline-flex items-center justify-center bg-amber-200/90 text-amber-950 p-0.5 rounded-md">
                           <Check className="w-3 h-3 stroke-[3]" />
@@ -288,7 +321,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       )}
                     </div>
                     <span className={`text-sm font-black ${isP1Winner ? 'text-slate-900' : 'text-slate-400'}`}>
-                      {m.p1GamesWon}
+                      {p1Games}
                     </span>
                   </div>
 
@@ -301,8 +334,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     }`}
                   >
                     <div className="flex items-center space-x-2 min-w-0">
-                      <span className="text-xs">{m.player2.countryFlag}</span>
-                      <span className="text-xs truncate">{m.player2.name}</span>
+                      <span className="text-xs">{p2.countryFlag}</span>
+                      <span className="text-xs truncate">{p2.name}</span>
                       {isP2Winner && (
                         <span className="inline-flex items-center justify-center bg-amber-200/90 text-amber-950 p-0.5 rounded-md">
                           <Check className="w-3 h-3 stroke-[3]" />
@@ -310,7 +343,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       )}
                     </div>
                     <span className={`text-sm font-black ${isP2Winner ? 'text-slate-900' : 'text-slate-400'}`}>
-                      {m.p2GamesWon}
+                      {p2Games}
                     </span>
                   </div>
                 </div>
