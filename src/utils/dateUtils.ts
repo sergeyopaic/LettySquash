@@ -34,3 +34,36 @@ export const formatMatchTime = (dateStr: string): string => {
   const mins = String(matchDate.getMinutes()).padStart(2, '0');
   return `${hours}:${mins}`;
 };
+
+export const formatFullDateTime = (dateStr: string): string => {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+  const day = d.getDate();
+  const month = monthNames[d.getMonth()];
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const mins = String(d.getMinutes()).padStart(2, '0');
+  return `${day} ${month} ${year}, ${hours}:${mins}`;
+};
+
+export const formatMatchDuration = (totalSec: number = 0): string => {
+  if (!totalSec || totalSec <= 0) return '< 1 min';
+  if (totalSec < 60) return `${totalSec} sec`;
+  const mins = Math.floor(totalSec / 60);
+  const secs = totalSec % 60;
+  return secs > 0 ? `${mins} min ${secs}s` : `${mins} min`;
+};
+
+export const getMatchDurationParts = (totalSec: number = 0): { val: string; unit: string } => {
+  if (!totalSec || totalSec <= 0) return { val: '< 1', unit: 'min' };
+  if (totalSec < 60) return { val: String(totalSec), unit: 'sec' };
+  const mins = Math.floor(totalSec / 60);
+  const secs = totalSec % 60;
+  if (secs > 0) return { val: String(mins), unit: `min ${secs}s` };
+  return { val: String(mins), unit: 'min' };
+};
+

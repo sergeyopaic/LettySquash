@@ -81,8 +81,8 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
               {/* Match Items under Date Group */}
               <div className="space-y-2">
                 {groupMatches.map((match) => {
-                  const p1 = match.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🎾' };
-                  const p2 = match.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🎾' };
+                  const p1 = match.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🇳🇿' };
+                  const p2 = match.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🇳🇿' };
                   const p1Games = match.p1GamesWon ?? 0;
                   const p2Games = match.p2GamesWon ?? 0;
                   const isP1Winner = match.winnerId ? match.winnerId === p1.id : p1Games > p2Games;

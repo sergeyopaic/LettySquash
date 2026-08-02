@@ -106,11 +106,23 @@ function DiagramCard({
   caption?: string;
   defaultCaption: string;
 }) {
+  const text = caption ?? defaultCaption;
+  const isFault = text.includes('✕') || text.includes('Fault') || text.includes('FAULT') || text.includes('ILLEGAL');
+  const isLegal = !isFault && (text.includes('✓') || text.includes('LEGAL'));
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm w-full">
+    <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm w-full">
       {children}
-      <p className="text-xs text-slate-500 mt-3 text-center leading-relaxed">
-        {caption ?? defaultCaption}
+      <p
+        className={`mt-2 text-[11px] text-center font-semibold leading-tight ${
+          isFault
+            ? 'text-rose-600'
+            : isLegal
+            ? 'text-emerald-700'
+            : 'text-slate-500'
+        }`}
+      >
+        {text}
       </p>
     </div>
   );
@@ -346,187 +358,256 @@ export function FrontWallDiagram({
 // Half-court line: от short line до back wall
 // Service box: 1.6×1.6 м, примыкает к боковой стенке, перед short line
 
-// Примечание: по WSF short line = 4.26 м от front wall
-const CP_L = 9.75;  // court length
-const CP_W = 6.4;   // court width
-const CP_SVG_W = 200; // width in SVG
-const CP_SVG_L = CP_SVG_W * (CP_L / CP_W); // ~305
-const CP_OX = 48;   // left offset for dimension label
-const CP_OY = 28;   // top offset
+// Geometry for CourtPlanDiagram (Front Wall at TOP, Back Wall at BOTTOM, Side Walls on LEFT/RIGHT)
+const CP_W = 6.4;  // Court width (X axis: 0 to 6.4m)
+const CP_L = 9.75; // Court length (Y axis: 0 [Front Wall] to 9.75m [Back Wall])
+const CP_SVG_W = 165; // Court width in SVG
+const CP_SVG_L = CP_SVG_W * (CP_L / CP_W); // ~251px height in SVG
+const CP_OX = 54; // Left margin
+const CP_OY = 22; // Top margin
 
-// Convert real meters to SVG pixels (X = length/depth, Y = width)
-const cpX = (m: number) => CP_OX + (m / CP_L) * CP_SVG_L;
-const cpY = (m: number) => CP_OY + (m / CP_W) * CP_SVG_W;
+const cpX = (m: number) => CP_OX + (m / CP_W) * CP_SVG_W;
+const cpY = (m: number) => CP_OY + (m / CP_L) * CP_SVG_L;
 
-const SL_X = cpX(4.26);   // short line
-const HCL_Y = cpY(CP_W / 2); // half-court line
-const SB_SIZE = (1.6 / CP_W) * CP_SVG_W;
+const CP_SL_Y = cpY(4.26);     // Short line (4.26m from Front Wall)
+const HCL_X = cpX(CP_W / 2); // Half-court line (center vertical)
+const SB_W_SVG = (1.6 / CP_W) * CP_SVG_W; // Service box width (1.6m)
+const SB_H_SVG = (1.6 / CP_L) * CP_SVG_L; // Service box height (1.6m)
 
 export function CourtPlanDiagram({
-  highlight,
+  highlight: _highlight,
   caption,
 }: {
   highlight?: 'service-box-right' | 'service-box-left' | 'target-quarter' | 'short-line';
   caption?: string;
 }) {
-  const vbW = CP_OX + CP_SVG_L + 24;
-  const vbH = CP_OY + CP_SVG_W + 24;
+  const [serveMode, setServeMode] = React.useState<'serve-right' | 'serve-left' | 'serve-fault'>('serve-right');
 
-  // Fill color for left service box (near bottom side wall)
-  const sbLeftFill = highlight === 'service-box-left' ? C.amber : C.navy;
-  const sbLeftOp = highlight === 'service-box-left' ? 0.22 : 0.08;
+  const vbW = CP_OX + CP_SVG_W + 64;
+  const vbH = CP_OY + CP_SVG_L + 28;
 
-  // Fill color for right service box (near top side wall)
-  const sbRightFill = highlight === 'service-box-right' ? C.amber : C.navy;
-  const sbRightOp = highlight === 'service-box-right' ? 0.22 : 0.08;
+  // Serve trajectory coordinates based on serveMode
+  // Right Box -> Left Back-Quarter
+  const pRightBox = { x: cpX(5.6), y: cpY(5.06) };
+  const pLeftTarget = { x: cpX(1.6), y: cpY(7.0) };
 
-  // Target quarter - left rear (opposite right service box)
-  const targetFill = highlight === 'target-quarter' ? C.amber : C.amberLight;
-  const targetOp = highlight === 'target-quarter' ? 0.35 : 0.18;
+  // Left Box -> Right Back-Quarter
+  const pLeftBox = { x: cpX(0.8), y: cpY(5.06) };
+  const pRightTarget = { x: cpX(4.8), y: cpY(7.0) };
 
-  // Short line
-  const slStroke = highlight === 'short-line' ? C.amber : C.navy;
-  const slWidth = highlight === 'short-line' ? 2.5 : 1.5;
+  // Fault serve (lands short of Short Line)
+  const pFaultTarget = { x: cpX(2.0), y: cpY(3.0) };
+
+  // Front Wall Impact (center top)
+  const pFrontWallHit = { x: cpX(3.2), y: CP_OY };
+
+  let servePathD = '';
+  let serveLen = 300;
+  const isLegalServe = serveMode !== 'serve-fault';
+  const serveColor = isLegalServe ? '#10B981' : '#EF4444';
+  const serveMarkerId = isLegalServe ? 'cp-arrow-green' : 'cp-arrow-red';
+
+  if (serveMode === 'serve-right') {
+    servePathD = `M ${pRightBox.x} ${pRightBox.y} L ${pFrontWallHit.x} ${pFrontWallHit.y} L ${pLeftTarget.x} ${pLeftTarget.y}`;
+    serveLen = dist(pRightBox, pFrontWallHit) + dist(pFrontWallHit, pLeftTarget);
+  } else if (serveMode === 'serve-left') {
+    servePathD = `M ${pLeftBox.x} ${pLeftBox.y} L ${pFrontWallHit.x} ${pFrontWallHit.y} L ${pRightTarget.x} ${pRightTarget.y}`;
+    serveLen = dist(pLeftBox, pFrontWallHit) + dist(pFrontWallHit, pRightTarget);
+  } else {
+    servePathD = `M ${pRightBox.x} ${pRightBox.y} L ${pFrontWallHit.x} ${pFrontWallHit.y} L ${pFaultTarget.x} ${pFaultTarget.y}`;
+    serveLen = dist(pRightBox, pFrontWallHit) + dist(pFrontWallHit, pFaultTarget);
+  }
 
   return (
     <DiagramCard
       caption={caption}
-      defaultCaption="Top view. When serving from the right service box, the ball must land in the opposite back-quarter court."
+      defaultCaption={
+        serveMode === 'serve-right'
+          ? '✓ Right Box Serve: Front wall → Left Back-Quarter'
+          : serveMode === 'serve-left'
+          ? '✓ Left Box Serve: Front wall → Right Back-Quarter'
+          : '✕ Short Line Fault: Fails to reach Back-Quarter (Fault)'
+      }
     >
+      {/* Interactive Mode Buttons */}
+      <div className="flex flex-wrap gap-1.5 justify-center mb-3">
+        <button
+          type="button"
+          onClick={() => setServeMode('serve-right')}
+          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer flex items-center space-x-1 ${
+            serveMode === 'serve-right'
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs font-black'
+              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <span>✓ Right Box Serve</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setServeMode('serve-left')}
+          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer flex items-center space-x-1 ${
+            serveMode === 'serve-left'
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs font-black'
+              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <span>✓ Left Box Serve</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setServeMode('serve-fault')}
+          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer flex items-center space-x-1 ${
+            serveMode === 'serve-fault'
+              ? 'bg-rose-500 text-white border-rose-500 shadow-xs font-black'
+              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <span>✕ Short Line Fault</span>
+        </button>
+      </div>
+
+      {/* Animation CSS */}
+      <style>{`
+        @keyframes serve-draw {
+          0%   { stroke-dashoffset: ${serveLen}; opacity: 1; }
+          65%  { stroke-dashoffset: 0; opacity: 1; }
+          80%  { stroke-dashoffset: 0; opacity: 1; }
+          95%  { stroke-dashoffset: 0; opacity: 0.15; }
+          100% { stroke-dashoffset: ${serveLen}; opacity: 0; }
+        }
+        .serve-path-anim {
+          stroke-dasharray: ${serveLen};
+          stroke-dashoffset: ${serveLen};
+          animation: serve-draw 2.8s linear infinite;
+        }
+      `}</style>
+
       <svg
         viewBox={`0 0 ${vbW} ${vbH}`}
         className="w-full h-auto"
         aria-label="Court plan diagram"
       >
         <defs>
-          <ArrowMarker id="cp-arrow-amber" color={C.amber} />
-          <ArrowMarker id="cp-arrow-navy" color={C.navy} />
+          <ArrowMarker id="cp-arrow-green" color="#10B981" />
+          <ArrowMarker id="cp-arrow-red" color="#EF4444" />
         </defs>
 
-        {/* Контур корта */}
+        {/* Court outline */}
         <rect
           x={CP_OX}
           y={CP_OY}
-          width={CP_SVG_L}
-          height={CP_SVG_W}
+          width={CP_SVG_W}
+          height={CP_SVG_L}
           fill={C.white}
           stroke={C.navy}
           strokeWidth={2}
         />
 
-        {/* Целевая четверть (левая задняя = верхняя левая от short line) */}
+        {/* Target Quarter Highlight - Left Back-Quarter */}
+        {serveMode === 'serve-right' && (
+          <rect
+            x={CP_OX}
+            y={CP_SL_Y}
+            width={HCL_X - CP_OX}
+            height={cpY(CP_L) - CP_SL_Y}
+            fill="#D1FAE5"
+            fillOpacity={0.45}
+            stroke="#10B981"
+            strokeWidth={1}
+            strokeDasharray="3,3"
+          />
+        )}
+
+        {/* Target Quarter Highlight - Right Back-Quarter */}
+        {serveMode === 'serve-left' && (
+          <rect
+            x={HCL_X}
+            y={CP_SL_Y}
+            width={CP_OX + CP_SVG_W - HCL_X}
+            height={cpY(CP_L) - CP_SL_Y}
+            fill="#D1FAE5"
+            fillOpacity={0.45}
+            stroke="#10B981"
+            strokeWidth={1}
+            strokeDasharray="3,3"
+          />
+        )}
+
+        {/* Fault Highlight Area */}
+        {serveMode === 'serve-fault' && (
+          <rect
+            x={CP_OX}
+            y={CP_OY}
+            width={CP_SVG_W}
+            height={CP_SL_Y - CP_OY}
+            fill="#FEE2E2"
+            fillOpacity={0.25}
+          />
+        )}
+
+        {/* Left Service Box (adjacent to left wall, BEHIND short line inside Left Quarter) */}
         <rect
-          x={SL_X}
-          y={CP_OY}
-          width={cpX(CP_L) - SL_X}
-          height={HCL_Y - CP_OY}
-          fill={targetFill}
-          fillOpacity={targetOp}
-        />
-
-        {/* Service box — правый (у верхней боковой стенки) */}
-        <rect
-          x={SL_X - SB_SIZE}
-          y={CP_OY}
-          width={SB_SIZE}
-          height={SB_SIZE}
-          fill={sbRightFill}
-          fillOpacity={sbRightOp}
+          x={CP_OX}
+          y={CP_SL_Y}
+          width={SB_W_SVG}
+          height={SB_H_SVG}
+          fill={serveMode === 'serve-left' ? '#10B981' : C.navy}
+          fillOpacity={serveMode === 'serve-left' ? 0.35 : 0.08}
           stroke={C.navy}
-          strokeWidth={1}
+          strokeWidth={1.2}
         />
-
-        {/* Service box — левый (у нижней боковой стенки) */}
-        <rect
-          x={SL_X - SB_SIZE}
-          y={cpY(CP_W) - SB_SIZE}
-          width={SB_SIZE}
-          height={SB_SIZE}
-          fill={sbLeftFill}
-          fillOpacity={sbLeftOp}
-          stroke={C.navy}
-          strokeWidth={1}
-        />
-
-        {/* SHORT LINE */}
-        <line
-          x1={SL_X}
-          y1={CP_OY}
-          x2={SL_X}
-          y2={cpY(CP_W)}
-          stroke={slStroke}
-          strokeWidth={slWidth}
-        />
-
-        {/* HALF-COURT LINE (от short line до задней стенки) */}
-        <line
-          x1={SL_X}
-          y1={HCL_Y}
-          x2={cpX(CP_L)}
-          y2={HCL_Y}
-          stroke={C.navy}
-          strokeWidth={1}
-          strokeDasharray="4,3"
-        />
-
-        {/* Подписи стен */}
         <text
-          x={CP_OX + CP_SVG_L / 2}
-          y={CP_OY - 6}
-          textAnchor="middle"
-          fill={C.navy}
-          fontSize={8}
-          fontWeight={700}
-          fontFamily="sans-serif"
-          letterSpacing="0.5"
-        >
-          FRONT WALL
-        </text>
-        <text
-          x={CP_OX + CP_SVG_L / 2}
-          y={cpY(CP_W) + 10}
-          textAnchor="middle"
-          fill={C.navy}
-          fontSize={8}
-          fontWeight={700}
-          fontFamily="sans-serif"
-          letterSpacing="0.5"
-        >
-          BACK WALL
-        </text>
-
-        {/* Подписи зон */}
-        <text
-          x={SL_X + (cpX(CP_L) - SL_X) / 2}
-          y={HCL_Y - (HCL_Y - CP_OY) / 2}
+          x={CP_OX + SB_W_SVG / 2}
+          y={CP_SL_Y + SB_H_SVG / 2}
           textAnchor="middle"
           dominantBaseline="central"
           fill={C.navy}
-          fontSize={6.5}
-          fontWeight={700}
+          fontSize={5.5}
+          fontWeight={800}
           fontFamily="sans-serif"
         >
-          QUARTER COURT
+          BOX (L)
         </text>
+
+        {/* Right Service Box (adjacent to right wall, BEHIND short line inside Right Quarter) */}
+        <rect
+          x={CP_OX + CP_SVG_W - SB_W_SVG}
+          y={CP_SL_Y}
+          width={SB_W_SVG}
+          height={SB_H_SVG}
+          fill={serveMode === 'serve-right' ? '#10B981' : C.navy}
+          fillOpacity={serveMode === 'serve-right' ? 0.35 : 0.08}
+          stroke={C.navy}
+          strokeWidth={1.2}
+        />
         <text
-          x={SL_X + (cpX(CP_L) - SL_X) / 2}
-          y={HCL_Y + (cpY(CP_W) - HCL_Y) / 2}
+          x={CP_OX + CP_SVG_W - SB_W_SVG / 2}
+          y={CP_SL_Y + SB_H_SVG / 2}
           textAnchor="middle"
           dominantBaseline="central"
           fill={C.navy}
-          fontSize={6.5}
-          fontWeight={700}
+          fontSize={5.5}
+          fontWeight={800}
           fontFamily="sans-serif"
         >
-          QUARTER COURT
+          BOX (R)
         </text>
 
-        {/* Подпись SHORT LINE */}
+        {/* SHORT LINE (horizontal across court) */}
+        <line
+          x1={CP_OX}
+          y1={CP_SL_Y}
+          x2={CP_OX + CP_SVG_W}
+          y2={CP_SL_Y}
+          stroke={C.navy}
+          strokeWidth={2}
+        />
         <text
-          x={SL_X + 2}
-          y={cpY(CP_W) + 10}
-          textAnchor="middle"
-          fill={slStroke}
+          x={CP_OX + CP_SVG_W + 6}
+          y={CP_SL_Y}
+          textAnchor="start"
+          dominantBaseline="central"
+          fill={C.navy}
           fontSize={6.5}
           fontWeight={700}
           fontFamily="sans-serif"
@@ -534,117 +615,154 @@ export function CourtPlanDiagram({
           SHORT LINE
         </text>
 
-        {/* Подпись SERVICE BOX (правый) */}
+        {/* HALF-COURT LINE (vertical down middle from Short Line to Back Wall) */}
+        <line
+          x1={HCL_X}
+          y1={CP_SL_Y}
+          x2={HCL_X}
+          y2={cpY(CP_L)}
+          stroke={C.navy}
+          strokeWidth={1.5}
+          strokeDasharray="4,3"
+        />
+
+        {/* Wall Labels */}
         <text
-          x={SL_X - SB_SIZE / 2}
-          y={CP_OY + SB_SIZE / 2}
+          x={CP_OX + CP_SVG_W / 2}
+          y={CP_OY - 7}
           textAnchor="middle"
-          dominantBaseline="central"
           fill={C.navy}
-          fontSize={5.5}
+          fontSize={8}
           fontWeight={700}
           fontFamily="sans-serif"
+          letterSpacing="0.5"
         >
-          SERVICE
+          FRONT WALL (TOP)
         </text>
         <text
-          x={SL_X - SB_SIZE / 2}
-          y={CP_OY + SB_SIZE / 2 + 7}
+          x={CP_OX + CP_SVG_W / 2}
+          y={CP_OY + CP_SVG_L + 12}
+          textAnchor="middle"
+          fill={C.navy}
+          fontSize={8}
+          fontWeight={700}
+          fontFamily="sans-serif"
+          letterSpacing="0.5"
+        >
+          BACK WALL (BOTTOM)
+        </text>
+        <text
+          x={CP_OX - 6}
+          y={CP_OY + CP_SVG_L / 2}
           textAnchor="middle"
           dominantBaseline="central"
           fill={C.navy}
-          fontSize={5.5}
+          fontSize={7}
           fontWeight={700}
           fontFamily="sans-serif"
+          letterSpacing="0.4"
+          transform={`rotate(-90, ${CP_OX - 6}, ${CP_OY + CP_SVG_L / 2})`}
         >
-          BOX
+          SIDE WALL
+        </text>
+        <text
+          x={CP_OX + CP_SVG_W + 6}
+          y={CP_OY + CP_SVG_L / 2}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={C.navy}
+          fontSize={7}
+          fontWeight={700}
+          fontFamily="sans-serif"
+          letterSpacing="0.4"
+          transform={`rotate(90, ${CP_OX + CP_SVG_W + 6}, ${CP_OY + CP_SVG_L / 2})`}
+        >
+          SIDE WALL
         </text>
 
-        {/* Подпись SERVICE BOX (левый) */}
+        {/* Quarter Court Labels */}
         <text
-          x={SL_X - SB_SIZE / 2}
-          y={cpY(CP_W) - SB_SIZE / 2}
+          x={CP_OX + (HCL_X - CP_OX) / 2}
+          y={CP_SL_Y + (cpY(CP_L) - CP_SL_Y) / 2}
           textAnchor="middle"
           dominantBaseline="central"
-          fill={C.navy}
-          fontSize={5.5}
+          fill="#047857"
+          fontSize={6}
           fontWeight={700}
           fontFamily="sans-serif"
         >
-          SERVICE
+          LEFT QUARTER
         </text>
         <text
-          x={SL_X - SB_SIZE / 2}
-          y={cpY(CP_W) - SB_SIZE / 2 + 7}
+          x={HCL_X + (CP_OX + CP_SVG_W - HCL_X) / 2}
+          y={CP_SL_Y + (cpY(CP_L) - CP_SL_Y) / 2}
           textAnchor="middle"
           dominantBaseline="central"
-          fill={C.navy}
-          fontSize={5.5}
+          fill="#047857"
+          fontSize={6}
           fontWeight={700}
           fontFamily="sans-serif"
         >
-          BOX
+          RIGHT QUARTER
         </text>
 
-        {/* Дуговая пунктирная стрелка подачи: из правого service box → левая задняя четверть */}
-        {/* Центр правого service box */}
-        {(() => {
-          const sx = SL_X - SB_SIZE / 2;
-          const sy = CP_OY + SB_SIZE / 2;
-          // Целевая точка — центр левой задней четверти
-          const tx = SL_X + (cpX(CP_L) - SL_X) * 0.55;
-          const ty = CP_OY + (HCL_Y - CP_OY) * 0.5;
-          // Контрольная точка для дуги
-          const cx1 = sx + (tx - sx) * 0.5;
-          const cy1 = CP_OY - 18;
-          return (
-            <g>
-              <path
-                d={`M ${sx} ${sy} Q ${cx1} ${cy1} ${tx} ${ty}`}
-                fill="none"
-                stroke={C.amber}
-                strokeWidth={1.5}
-                strokeDasharray="4,3"
-                markerEnd="url(#cp-arrow-amber)"
-              />
-              {/* Метка SERVE MUST LAND HERE */}
-              <rect
-                x={tx - 28}
-                y={ty - 18}
-                width={56}
-                height={14}
-                fill={C.amber}
-                fillOpacity={0.15}
-                rx={3}
-              />
-              <text
-                x={tx}
-                y={ty - 11}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill={C.dark}
-                fontSize={5.5}
-                fontWeight={700}
-                fontFamily="sans-serif"
-              >
-                SERVE MUST LAND HERE
-              </text>
-            </g>
-          );
-        })()}
+        {/* Animated Serve Trajectory Path */}
+        <path
+          className="serve-path-anim"
+          d={servePathD}
+          fill="none"
+          stroke={serveColor}
+          strokeWidth={2.2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray={isLegalServe ? 'none' : '6,4'}
+          markerEnd={`url(#${serveMarkerId})`}
+        />
 
-        {/* ── Размерные выноски ── */}
-        {/* Длина 9.75 m (вертикально слеви) */}
+        {/* Front Wall Impact Dot */}
+        <circle cx={pFrontWallHit.x} cy={pFrontWallHit.y} r={4.5} fill={serveColor} stroke={C.white} strokeWidth={1} />
+
+        {/* Serve Target Landing Badge */}
+        {serveMode === 'serve-right' && (
+          <g>
+            <circle cx={pLeftTarget.x} cy={pLeftTarget.y} r={4.5} fill="#10B981" stroke={C.white} strokeWidth={1} />
+            <text x={pLeftTarget.x} y={pLeftTarget.y + 12} textAnchor="middle" fill="#047857" fontSize={6.5} fontWeight={800}>
+              ✓ Serve Target (Left Quarter)
+            </text>
+          </g>
+        )}
+
+        {serveMode === 'serve-left' && (
+          <g>
+            <circle cx={pRightTarget.x} cy={pRightTarget.y} r={4.5} fill="#10B981" stroke={C.white} strokeWidth={1} />
+            <text x={pRightTarget.x} y={pRightTarget.y + 12} textAnchor="middle" fill="#047857" fontSize={6.5} fontWeight={800}>
+              ✓ Serve Target (Right Quarter)
+            </text>
+          </g>
+        )}
+
+        {serveMode === 'serve-fault' && (
+          <g>
+            <circle cx={pFaultTarget.x} cy={pFaultTarget.y} r={8} fill="#EF4444" stroke={C.white} strokeWidth={1.5} />
+            <text x={pFaultTarget.x} y={pFaultTarget.y} textAnchor="middle" dominantBaseline="central" fill={C.white} fontSize={10} fontWeight={900}>
+              ✕
+            </text>
+            <text x={pFaultTarget.x} y={pFaultTarget.y + 14} textAnchor="middle" fill="#DC2626" fontSize={6.5} fontWeight={800}>
+              ✕ FAULT! Landed before Short Line
+            </text>
+          </g>
+        )}
+
+        {/* Dimension Labels */}
         <DimLabel
           x1={CP_OX - 10} y1={CP_OY}
-          x2={CP_OX - 10} y2={cpY(CP_W)}
+          x2={CP_OX - 10} y2={cpY(CP_L)}
           label="9.75 m" side="left"
         />
-        {/* Ширина 6.4 m (горизонтально сверху) */}
         <DimLabel
-          x1={CP_OX} y1={CP_OY - 16}
-          x2={cpX(CP_L)} y2={CP_OY - 16}
-          label="6.4 m" side="top"
+          x1={CP_OX} y1={cpY(CP_L) + 16}
+          x2={CP_OX + CP_SVG_W} y2={cpY(CP_L) + 16}
+          label="6.4 m" side="bottom"
         />
       </svg>
     </DiagramCard>
@@ -661,7 +779,7 @@ const BD_W = 6.4;  // Court width (X axis: 0 to 6.4m)
 const BD_L = 9.75; // Court length (Y axis: 0 [Front Wall] to 9.75m [Back Wall])
 const BD_SVG_W = 165; // Court width in SVG
 const BD_SVG_L = BD_SVG_W * (BD_L / BD_W); // ~251px height in SVG
-const BD_OX = 44; // Left margin
+const BD_OX = 54; // Left margin
 const BD_OY = 22; // Top margin
 
 const bdX = (m: number) => BD_OX + (m / BD_W) * BD_SVG_W;
@@ -683,7 +801,7 @@ export function BoastDiagram({
     'side-boast' | 'back-wall-direct' | 'back-wall-side' | 'fault-shot'
   >('side-boast');
 
-  const vbW = BD_OX + BD_SVG_W + 44;
+  const vbW = BD_OX + BD_SVG_W + 64;
   const vbH = BD_OY + BD_SVG_L + 28;
 
   // Mode 1: Side Wall Boast (Legal - Emerald Green)
@@ -748,76 +866,76 @@ export function BoastDiagram({
       caption={caption}
       defaultCaption={
         shotMode === 'side-boast'
-          ? 'Side Wall Boast (LEGAL): 1. Side wall impact → 2. Rebounds to Front Wall at TOP → 3. In Play.'
+          ? '✓ Side Wall Boast: Side wall → Front wall → Court'
           : shotMode === 'back-wall-direct'
-          ? 'Direct Back Wall Shot (LEGAL): 1. Hits Back Wall → 2. Flies straight to Front Wall at TOP without side wall → 3. In Play.'
+          ? '✓ Direct Back Wall: Back wall → Front wall → Court'
           : shotMode === 'back-wall-side'
-          ? 'Back + Side Wall Shot (LEGAL): 1. Hits Back Wall → 2. Rebounds off Side Wall → 3. Front Wall at TOP → 4. In Play.'
-          : 'Floor First Fault (ILLEGAL ✖): Ball hits side wall and bounces on floor BEFORE reaching Front Wall!'
+          ? '✓ Back + Side Wall: Back wall → Side wall → Front wall → Court'
+          : '✕ Floor First: Bounces on floor before Front wall (Fault)'
       }
     >
-      {/* Mode Selector Buttons */}
+      {/* Mode Selector Buttons with explicit ✓ and ✕ indicators */}
       <div className="flex flex-wrap gap-1.5 justify-center mb-3">
         <button
           type="button"
           onClick={() => setShotMode('side-boast')}
-          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer ${
+          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer flex items-center space-x-1 ${
             shotMode === 'side-boast'
               ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs font-black'
               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
           }`}
         >
-          Side Wall Boast (Legal)
+          <span>✓ Side Wall Boast</span>
         </button>
         <button
           type="button"
           onClick={() => setShotMode('back-wall-direct')}
-          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer ${
+          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer flex items-center space-x-1 ${
             shotMode === 'back-wall-direct'
               ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs font-black'
               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
           }`}
         >
-          Direct Back Wall (Legal)
+          <span>✓ Direct Back Wall</span>
         </button>
         <button
           type="button"
           onClick={() => setShotMode('back-wall-side')}
-          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer ${
+          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer flex items-center space-x-1 ${
             shotMode === 'back-wall-side'
               ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs font-black'
               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
           }`}
         >
-          Back + Side Wall (Legal)
+          <span>✓ Back + Side Wall</span>
         </button>
         <button
           type="button"
           onClick={() => setShotMode('fault-shot')}
-          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer ${
+          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer flex items-center space-x-1 ${
             shotMode === 'fault-shot'
               ? 'bg-rose-500 text-white border-rose-500 shadow-xs font-black'
               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
           }`}
         >
-          Floor First (Fault ✖)
+          <span>✕ Floor First (Fault)</span>
         </button>
       </div>
 
-      {/* CSS-animation for stroke-dashoffset */}
+      {/* CSS-animation for stroke-dashoffset progressive ball drawing */}
       {animated && (
         <style>{`
           @keyframes boast-draw-dyn {
             0%   { stroke-dashoffset: ${totalLen}; opacity: 1; }
-            65%  { stroke-dashoffset: 0; opacity: 1; }
-            80%  { stroke-dashoffset: 0; opacity: 1; }
+            70%  { stroke-dashoffset: 0; opacity: 1; }
+            85%  { stroke-dashoffset: 0; opacity: 1; }
             95%  { stroke-dashoffset: 0; opacity: 0.15; }
             100% { stroke-dashoffset: ${totalLen}; opacity: 0; }
           }
           .boast-path-dyn {
             stroke-dasharray: ${totalLen};
             stroke-dashoffset: ${totalLen};
-            animation: boast-draw-dyn 2.8s cubic-bezier(0.4,0,0.2,1) infinite;
+            animation: boast-draw-dyn 2.8s linear infinite;
           }
         `}</style>
       )}
@@ -908,125 +1026,120 @@ export function BoastDiagram({
           SIDE WALL
         </text>
 
-        {/* Static Trajectory when animated=false */}
-        {!animated && (
-          <path
-            d={pathD}
-            fill="none"
-            stroke={strokeColor}
-            strokeWidth={2}
-            strokeDasharray={shotMode === 'fault-shot' ? '4,4' : '5,3'}
-            markerEnd={`url(#${markerId})`}
-          />
-        )}
+        {/* Base faint trajectory line (shows path style: Solid for Legal, Dashed for Fault) */}
+        <path
+          d={pathD}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth={1.6}
+          strokeOpacity={0.25}
+          strokeDasharray={isLegal ? 'none' : '5,4'}
+        />
 
-        {/* Animated Trajectory */}
+        {/* Progressive ball drawing animation path */}
         {animated && (
           <path
             className="boast-path-dyn"
             d={pathD}
             fill="none"
             stroke={strokeColor}
-            strokeWidth={2.2}
+            strokeWidth={2.4}
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeDasharray={shotMode === 'fault-shot' ? '5,4' : 'none'}
             markerEnd={`url(#${markerId})`}
           />
         )}
 
-        {/* Mode 1: Side Wall Boast Badges & Markers (Green) */}
+        {/* Mode 1: Side Wall Boast Badges & Markers (Green + Checkmark) */}
         {shotMode === 'side-boast' && (
           <g>
             {/* Impact 1: Side Wall */}
             <circle cx={pSideHit1.x} cy={pSideHit1.y} r={4.5} fill="#10B981" stroke={C.white} strokeWidth={1} />
-            <Badge x={pSideHit1.x - 14} y={pSideHit1.y} n={1} />
-            <text x={pSideHit1.x - 14} y={pSideHit1.y + 10} textAnchor="end" fill="#047857" fontSize={6} fontWeight={700}>
+            <Badge x={pSideHit1.x - 13} y={pSideHit1.y} n={1} />
+            <text x={pSideHit1.x - 13} y={pSideHit1.y + 11} textAnchor="end" fill="#047857" fontSize={6} fontWeight={700}>
               1. Side Wall Impact
             </text>
 
             {/* Impact 2: Front Wall at Top */}
             <circle cx={pSideHit2.x} cy={pSideHit2.y} r={4.5} fill="#10B981" stroke={C.white} strokeWidth={1} />
-            <Badge x={pSideHit2.x} y={pSideHit2.y + 12} n={2} />
-            <text x={pSideHit2.x + 8} y={pSideHit2.y + 22} textAnchor="start" fill="#047857" fontSize={6} fontWeight={700}>
+            <Badge x={pSideHit2.x} y={pSideHit2.y + 13} n={2} />
+            <text x={pSideHit2.x + 9} y={pSideHit2.y + 23} textAnchor="start" fill="#047857" fontSize={6} fontWeight={700}>
               2. Front Wall Target
             </text>
 
             {/* Landing 3: Floor */}
             <circle cx={pSideEnd.x} cy={pSideEnd.y} r={4.5} fill="#10B981" stroke={C.white} strokeWidth={1} />
-            <Badge x={pSideEnd.x} y={pSideEnd.y + 10} n={3} />
-            <text x={pSideEnd.x} y={pSideEnd.y + 22} textAnchor="middle" fill="#047857" fontSize={6} fontWeight={800}>
-              3. Good Return (In Play)
+            <Badge x={pSideEnd.x} y={pSideEnd.y + 13} n={3} />
+            <text x={pSideEnd.x} y={pSideEnd.y + 25} textAnchor="middle" fill="#047857" fontSize={6.5} fontWeight={800}>
+              3. ✓ Good Return (In Play)
             </text>
           </g>
         )}
 
-        {/* Mode 2A: Direct Back Wall Badges & Markers (Green) */}
+        {/* Mode 2A: Direct Back Wall Badges & Markers (Green + Checkmark) */}
         {shotMode === 'back-wall-direct' && (
           <g>
             {/* Impact 1: Back Wall at Bottom */}
             <circle cx={pDirectHit1.x} cy={pDirectHit1.y} r={4.5} fill="#10B981" stroke={C.white} strokeWidth={1} />
-            <Badge x={pDirectHit1.x} y={pDirectHit1.y - 12} n={1} />
-            <text x={pDirectHit1.x} y={pDirectHit1.y - 20} textAnchor="middle" fill="#047857" fontSize={6} fontWeight={700}>
+            <Badge x={pDirectHit1.x} y={pDirectHit1.y - 13} n={1} />
+            <text x={pDirectHit1.x} y={pDirectHit1.y - 23} textAnchor="middle" fill="#047857" fontSize={6} fontWeight={700}>
               1. Back Wall Hit
             </text>
 
             {/* Impact 2: Front Wall at Top */}
             <circle cx={pDirectHit2.x} cy={pDirectHit2.y} r={4.5} fill="#10B981" stroke={C.white} strokeWidth={1} />
-            <Badge x={pDirectHit2.x} y={pDirectHit2.y + 12} n={2} />
-            <text x={pDirectHit2.x + 8} y={pDirectHit2.y + 22} textAnchor="start" fill="#047857" fontSize={6} fontWeight={700}>
+            <Badge x={pDirectHit2.x} y={pDirectHit2.y + 13} n={2} />
+            <text x={pDirectHit2.x + 9} y={pDirectHit2.y + 23} textAnchor="start" fill="#047857" fontSize={6} fontWeight={700}>
               2. Direct Front Wall
             </text>
 
             {/* Landing 3: Floor */}
             <circle cx={pDirectEnd.x} cy={pDirectEnd.y} r={4.5} fill="#10B981" stroke={C.white} strokeWidth={1} />
-            <Badge x={pDirectEnd.x} y={pDirectEnd.y + 10} n={3} />
-            <text x={pDirectEnd.x} y={pDirectEnd.y + 22} textAnchor="middle" fill="#047857" fontSize={6} fontWeight={800}>
-              3. Good Return
+            <Badge x={pDirectEnd.x} y={pDirectEnd.y + 13} n={3} />
+            <text x={pDirectEnd.x} y={pDirectEnd.y + 25} textAnchor="middle" fill="#047857" fontSize={6.5} fontWeight={800}>
+              3. ✓ Good Return
             </text>
           </g>
         )}
 
-        {/* Mode 2B: Back + Side Wall Badges & Markers (Green) */}
+        {/* Mode 2B: Back + Side Wall Badges & Markers (Green + Checkmark) */}
         {shotMode === 'back-wall-side' && (
           <g>
             {/* Impact 1: Back Wall at Bottom */}
             <circle cx={pBackHit1.x} cy={pBackHit1.y} r={4.5} fill="#10B981" stroke={C.white} strokeWidth={1} />
-            <Badge x={pBackHit1.x} y={pBackHit1.y - 12} n={1} />
-            <text x={pBackHit1.x} y={pBackHit1.y - 20} textAnchor="middle" fill="#047857" fontSize={6} fontWeight={700}>
+            <Badge x={pBackHit1.x - 12} y={pBackHit1.y - 13} n={1} />
+            <text x={pBackHit1.x - 12} y={pBackHit1.y - 23} textAnchor="end" fill="#047857" fontSize={6} fontWeight={700}>
               1. Back Wall Shot
             </text>
 
             {/* Impact 2: Side Wall Rebound */}
             <circle cx={pBackHit2.x} cy={pBackHit2.y} r={4.5} fill="#10B981" stroke={C.white} strokeWidth={1} />
-            <Badge x={pBackHit2.x - 14} y={pBackHit2.y} n={2} />
-            <text x={pBackHit2.x - 14} y={pBackHit2.y + 10} textAnchor="end" fill="#047857" fontSize={6} fontWeight={700}>
+            <Badge x={pBackHit2.x - 13} y={pBackHit2.y} n={2} />
+            <text x={pBackHit2.x - 13} y={pBackHit2.y + 11} textAnchor="end" fill="#047857" fontSize={6} fontWeight={700}>
               2. Side Wall Rebound
             </text>
 
             {/* Impact 3: Front Wall at Top */}
             <circle cx={pBackHit3.x} cy={pBackHit3.y} r={4.5} fill="#10B981" stroke={C.white} strokeWidth={1} />
-            <Badge x={pBackHit3.x} y={pBackHit3.y + 12} n={3} />
-            <text x={pBackHit3.x + 8} y={pBackHit3.y + 22} textAnchor="start" fill="#047857" fontSize={6} fontWeight={700}>
+            <Badge x={pBackHit3.x} y={pBackHit3.y + 13} n={3} />
+            <text x={pBackHit3.x + 9} y={pBackHit3.y + 23} textAnchor="start" fill="#047857" fontSize={6} fontWeight={700}>
               3. Hits Front Wall
             </text>
 
             {/* Landing 4: Floor */}
             <circle cx={pBackEnd.x} cy={pBackEnd.y} r={4.5} fill="#10B981" stroke={C.white} strokeWidth={1} />
-            <Badge x={pBackEnd.x} y={pBackEnd.y + 10} n={4} />
-            <text x={pBackEnd.x} y={pBackEnd.y + 22} textAnchor="middle" fill="#047857" fontSize={6} fontWeight={800}>
-              4. Legal Landing
+            <Badge x={pBackEnd.x} y={pBackEnd.y + 13} n={4} />
+            <text x={pBackEnd.x} y={pBackEnd.y + 25} textAnchor="middle" fill="#047857" fontSize={6.5} fontWeight={800}>
+              4. ✓ Legal Landing
             </text>
           </g>
         )}
-
-        {/* Mode 3: Fault Shot (Floor First) */}
         {shotMode === 'fault-shot' && (
           <g>
             {/* Impact 1: Side Wall */}
-            <circle cx={pFaultHit1.x} cy={pFaultHit1.y} r={4} fill="#EF4444" stroke={C.white} strokeWidth={1} />
-            <Badge x={pFaultHit1.x} y={pFaultHit1.y - 12} n={1} />
-            <text x={pFaultHit1.x} y={pFaultHit1.y - 22} textAnchor="middle" fill={C.navy} fontSize={6} fontWeight={700}>
+            <circle cx={pFaultHit1.x} cy={pFaultHit1.y} r={4.5} fill="#EF4444" stroke={C.white} strokeWidth={1} />
+            <Badge x={pFaultHit1.x - 13} y={pFaultHit1.y} n={1} />
+            <text x={pFaultHit1.x - 13} y={pFaultHit1.y + 11} textAnchor="end" fill="#B91C1C" fontSize={6} fontWeight={700}>
               1. Side Wall Impact
             </text>
 
@@ -1035,8 +1148,8 @@ export function BoastDiagram({
             <text x={pFaultFloor.x} y={pFaultFloor.y} textAnchor="middle" dominantBaseline="central" fill={C.white} fontSize={10} fontWeight={900}>
               ✕
             </text>
-            <text x={pFaultFloor.x} y={pFaultFloor.y + 14} textAnchor="middle" fill="#DC2626" fontSize={6.5} fontWeight={800}>
-              FAULT! Bounced on floor before Front Wall
+            <text x={pFaultFloor.x} y={pFaultFloor.y + 16} textAnchor="middle" fill="#DC2626" fontSize={6.5} fontWeight={800}>
+              ✕ FAULT! Bounced on floor before Front Wall
             </text>
           </g>
         )}

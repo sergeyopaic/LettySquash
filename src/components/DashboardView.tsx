@@ -263,8 +263,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div className="space-y-2">
           {recentMatches.map((m) => {
-            const p1 = m.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🎾' };
-            const p2 = m.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🎾' };
+            const p1 = m.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🇳🇿' };
+            const p2 = m.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🇳🇿' };
             const p1Games = m.p1GamesWon ?? 0;
             const p2Games = m.p2GamesWon ?? 0;
             const isP1Winner = m.winnerId ? m.winnerId === p1.id : p1Games > p2Games;

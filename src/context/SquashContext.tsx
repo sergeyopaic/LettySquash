@@ -45,6 +45,7 @@ interface SquashContextType {
   proceedToGameBreak: () => void;
   skipGameBreak: () => void;
   toggleGameBreakPause: () => void;
+  addGameBreakTime: (secondsToAdd?: number) => void;
   toggleServeSide: () => void;
   resetCurrentGame: () => void;
   resetWholeMatch: () => void;
@@ -461,6 +462,14 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
 
+  const addGameBreakTime = (secondsToAdd: number = 30) => {
+    if (!activeMatchState) return;
+    setActiveMatchState({
+      ...activeMatchState,
+      gameBreakTimerSeconds: Math.max(0, (activeMatchState.gameBreakTimerSeconds || 0) + secondsToAdd),
+    });
+  };
+
   const toggleServeSide = () => {
     if (!activeMatchState) return;
     const newSide: ServeSide = activeMatchState.currentServeSide === 'L' ? 'R' : 'L';
@@ -579,6 +588,7 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         proceedToGameBreak,
         skipGameBreak,
         toggleGameBreakPause,
+        addGameBreakTime,
         toggleServeSide,
         resetCurrentGame,
         resetWholeMatch,

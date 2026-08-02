@@ -135,8 +135,8 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
             <div className="space-y-2">
               {playerMatches.map((m) => {
                 const isWinner = m.winnerId === player.id;
-                const p1 = m.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🎾' };
-                const p2 = m.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🎾' };
+                const p1 = m.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🇳🇿' };
+                const p2 = m.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🇳🇿' };
                 const opponent = p1.id === player.id ? p2 : p1;
 
                 return (

@@ -1,14 +1,128 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { SquashMatch, GameResult } from '../types/squash';
-import { X, ShieldAlert, Clock, Calendar, Trophy } from 'lucide-react';
-import { formatMatchDateGroup } from '../utils/dateUtils';
+import { X, ShieldAlert, Calendar, Share2, Printer, Check } from 'lucide-react';
+import { formatFullDateTime, formatMatchDuration, getMatchDurationParts } from '../utils/dateUtils';
 
 interface MatchDetailModalProps {
   match: SquashMatch | null;
   onClose: () => void;
 }
 
+interface RallySegment {
+  idx: number;
+  scorer: 'WINNER' | 'LOSER';
+  winnerScore: number;
+  loserScore: number;
+  diff: number;
+  isHandout: boolean;
+  isGameBall: boolean;
+}
+
+interface GameColumnData {
+  gameNumber: number;
+  winnerScore: number;
+  loserScore: number;
+  isWinnerGameWinner: boolean;
+  rallies: RallySegment[];
+  winnerMaxStreak: number;
+  loserMaxStreak: number;
+}
+
+const calculateGameRallyRibbon = (
+  match: SquashMatch,
+  gameNumber: number,
+  isP1Winner: boolean
+): { rallies: RallySegment[]; winnerMaxStreak: number; loserMaxStreak: number } => {
+  const targetGame = (match.games || []).find((g) => g.gameNumber === gameNumber);
+  if (!targetGame) return { rallies: [], winnerMaxStreak: 0, loserMaxStreak: 0 };
+
+  const winnerFinal = isP1Winner ? targetGame.p1Score : targetGame.p2Score;
+  const loserFinal = isP1Winner ? targetGame.p2Score : targetGame.p1Score;
+
+  const historyEvents = (match as any).history || [];
+  const gameHistory = historyEvents.filter((h: any) => (h.gameIndex ?? h.currentGameIndex) === gameNumber);
+
+  let rawRallies: { scorer: 'WINNER' | 'LOSER'; isHandout: boolean }[] = [];
+
+  if (gameHistory.length > 0) {
+    rawRallies = gameHistory.map((h: any) => {
+      const p1Scored = h.scoringPlayerId === (match.player1?.id || 'p1');
+      const scorer = isP1Winner ? (p1Scored ? 'WINNER' : 'LOSER') : (p1Scored ? 'LOSER' : 'WINNER');
+      return { scorer, isHandout: Boolean(h.isHandout) };
+    });
+  } else {
+    // Deterministic simulation based on game score
+    let w = 0;
+    let l = 0;
+    let server: 'WINNER' | 'LOSER' = 'WINNER';
+    while (w < winnerFinal || l < loserFinal) {
+      let scorer: 'WINNER' | 'LOSER';
+      if (w === winnerFinal) scorer = 'LOSER';
+      else if (l === loserFinal) scorer = 'WINNER';
+      else {
+        const wRem = winnerFinal - w;
+        const lRem = loserFinal - l;
+        const pWin = wRem / (wRem + lRem);
+        const pseudoRand = (Math.sin(gameNumber * 100 + rawRallies.length * 13) + 1) / 2;
+        scorer = pseudoRand < pWin ? 'WINNER' : 'LOSER';
+      }
+
+      if (scorer === 'WINNER') w++;
+      else l++;
+
+      const isHandout = scorer !== server;
+      server = scorer;
+      rawRallies.push({ scorer, isHandout });
+    }
+  }
+
+  // Calculate cumulative scores, lead differentials, game balls, and max streaks
+  const rallies: RallySegment[] = [];
+  let wScore = 0;
+  let lScore = 0;
+  let winnerMaxStreak = 0;
+  let loserMaxStreak = 0;
+  let currentWinnerStreak = 0;
+  let currentLoserStreak = 0;
+
+  const gameBallTarget = Math.max(10, (match.targetPoints || 11) - 1);
+
+  rawRallies.forEach((r, i) => {
+    const isGameBall = wScore >= gameBallTarget || lScore >= gameBallTarget;
+
+    if (r.scorer === 'WINNER') {
+      wScore++;
+      currentWinnerStreak++;
+      currentLoserStreak = 0;
+      if (currentWinnerStreak > winnerMaxStreak) winnerMaxStreak = currentWinnerStreak;
+    } else {
+      lScore++;
+      currentLoserStreak++;
+      currentWinnerStreak = 0;
+      if (currentLoserStreak > loserMaxStreak) loserMaxStreak = currentLoserStreak;
+    }
+
+    const diff = Math.abs(wScore - lScore);
+
+    rallies.push({
+      idx: i + 1,
+      scorer: r.scorer,
+      winnerScore: wScore,
+      loserScore: lScore,
+      diff,
+      isHandout: r.isHandout,
+      isGameBall
+    });
+  });
+
+  return { rallies, winnerMaxStreak, loserMaxStreak };
+};
+
 export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClose }) => {
+  const [copied, setCopied] = useState<boolean>(false);
+  const [showRallyFlow, setShowRallyFlow] = useState<boolean>(false);
+  const [activeRallyKey, setActiveRallyKey] = useState<string | null>(null);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -23,19 +137,60 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
 
   if (!match) return null;
 
-  const player1 = match.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🎾', avatarBgColor: '#0F172A', skillGrade: 'C1' };
-  const player2 = match.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🎾', avatarBgColor: '#0F172A', skillGrade: 'C1' };
+  const player1 = match.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🇳🇿', avatarBgColor: '#0F172A', skillGrade: 'C1' };
+  const player2 = match.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🇳🇿', avatarBgColor: '#0F172A', skillGrade: 'C1' };
 
+  // STRICT CONSISTENT ORDER: Winner is ALWAYS pWinner on TOP, Loser is ALWAYS pLoser on BOTTOM
   const isP1Winner = match.winnerId ? match.winnerId === player1.id : (match.p1GamesWon ?? 0) >= (match.p2GamesWon ?? 0);
-  const winner = isP1Winner ? player1 : player2;
+  const pWinner = isP1Winner ? player1 : player2;
+  const pLoser = isP1Winner ? player2 : player1;
+
+  const winnerGames = isP1Winner ? (match.p1GamesWon ?? 0) : (match.p2GamesWon ?? 0);
+  const loserGames = isP1Winner ? (match.p2GamesWon ?? 0) : (match.p1GamesWon ?? 0);
 
   const games = match.games || [];
   const decisions = match.decisions || [];
 
-  const formatDuration = (totalSec: number = 0) => {
-    const mins = Math.floor(totalSec / 60);
-    return `${mins} min`;
+  const totalRallies = games.reduce((acc, g) => acc + (g.p1Score ?? 0) + (g.p2Score ?? 0), 0);
+  const durationText = formatMatchDuration(match.totalDurationSeconds || 0);
+
+  const letsCount = decisions.filter((d) => d.decision === 'YES_LET').length;
+  const strokesCount = decisions.filter((d) => d.decision === 'STROKE').length;
+  const noLetsCount = decisions.filter((d) => d.decision === 'NO_LET').length;
+
+  const handleCopySummary = () => {
+    const summaryText = `Squash Match Scorecard\n${pWinner.name} def. ${pLoser.name} (${winnerGames}-${loserGames})\nDuration: ${durationText} | Rallies: ${totalRallies}\nDate: ${formatFullDateTime(match.date)}`;
+    navigator.clipboard.writeText(summaryText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // Build vertical columns for all games
+  const gameColumns: GameColumnData[] = games.map((g) => {
+    const winnerScore = isP1Winner ? g.p1Score : g.p2Score;
+    const loserScore = isP1Winner ? g.p2Score : g.p1Score;
+    const isWinnerGameWinner = winnerScore > loserScore;
+
+    const { rallies, winnerMaxStreak, loserMaxStreak } = calculateGameRallyRibbon(
+      match,
+      g.gameNumber,
+      isP1Winner
+    );
+
+    return {
+      gameNumber: g.gameNumber,
+      winnerScore,
+      loserScore,
+      isWinnerGameWinner,
+      rallies,
+      winnerMaxStreak,
+      loserMaxStreak
+    };
+  });
 
   return (
     <div
@@ -44,196 +199,386 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-4 animate-in slide-in-from-bottom duration-200 cursor-default"
+        className="bg-white rounded-t-3xl sm:rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col animate-in slide-in-from-bottom duration-200 cursor-default overflow-hidden"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        {/* 1. Full-Width Navy Header Banner (Structural Cover) */}
+        <div className="bg-slate-900 rounded-t-3xl p-5 text-white shadow-md space-y-3.5 border-b border-slate-800">
+          {/* Top Row: Format Tag & Close Button */}
+          <div className="flex items-center justify-between">
+            <span className="font-extrabold text-amber-400 uppercase tracking-wider font-mono text-[10px]">
+              {match.matchFormat === 'BEST_OF_5' ? 'Best of 5 (PARS-11)' : match.matchFormat === 'BEST_OF_3' ? 'Best of 3 (PARS-11)' : 'Single Game'}
+            </span>
+
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 flex items-center justify-center cursor-pointer transition-colors -mr-1"
+              aria-label="Close Match Scorecard"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Document Title & Date inside Navy Cover */}
           <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-[10px] font-black uppercase text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md">
-                Official Match Scorecard
-              </span>
-              <span className="text-[10px] font-bold text-slate-500 flex items-center space-x-1">
-                <Calendar className="w-3 h-3 text-slate-400" />
-                <span>{formatMatchDateGroup(match.date)}</span>
-              </span>
-            </div>
-            <h2 className="text-lg font-black text-slate-900 mt-1 leading-tight">
-              Match Report
+            <h2 className="text-2xl font-black text-white tracking-tight leading-none">
+              Match Scorecard
             </h2>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center -mr-2 cursor-pointer"
-            aria-label="Close match details"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Winner Hero Banner */}
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-4 text-white flex items-center justify-between shadow-md border border-slate-800">
-          <div className="space-y-1">
-            <span className="text-[9px] font-black uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-md">
-              MATCH CHAMPION 🏆
-            </span>
-            <h3 className="text-xl font-black text-white flex items-center space-x-1.5 pt-0.5">
-              <span>{winner.countryFlag}</span>
-              <span>{winner.name}</span>
-            </h3>
-            <p className="text-xs font-bold text-amber-300">
-              Games Won: {match.p1GamesWon ?? 0} - {match.p2GamesWon ?? 0} • {match.matchFormat === 'BEST_OF_5' ? 'Best of 5' : 'Best of 3'}
-            </p>
-          </div>
-
-          <div className="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center shadow-lg flex-shrink-0">
-            <Trophy className="w-6 h-6 fill-current" />
-          </div>
-        </div>
-
-        {/* Scorecard Players Comparison */}
-        <div className="ios-card p-4 grid grid-cols-2 gap-3 divide-x divide-slate-100 relative">
-          {/* Player 1 Column */}
-          <div className="flex flex-col items-center text-center space-y-1.5 pr-2">
-            <div className="relative">
-              <div
-                className="w-12 h-12 rounded-full text-white font-bold flex items-center justify-center text-sm shadow-md"
-                style={{ backgroundColor: player1.avatarBgColor || '#0F172A' }}
-              >
-                {player1.name ? player1.name.charAt(0) : 'P'}
-              </div>
-              <span className="absolute -bottom-1 -right-1 text-xs">
-                {player1.countryFlag}
-              </span>
-            </div>
-
-            <div className="space-y-0.5">
-              <p className="text-xs font-bold text-slate-900 line-clamp-1">{player1.name}</p>
-              <span className="text-[9px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md inline-block">
-                Grade {player1.skillGrade}
-              </span>
-            </div>
-
-            <div className="pt-1">
-              <span className="text-3xl font-black text-slate-900">{match.p1GamesWon ?? 0}</span>
-              <span className="text-[10px] text-slate-400 font-bold block uppercase">Games</span>
-            </div>
-          </div>
-
-          {/* Player 2 Column */}
-          <div className="flex flex-col items-center text-center space-y-1.5 pl-2">
-            <div className="relative">
-              <div
-                className="w-12 h-12 rounded-full text-white font-bold flex items-center justify-center text-sm shadow-md"
-                style={{ backgroundColor: player2.avatarBgColor || '#0F172A' }}
-              >
-                {player2.name ? player2.name.charAt(0) : 'P'}
-              </div>
-              <span className="absolute -bottom-1 -right-1 text-xs">
-                {player2.countryFlag}
-              </span>
-            </div>
-
-            <div className="space-y-0.5">
-              <p className="text-xs font-bold text-slate-900 line-clamp-1">{player2.name}</p>
-              <span className="text-[9px] font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md inline-block">
-                Grade {player2.skillGrade}
-              </span>
-            </div>
-
-            <div className="pt-1">
-              <span className="text-3xl font-black text-slate-900">{match.p2GamesWon ?? 0}</span>
-              <span className="text-[10px] text-slate-400 font-bold block uppercase">Games</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Game Breakdown */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <h4 className="text-xs font-black text-slate-900 tracking-tight uppercase">
-              Completed Games Breakdown
-            </h4>
-            <span className="text-[10px] font-semibold text-slate-500 flex items-center space-x-1">
-              <Clock className="w-3 h-3 text-slate-400" />
-              <span>Total Duration: {formatDuration(match.totalDurationSeconds)}</span>
+            <span className="text-xs font-medium text-slate-400 flex items-center space-x-1.5 mt-1.5">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              <span>{formatFullDateTime(match.date)}</span>
             </span>
           </div>
 
-          <div className="space-y-1.5">
-            {games.length === 0 ? (
-              <div className="p-3 bg-slate-50 rounded-2xl text-center text-xs text-slate-400">
-                No game stats recorded for this match
-              </div>
-            ) : (
-              games.map((g: GameResult) => {
-                const isP1GameWinner = g.winnerId === player1.id || g.p1Score > g.p2Score;
-                const gameWinnerName = isP1GameWinner ? player1.name : player2.name;
-
-                return (
-                  <div
-                    key={g.gameNumber}
-                    className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <span className="font-extrabold text-slate-900">Game #{g.gameNumber}</span>
-                    </div>
-
-                    <div className="flex items-center space-x-3">
-                      <span className="font-mono font-black text-slate-900 text-sm bg-white px-2.5 py-0.5 rounded-lg border border-slate-200/80 shadow-2xs">
-                        {g.p1Score} - {g.p2Score}
-                      </span>
-
-                      <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                        Winner: {gameWinnerName}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Referee Decision Logs if any */}
-        {decisions && decisions.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-xs font-black text-slate-900 tracking-tight uppercase px-1">
-              Referee Appeals Log
-            </h4>
-            <div className="space-y-1.5">
-              {decisions.map((d) => (
+          {/* Vertical Winner & Loser Scorecard Panel */}
+          <div className="bg-slate-800/90 rounded-xl p-3.5 border border-slate-700/80 space-y-2.5">
+            {/* Top Row: Winner */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2.5 min-w-0 flex-1 pr-2">
                 <div
-                  key={d.id}
-                  className="flex items-center justify-between p-2.5 bg-amber-50/50 rounded-xl border border-amber-100 text-xs"
+                  className="w-8 h-8 rounded-full text-white font-bold flex items-center justify-center text-xs shadow-xs ring-2 ring-emerald-400 flex-shrink-0"
+                  style={{ backgroundColor: pWinner.avatarBgColor || '#0F172A' }}
                 >
-                  <div className="flex items-center space-x-2">
-                    <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                    <span className="font-bold text-slate-800">
-                      {d.decision === 'YES_LET' ? 'YES LET (Replay)' : d.decision === 'STROKE' ? 'STROKE (Point Awarded)' : 'NO LET (Denied)'}
-                    </span>
+                  {pWinner.name ? pWinner.name.charAt(0) : 'P'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-black text-white text-sm leading-tight break-words flex items-center space-x-1.5 flex-wrap">
+                    <span>{pWinner.countryFlag}</span>
+                    <span>{pWinner.name}</span>
                   </div>
-                  <span className="text-[10px] font-mono text-slate-500 font-bold bg-white px-2 py-0.5 rounded-md border border-slate-200/60">
-                    Game {d.gameIndex} ({d.p1Score}-{d.p2Score})
+                  <span className="text-[9px] text-emerald-400 font-bold block mt-0.5">
+                    ✓ WINNER • Grade {pWinner.skillGrade}
                   </span>
                 </div>
-              ))}
+              </div>
+
+              {/* Winner Score */}
+              <span className="text-3xl font-sans font-black text-amber-400 flex-shrink-0 pl-2">
+                {winnerGames}
+              </span>
+            </div>
+
+            {/* Divider Line */}
+            <div className="border-t border-slate-700/70" />
+
+            {/* Bottom Row: Loser (High contrast text-slate-300) */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2.5 min-w-0 flex-1 pr-2">
+                <div
+                  className="w-8 h-8 rounded-full text-slate-200 font-semibold flex items-center justify-center text-xs flex-shrink-0"
+                  style={{ backgroundColor: pLoser.avatarBgColor || '#334155' }}
+                >
+                  {pLoser.name ? pLoser.name.charAt(0) : 'P'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-slate-300 text-xs leading-tight break-words flex items-center space-x-1.5 flex-wrap">
+                    <span>{pLoser.countryFlag}</span>
+                    <span>{pLoser.name}</span>
+                  </div>
+                  <span className="text-[10px] text-slate-300 font-medium block mt-0.5">
+                    Grade {pLoser.skillGrade}
+                  </span>
+                </div>
+              </div>
+
+              {/* Loser Score */}
+              <span className="text-2xl font-sans font-extrabold text-slate-300 flex-shrink-0 pl-2">
+                {loserGames}
+              </span>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Close Button */}
-        <div className="pt-2">
-          <button
-            onClick={onClose}
-            className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-colors cursor-pointer"
-          >
-            Close Scorecard Report
-          </button>
+        {/* 2. White Modal Body */}
+        <div className="p-5 space-y-4">
+          {/* 3. Deep Match Analytics Row (Lightweight Divided Metrics) */}
+          {(() => {
+            const durationParts = getMatchDurationParts(match.totalDurationSeconds || 0);
+            return (
+              <div className="grid grid-cols-3 divide-x divide-slate-100 py-1 text-center">
+                <div className="px-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Duration</span>
+                  <span className="font-extrabold text-slate-900 text-xl leading-tight mt-0.5 inline-flex items-baseline space-x-0.5 justify-center">
+                    <span>{durationParts.val}</span>
+                    <span className="text-xs font-semibold text-slate-400 ml-0.5">{durationParts.unit}</span>
+                  </span>
+                </div>
+
+                <div className="px-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Rallies</span>
+                  <span className="font-extrabold text-slate-900 text-xl leading-tight mt-0.5 block">{totalRallies}</span>
+                </div>
+
+                <div className="px-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Appeals</span>
+                  <span className="font-extrabold text-slate-900 text-xl leading-tight mt-0.5 block">{decisions.length}</span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* 4. Games Breakdown Table + Dedicated Rally Flow Toggle */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center space-x-2">
+                <span className="w-1.5 h-3.5 bg-amber-400 rounded-full shadow-2xs flex-shrink-0" />
+                <h4 className="text-xs font-black text-slate-900 tracking-tight uppercase">
+                  Games Breakdown
+                </h4>
+              </div>
+
+              {/* Dedicated Rally Flow Toggle Button */}
+              <button
+                onClick={() => setShowRallyFlow(!showRallyFlow)}
+                className="py-1 px-2.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-[10px] rounded-lg transition-colors cursor-pointer flex items-center space-x-1 shadow-2xs print:hidden"
+              >
+                <span>{showRallyFlow ? 'Hide Rally Flow ↑' : '📊 Rally Flow ↓'}</span>
+              </button>
+            </div>
+
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
+              {/* Table Header */}
+              <div className="grid grid-cols-5 text-[10px] font-extrabold text-slate-500 bg-slate-100/90 py-2 px-3 text-center uppercase tracking-wider border-b border-slate-200">
+                <span className="col-span-1 text-left">GAME</span>
+                <span className="col-span-2 truncate text-slate-900">{pWinner.name}</span>
+                <span className="col-span-2 truncate text-amber-600">{pLoser.name}</span>
+              </div>
+
+              {/* Table Summary Rows */}
+              {games.length === 0 ? (
+                <div className="p-3 text-center text-xs text-slate-400">
+                  No game stats recorded for this match
+                </div>
+              ) : (
+                games.map((g: GameResult) => {
+                  const winnerScore = isP1Winner ? g.p1Score : g.p2Score;
+                  const loserScore = isP1Winner ? g.p2Score : g.p1Score;
+                  const isWinnerGameWinner = winnerScore > loserScore;
+
+                  return (
+                    <div
+                      key={g.gameNumber}
+                      className="grid grid-cols-5 text-xs py-3 px-3 border-b border-slate-100 last:border-0 items-center text-center font-sans"
+                    >
+                      <div className="col-span-1 text-left font-bold text-slate-500 text-[11px]">
+                        G{g.gameNumber}
+                      </div>
+                      <div className="col-span-2 flex justify-center">
+                        <span
+                          className={
+                            isWinnerGameWinner
+                              ? 'font-black text-slate-900 text-sm'
+                              : 'font-medium text-slate-400 text-xs'
+                          }
+                        >
+                          {winnerScore}
+                        </span>
+                      </div>
+                      <div className="col-span-2 flex justify-center">
+                        <span
+                          className={
+                            !isWinnerGameWinner
+                              ? 'font-black text-amber-600 text-sm'
+                              : 'font-medium text-slate-400 text-xs'
+                          }
+                        >
+                          {loserScore}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* 5. Clean Vertical Match Rally Flow Panel (Opens on [ Rally Flow ] button, hidden in print) */}
+          {showRallyFlow && (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200 print:hidden">
+              {/* Legend & Header */}
+              <div className="flex items-center justify-between text-[10px] font-bold pb-2.5 border-b border-slate-200 uppercase tracking-wider">
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-1.5 text-slate-900">
+                    <span className="w-2.5 h-2.5 bg-slate-900 rounded-2xs inline-block shadow-2xs" />
+                    <span>{pWinner.name}</span>
+                  </div>
+                  <div className="flex items-center space-x-1.5 text-amber-600">
+                    <span className="w-2.5 h-2.5 bg-amber-500 rounded-2xs inline-block shadow-2xs" />
+                    <span>{pLoser.name}</span>
+                  </div>
+                </div>
+
+                {/* Game Ball: Left Outer Accent Line Marker */}
+                <div className="flex items-center space-x-1.5 text-slate-600 font-mono text-[9px] font-extrabold bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+                  <span className="w-1 h-3 bg-amber-400 rounded-full inline-block" />
+                  <span>GAME BALL</span>
+                </div>
+              </div>
+
+              {/* All 4 Game Columns Side-by-Side (Clean Top Alignment, Unified Footer Labels) */}
+              <div className="flex justify-around items-end gap-2 pt-2 pb-1 w-full overflow-x-auto min-h-[180px]">
+                {gameColumns.map((col) => (
+                  <div
+                    key={col.gameNumber}
+                    className="flex flex-col items-center space-y-1.5 flex-1 min-w-[48px] max-w-[72px]"
+                  >
+                    {/* Vertical Stack Column (Bottom-to-Top flex-col-reverse) */}
+                    <div className="w-full bg-white rounded-lg p-1 border border-slate-200/90 shadow-2xs flex flex-col-reverse gap-0 relative overflow-visible">
+                      {col.rallies.map((r, idx) => {
+                        const isWinnerPoint = r.scorer === 'WINNER';
+                        const rallyKey = `${col.gameNumber}-${idx}`;
+                        const isRallySelected = activeRallyKey === rallyKey;
+
+                        const isOwnerChange = idx > 0 && col.rallies[idx - 1].scorer !== r.scorer;
+                        const showOwnerDivider = isOwnerChange || r.isHandout;
+
+                        // Internal 1px 15% opacity hairline quantization notch
+                        const internalNotchClass = isWinnerPoint
+                          ? 'border-b border-white/15'
+                          : 'border-b border-slate-950/15';
+
+                        return (
+                          <div
+                            key={idx}
+                            onClick={() => setActiveRallyKey(isRallySelected ? null : rallyKey)}
+                            style={{ height: '14px' }}
+                            className={`w-full transition-all relative cursor-pointer ${
+                              isWinnerPoint ? 'bg-slate-900 hover:bg-slate-800' : 'bg-amber-400 hover:bg-amber-500'
+                            } ${showOwnerDivider ? 'border-b-2 border-white' : internalNotchClass} ${
+                              isRallySelected ? 'ring-2 ring-white shadow-lg z-30' : ''
+                            }`}
+                          >
+                            {/* Game Ball: Left Outer Accent Bar (Zero column score distortion!) */}
+                            {r.isGameBall && (
+                              <span
+                                className="absolute -left-1.5 top-0.5 bottom-0.5 w-[3px] bg-amber-400 rounded-full shadow-2xs z-20"
+                                title="Game Ball Rally"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Bottom Unified Label: G1 · 11-8 */}
+                    <div className="font-mono text-center text-[11px] flex items-center space-x-1 justify-center pt-0.5">
+                      <span className="text-slate-500 font-bold text-[10px]">G{col.gameNumber} ·</span>
+                      <span
+                        className={
+                          col.isWinnerGameWinner
+                            ? 'font-black text-slate-900'
+                            : 'font-medium text-slate-400'
+                        }
+                      >
+                        {col.winnerScore}
+                      </span>
+                      <span className="text-slate-300 font-normal">-</span>
+                      <span
+                        className={
+                          !col.isWinnerGameWinner
+                            ? 'font-black text-amber-600'
+                            : 'font-medium text-slate-400'
+                        }
+                      >
+                        {col.loserScore}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Active Tap Rally Detail Bar (Left-Grouped) */}
+              {activeRallyKey && (() => {
+                const [gNum, rIdxStr] = activeRallyKey.split('-');
+                const gNumNum = parseInt(gNum, 10);
+                const rIdx = parseInt(rIdxStr, 10);
+                const targetCol = gameColumns.find((c) => c.gameNumber === gNumNum);
+                const r = targetCol ? targetCol.rallies[rIdx] : null;
+                if (!r) return null;
+
+                const isWinnerScored = r.scorer === 'WINNER';
+
+                return (
+                  <div className="py-1.5 px-3 bg-slate-900 text-white rounded-xl text-xs flex items-center space-x-2 font-mono animate-in fade-in duration-100 shadow-md">
+                    <span className="text-slate-300">
+                      G{gNumNum} Rally #{r.idx} · {isWinnerScored ? pWinner.name : pLoser.name}
+                    </span>
+                    <span className="text-amber-400 font-bold ml-2">
+                      {r.winnerScore} — {r.loserScore}
+                    </span>
+                    {r.isHandout && (
+                      <span className="text-[10px] text-amber-400 font-bold ml-1">• Handout</span>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* 6. Referee Decision Logs if any */}
+          {decisions && decisions.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center space-x-2">
+                  <span className="w-1.5 h-3.5 bg-amber-400 rounded-full shadow-2xs flex-shrink-0" />
+                  <h4 className="text-xs font-black text-slate-900 tracking-tight uppercase">
+                    Referee Appeals Log
+                  </h4>
+                </div>
+                <span className="text-[10px] font-semibold text-slate-500">
+                  {letsCount} Let • {strokesCount} Stroke • {noLetsCount} No Let
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                {decisions.map((d) => (
+                  <div
+                    key={d.id}
+                    className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                      <span className="font-bold text-slate-800">
+                        {d.decision === 'YES_LET' ? 'YES LET (Replay)' : d.decision === 'STROKE' ? 'STROKE (Point Awarded)' : 'NO LET (Denied)'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-500 font-bold bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                      Game {d.gameIndex} ({d.p1Score}-{d.p2Score})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 7. Action Footer Toolbar */}
+          <div className="pt-2 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={handleCopySummary}
+                className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200/80 flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
+              >
+                {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4 text-slate-500" />}
+                <span>{copied ? 'Copied!' : 'Copy Summary'}</span>
+              </button>
+
+              <button
+                onClick={handlePrint}
+                className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl shadow-md flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
+              >
+                <Printer className="w-4 h-4 text-amber-400" />
+                <span>Print / Export</span>
+              </button>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="w-full py-2 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors cursor-pointer text-center"
+            >
+              Close Scorecard
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
-

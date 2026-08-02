@@ -162,7 +162,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose,
 
               {/* Boast Shot Trajectory Diagram */}
               <div className="pt-2">
-                <BoastDiagram animated={true} caption="Wall Rebound (Boast) Trajectory: Side wall → Front wall → Far corner" />
+                <BoastDiagram animated={true} />
               </div>
             </div>
 
@@ -263,7 +263,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ isOpen, onClose,
 
             {/* Court Plan Top View Diagram */}
             <div className="pt-1">
-              <CourtPlanDiagram highlight="target-quarter" caption="Top View: Serve from Service Box must land in opposite Back-Quarter court" />
+              <CourtPlanDiagram highlight="target-quarter" />
             </div>
 
             {/* Serve Target Box */}
