@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react';
 import type { Player } from '../types/squash';
 import { useSquash } from '../context/SquashContext';
-import { X, Trophy, Flame, Activity, Clock } from 'lucide-react';
+import { getPlayerClubId } from '../utils/clubUtils';
+import { CLUBS_LIST } from './ClubSelectorModal';
+import { X, Trophy, Flame, Activity, Clock, MapPin } from 'lucide-react';
 
 interface PlayerProfileModalProps {
   player: Player | null;
@@ -34,6 +36,8 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
     player.totalMatches > 0
       ? Math.round((player.wins / player.totalMatches) * 100)
       : 0;
+
+  const club = CLUBS_LIST.find((c) => c.id === getPlayerClubId(player));
 
   // Filter completed matches involving this player
   const playerMatches = matches.filter(
@@ -91,6 +95,12 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
             <p className="text-xs font-medium text-slate-500">
               {player.countryCode} • {player.handedness}-handed Player
             </p>
+            {club && (
+              <p className="text-[11px] font-semibold text-slate-400 flex items-center space-x-1 pt-0.5">
+                <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                <span className="truncate">{club.name}</span>
+              </p>
+            )}
           </div>
         </div>
 
@@ -134,10 +144,17 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
           ) : (
             <div className="space-y-2">
               {playerMatches.map((m) => {
-                const isWinner = m.winnerId === player.id;
                 const p1 = m.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🇳🇿' };
                 const p2 = m.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🇳🇿' };
-                const opponent = p1.id === player.id ? p2 : p1;
+                const isP1 = p1.id === player.id;
+                const opponent = isP1 ? p2 : p1;
+
+                // Games won from this player's perspective, not raw p1/p2 order
+                const playerGamesWon = isP1 ? m.p1GamesWon ?? 0 : m.p2GamesWon ?? 0;
+                const opponentGamesWon = isP1 ? m.p2GamesWon ?? 0 : m.p1GamesWon ?? 0;
+                const isWinner = m.winnerId
+                  ? m.winnerId === player.id
+                  : playerGamesWon > opponentGamesWon;
 
                 return (
                   <div
@@ -148,21 +165,25 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                         onSelectMatchDetail(m.id);
                       }
                     }}
-                    className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-100 flex items-center justify-between transition-colors cursor-pointer"
+                    className={`p-3 rounded-2xl border flex items-center justify-between transition-colors cursor-pointer ${
+                      isWinner
+                        ? 'bg-emerald-50/60 border-emerald-200 hover:bg-emerald-50'
+                        : 'bg-rose-50/50 border-rose-200 hover:bg-rose-50'
+                    }`}
                   >
-                    <div className="space-y-1">
+                    <div className="space-y-1 min-w-0 pr-2">
                       <div className="flex items-center space-x-2">
-                        <span className="text-xs font-bold text-slate-900">
-                          vs {opponent.countryFlag} {opponent.name}
-                        </span>
                         <span
-                          className={`text-[9px] font-extrabold px-2 py-0.5 rounded-lg ${
+                          className={`text-[9px] font-extrabold px-2 py-0.5 rounded-lg flex-shrink-0 ${
                             isWinner
                               ? 'bg-emerald-100 text-emerald-900'
                               : 'bg-rose-100 text-rose-900'
                           }`}
                         >
                           {isWinner ? 'WON' : 'LOST'}
+                        </span>
+                        <span className="text-xs font-bold text-slate-900 truncate">
+                          vs {opponent.countryFlag} {opponent.name}
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-500 flex items-center space-x-2">
@@ -174,8 +195,13 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                       </p>
                     </div>
 
-                    <span className="text-sm font-black text-slate-900 bg-white px-2.5 py-1 rounded-xl shadow-2xs">
-                      {m.p1GamesWon ?? 0} : {m.p2GamesWon ?? 0}
+                    <span
+                      className={`text-sm font-black px-2.5 py-1 rounded-xl shadow-2xs flex-shrink-0 ${
+                        isWinner ? 'bg-emerald-500 text-white' : 'bg-white text-slate-900'
+                      }`}
+                      title={`${player.name} ${playerGamesWon} - ${opponentGamesWon} ${opponent.name}`}
+                    >
+                      {playerGamesWon} - {opponentGamesWon}
                     </span>
                   </div>
                 );

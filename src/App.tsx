@@ -15,12 +15,14 @@ import { AdvancedStatsModal } from './components/AdvancedStatsModal';
 import { HowToPlayModal } from './components/HowToPlayModal';
 import { HowToUseAppModal } from './components/HowToUseAppModal';
 import { PlayerProfileModal } from './components/PlayerProfileModal';
-import type { Player } from './types/squash';
+import { CLUBS_LIST } from './components/ClubSelectorModal';
+import type { Player, Club } from './types/squash';
 import { Smartphone, Monitor, Wifi, Signal, BatteryMedium } from 'lucide-react';
 
 const MainContainer: React.FC = () => {
   const { activeMatchState, getMatchById } = useSquash();
 
+  const [activeClub, setActiveClub] = useState<Club>(CLUBS_LIST[0]);
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [isNewMatchOpen, setIsNewMatchOpen] = useState<boolean>(false);
   const [isNewCompetitionOpen, setIsNewCompetitionOpen] = useState<boolean>(false);
@@ -97,6 +99,8 @@ const MainContainer: React.FC = () => {
         <div className="flex-1 overflow-y-auto app-bg-gradient relative">
           {activeTab === 'home' && (
             <DashboardView
+              activeClub={activeClub}
+              onSelectClub={(c) => setActiveClub(c)}
               openNewMatchModal={() => setIsNewMatchOpen(true)}
               openNewCompetitionModal={() => setIsNewCompetitionOpen(true)}
               openAddPlayerModal={() => setIsAddPlayerOpen(true)}
@@ -114,18 +118,23 @@ const MainContainer: React.FC = () => {
             <ScoreboardView
               openNewMatchModal={() => setIsNewMatchOpen(true)}
               onExitToHome={() => setActiveTab('home')}
+              onSelectPlayerProfile={(p) => setSelectedPlayerProfile(p)}
             />
           )}
 
           {activeTab === 'players' && (
             <PlayersView
+              activeClub={activeClub}
               openAddPlayerModal={() => setIsAddPlayerOpen(true)}
               onSelectPlayerProfile={(p) => setSelectedPlayerProfile(p)}
             />
           )}
 
           {activeTab === 'history' && (
-            <MatchHistoryView selectMatchDetail={(id) => setSelectedMatchId(id)} />
+            <MatchHistoryView
+              activeClub={activeClub}
+              selectMatchDetail={(id) => setSelectedMatchId(id)}
+            />
           )}
         </div>
 
@@ -147,11 +156,13 @@ const MainContainer: React.FC = () => {
         <AddPlayerModal
           isOpen={isAddPlayerOpen}
           onClose={() => setIsAddPlayerOpen(false)}
+          activeClub={activeClub}
         />
 
         <MatchDetailModal
           match={selectedMatch}
           onClose={() => setSelectedMatchId(null)}
+          onSelectPlayerProfile={(player) => setSelectedPlayerProfile(player)}
         />
 
         <PlayerProfileModal

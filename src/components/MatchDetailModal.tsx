@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import type { SquashMatch, GameResult } from '../types/squash';
-import { X, ShieldAlert, Calendar, Share2, Printer, Check } from 'lucide-react';
+import type { SquashMatch, GameResult, Player } from '../types/squash';
+import { X, ShieldAlert, Calendar, Share2, Printer, Check, User } from 'lucide-react';
 import { formatFullDateTime, formatMatchDuration, getMatchDurationParts } from '../utils/dateUtils';
 
 interface MatchDetailModalProps {
   match: SquashMatch | null;
   onClose: () => void;
+  onSelectPlayerProfile?: (player: Player) => void;
 }
 
 interface RallySegment {
@@ -118,7 +119,7 @@ const calculateGameRallyRibbon = (
   return { rallies, winnerMaxStreak, loserMaxStreak };
 };
 
-export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClose }) => {
+export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClose, onSelectPlayerProfile }) => {
   const [copied, setCopied] = useState<boolean>(false);
   const [showRallyFlow, setShowRallyFlow] = useState<boolean>(false);
   const [activeRallyKey, setActiveRallyKey] = useState<string | null>(null);
@@ -229,23 +230,28 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
             </span>
           </div>
 
-          {/* Vertical Winner & Loser Scorecard Panel */}
+          {/* Vertical Winner & Loser Clickable Scorecard Panel */}
           <div className="bg-slate-800/90 rounded-xl p-3.5 border border-slate-700/80 space-y-2.5">
-            {/* Top Row: Winner */}
-            <div className="flex items-center justify-between">
+            {/* Top Row: Clickable Winner Profile */}
+            <div
+              onClick={() => onSelectPlayerProfile?.(pWinner)}
+              className="flex items-center justify-between cursor-pointer hover:bg-slate-700/60 p-1.5 -mx-1.5 rounded-lg transition-colors group"
+              title={`View ${pWinner.name}'s profile`}
+            >
               <div className="flex items-center space-x-2.5 min-w-0 flex-1 pr-2">
                 <div
-                  className="w-8 h-8 rounded-full text-white font-bold flex items-center justify-center text-xs shadow-xs ring-2 ring-emerald-400 flex-shrink-0"
+                  className="w-8 h-8 rounded-full text-white font-bold flex items-center justify-center text-xs shadow-xs ring-2 ring-amber-400 flex-shrink-0 group-hover:scale-105 transition-transform"
                   style={{ backgroundColor: pWinner.avatarBgColor || '#0F172A' }}
                 >
                   {pWinner.name ? pWinner.name.charAt(0) : 'P'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-black text-white text-sm leading-tight break-words flex items-center space-x-1.5 flex-wrap">
+                  <div className="font-black text-white text-sm leading-tight break-words flex items-center space-x-1.5 flex-wrap group-hover:text-amber-400 transition-colors">
                     <span>{pWinner.countryFlag}</span>
                     <span>{pWinner.name}</span>
+                    <User className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <span className="text-[9px] text-emerald-400 font-bold block mt-0.5">
+                  <span className="text-[9px] text-amber-400 font-bold block mt-0.5">
                     ✓ WINNER • Grade {pWinner.skillGrade}
                   </span>
                 </div>
@@ -260,19 +266,24 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
             {/* Divider Line */}
             <div className="border-t border-slate-700/70" />
 
-            {/* Bottom Row: Loser (High contrast text-slate-300) */}
-            <div className="flex items-center justify-between">
+            {/* Bottom Row: Clickable Loser Profile */}
+            <div
+              onClick={() => onSelectPlayerProfile?.(pLoser)}
+              className="flex items-center justify-between cursor-pointer hover:bg-slate-700/60 p-1.5 -mx-1.5 rounded-lg transition-colors group"
+              title={`View ${pLoser.name}'s profile`}
+            >
               <div className="flex items-center space-x-2.5 min-w-0 flex-1 pr-2">
                 <div
-                  className="w-8 h-8 rounded-full text-slate-200 font-semibold flex items-center justify-center text-xs flex-shrink-0"
+                  className="w-8 h-8 rounded-full text-slate-200 font-semibold flex items-center justify-center text-xs flex-shrink-0 group-hover:scale-105 transition-transform"
                   style={{ backgroundColor: pLoser.avatarBgColor || '#334155' }}
                 >
                   {pLoser.name ? pLoser.name.charAt(0) : 'P'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-slate-300 text-xs leading-tight break-words flex items-center space-x-1.5 flex-wrap">
+                  <div className="font-medium text-slate-300 text-xs leading-tight break-words flex items-center space-x-1.5 flex-wrap group-hover:text-white transition-colors">
                     <span>{pLoser.countryFlag}</span>
                     <span>{pLoser.name}</span>
+                    <User className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   <span className="text-[10px] text-slate-300 font-medium block mt-0.5">
                     Grade {pLoser.skillGrade}
@@ -336,11 +347,23 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xs">
-              {/* Table Header */}
+              {/* Table Header with Clickable Player Names */}
               <div className="grid grid-cols-5 text-[10px] font-extrabold text-slate-500 bg-slate-100/90 py-2 px-3 text-center uppercase tracking-wider border-b border-slate-200">
                 <span className="col-span-1 text-left">GAME</span>
-                <span className="col-span-2 truncate text-slate-900">{pWinner.name}</span>
-                <span className="col-span-2 truncate text-amber-600">{pLoser.name}</span>
+                <span
+                  onClick={() => onSelectPlayerProfile?.(pWinner)}
+                  className="col-span-2 truncate text-slate-900 cursor-pointer hover:underline hover:text-amber-600 transition-colors"
+                  title={`View ${pWinner.name}'s profile`}
+                >
+                  {pWinner.name}
+                </span>
+                <span
+                  onClick={() => onSelectPlayerProfile?.(pLoser)}
+                  className="col-span-2 truncate text-amber-600 cursor-pointer hover:underline hover:text-amber-700 transition-colors"
+                  title={`View ${pLoser.name}'s profile`}
+                >
+                  {pLoser.name}
+                </span>
               </div>
 
               {/* Table Summary Rows */}
@@ -397,11 +420,19 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
               {/* Legend & Header */}
               <div className="flex items-center justify-between text-[10px] font-bold pb-2.5 border-b border-slate-200 uppercase tracking-wider">
                 <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-1.5 text-slate-900">
+                  <div
+                    onClick={() => onSelectPlayerProfile?.(pWinner)}
+                    className="flex items-center space-x-1.5 text-slate-900 cursor-pointer hover:underline"
+                    title={`View ${pWinner.name}'s profile`}
+                  >
                     <span className="w-2.5 h-2.5 bg-slate-900 rounded-2xs inline-block shadow-2xs" />
                     <span>{pWinner.name}</span>
                   </div>
-                  <div className="flex items-center space-x-1.5 text-amber-600">
+                  <div
+                    onClick={() => onSelectPlayerProfile?.(pLoser)}
+                    className="flex items-center space-x-1.5 text-amber-600 cursor-pointer hover:underline"
+                    title={`View ${pLoser.name}'s profile`}
+                  >
                     <span className="w-2.5 h-2.5 bg-amber-500 rounded-2xs inline-block shadow-2xs" />
                     <span>{pLoser.name}</span>
                   </div>
@@ -414,12 +445,12 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
                 </div>
               </div>
 
-              {/* All 4 Game Columns Side-by-Side (Clean Top Alignment, Unified Footer Labels) */}
-              <div className="flex justify-around items-end gap-2 pt-2 pb-1 w-full overflow-x-auto min-h-[180px]">
+              {/* All Game Columns Side-by-Side (Clean Top Alignment, Single-Line Footer Labels) */}
+              <div className="flex justify-around items-end gap-1.5 pt-2 pb-1 w-full overflow-x-auto min-h-[180px]">
                 {gameColumns.map((col) => (
                   <div
                     key={col.gameNumber}
-                    className="flex flex-col items-center space-y-1.5 flex-1 min-w-[48px] max-w-[72px]"
+                    className="flex flex-col items-center space-y-1.5 flex-1 min-w-[40px] max-w-[68px]"
                   >
                     {/* Vertical Stack Column (Bottom-to-Top flex-col-reverse) */}
                     <div className="w-full bg-white rounded-lg p-1 border border-slate-200/90 shadow-2xs flex flex-col-reverse gap-0 relative overflow-visible">
@@ -459,9 +490,9 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
                       })}
                     </div>
 
-                    {/* Bottom Unified Label: G1 · 11-8 */}
-                    <div className="font-mono text-center text-[11px] flex items-center space-x-1 justify-center pt-0.5">
-                      <span className="text-slate-500 font-bold text-[10px]">G{col.gameNumber} ·</span>
+                    {/* Bottom Unified Label: G1 · 11-8 (whitespace-nowrap prevents 2-line wrap layout distortion) */}
+                    <div className="font-mono text-center text-[10px] whitespace-nowrap flex items-center space-x-0.5 justify-center pt-0.5 w-full">
+                      <span className="text-slate-500 font-bold text-[9px]">G{col.gameNumber}·</span>
                       <span
                         className={
                           col.isWinnerGameWinner

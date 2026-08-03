@@ -1,15 +1,19 @@
 import React from 'react';
 import { useSquash } from '../context/SquashContext';
-import type { Player } from '../types/squash';
+import type { Player, Club } from '../types/squash';
 import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { getPlayersForClub } from '../utils/clubUtils';
 
 interface PlayersViewProps {
   openAddPlayerModal: () => void;
   onSelectPlayerProfile?: (player: Player) => void;
+  activeClub?: Club;
 }
 
-export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, onSelectPlayerProfile }) => {
+export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, onSelectPlayerProfile, activeClub }) => {
   const { players, deletePlayer } = useSquash();
+
+  const clubPlayers = activeClub ? getPlayersForClub(players, activeClub.id) : players;
 
   const getWinRate = (wins: number, total: number) => {
     if (!total) return '0%';
@@ -21,7 +25,7 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, on
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-slate-900 tracking-tight">Players</h1>
-          <p className="text-xs text-slate-500">{players.length} active profiles</p>
+          <p className="text-xs text-slate-500">{clubPlayers.length} active profiles</p>
         </div>
         <button
           onClick={openAddPlayerModal}
@@ -33,7 +37,7 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, on
       </div>
 
       <div className="space-y-3">
-        {players.map((player) => {
+        {clubPlayers.map((player) => {
           const winRate = getWinRate(player.wins, player.totalMatches);
           return (
             <div

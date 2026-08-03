@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
 import { ClubSelectorModal, CLUBS_LIST } from './ClubSelectorModal';
 import type { Club, Player } from '../types/squash';
 import { Play, Plus, Activity, ChevronRight, ChevronDown, Clock, Settings, Trophy, MapPin, Check } from 'lucide-react';
 import { formatMatchDateGroup } from '../utils/dateUtils';
+import { getPlayersForClub, getMatchesForClub } from '../utils/clubUtils';
 
 interface DashboardViewProps {
   openNewMatchModal: () => void;
@@ -13,9 +14,12 @@ interface DashboardViewProps {
   openSettingsModal: () => void;
   openAdvancedStatsModal: () => void;
   openHowToPlayModal: () => void;
+  openHowToUseAppModal?: () => void;
   onSelectPlayerProfile: (player: Player) => void;
   setActiveTab: (tab: 'home' | 'match' | 'players' | 'history') => void;
   selectMatchDetail: (matchId: string) => void;
+  activeClub?: Club;
+  onSelectClub?: (club: Club) => void;
 }
 
 export const SquashBallIcon: React.FC<{ className?: string }> = ({ className = 'w-6 h-6' }) => (
@@ -33,85 +37,59 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   openSettingsModal,
   openAdvancedStatsModal,
   openHowToPlayModal,
+  openHowToUseAppModal,
   onSelectPlayerProfile,
   setActiveTab,
   selectMatchDetail,
+  activeClub: propActiveClub,
+  onSelectClub,
 }) => {
   const { matches, players, activeMatchState } = useSquash();
 
-  const [activeClub, setActiveClub] = useState<Club>(CLUBS_LIST[0]);
+  const [internalClub, setInternalClub] = useState<Club>(CLUBS_LIST[0]);
+  const activeClub = propActiveClub || internalClub;
+
+  const handleSelectClub = (club: Club) => {
+    setInternalClub(club);
+    if (onSelectClub) onSelectClub(club);
+  };
+
   const [isClubSelectorOpen, setIsClubSelectorOpen] = useState<boolean>(false);
 
-  const [randomFact, setRandomFact] = useState<{
-    fullName: string;
-    flag: string;
-    subtitle: string;
-    icon: string;
-    playerObj?: Player;
-  } | null>(null);
+  // Retrieve players and matches belonging to active club
+  const activePlayers = getPlayersForClub(players, activeClub.id);
+  const clubMatches = getMatchesForClub(matches, activeClub.id);
 
-  const recentMatches = matches.slice(0, 3);
-  const topPlayers = [...players].sort((a, b) => b.wins - a.wins).slice(0, 3);
+  const recentMatches = clubMatches.slice(0, 3);
+  const topPlayers = [...activePlayers].sort((a, b) => b.wins - a.wins).slice(0, 3);
 
-  // Calculate average match duration in minutes
+  // Calculate average match duration in minutes for active club
   const avgMatchDurationMins =
-    matches.length > 0
+    clubMatches.length > 0
       ? Math.round(
-          matches.reduce((acc, m) => acc + m.totalDurationSeconds, 0) / matches.length / 60
+          clubMatches.reduce((acc, m) => acc + m.totalDurationSeconds, 0) / clubMatches.length / 60
         )
       : 32;
 
-  // Generate randomized club highlight spotlight leader
-  useEffect(() => {
-    const topWinRatePlayer = [...players]
+  // Stable spotlight leader for active club (Win Rate Leader)
+  const spotlightLeader = useMemo(() => {
+    if (activePlayers.length === 0) return null;
+
+    const topWinRatePlayer = [...activePlayers]
       .filter((p) => p.totalMatches > 0)
       .sort((a, b) => b.wins / b.totalMatches - a.wins / a.totalMatches)[0];
 
-    const mostWinsPlayer = [...players].sort((a, b) => b.wins - a.wins)[0];
-    const rookiePlayer = players.find((p) => p.totalMatches === 0);
+    const leader = topWinRatePlayer || activePlayers[0];
+    const wr = leader.totalMatches > 0 ? Math.round((leader.wins / leader.totalMatches) * 100) : 0;
 
-    const facts = [];
-
-    if (topWinRatePlayer) {
-      const wr = Math.round((topWinRatePlayer.wins / topWinRatePlayer.totalMatches) * 100);
-      facts.push({
-        fullName: topWinRatePlayer.name,
-        flag: topWinRatePlayer.countryFlag,
-        subtitle: `Win Rate Leader (${wr}%)`,
-        icon: '👑',
-        playerObj: topWinRatePlayer,
-      });
-    }
-
-    if (mostWinsPlayer) {
-      facts.push({
-        fullName: mostWinsPlayer.name,
-        flag: mostWinsPlayer.countryFlag,
-        subtitle: `Most Wins Leader (${mostWinsPlayer.wins} Wins)`,
-        icon: '🏆',
-        playerObj: mostWinsPlayer,
-      });
-    }
-
-    if (rookiePlayer) {
-      facts.push({
-        fullName: rookiePlayer.name,
-        flag: rookiePlayer.countryFlag,
-        subtitle: `Rookie Spotlight (0 matches)`,
-        icon: '🌟',
-        playerObj: rookiePlayer,
-      });
-    }
-
-    const selected = facts[Math.floor(Math.random() * facts.length)] || {
-      fullName: 'Liam Walker',
-      flag: '🇳🇿',
-      subtitle: 'Club Leader',
+    return {
+      fullName: leader.name,
+      flag: leader.countryFlag,
+      subtitle: `Win Rate Leader (${wr}%)`,
       icon: '👑',
+      playerObj: leader,
     };
-
-    setRandomFact(selected);
-  }, [players]);
+  }, [activeClub.id, players]);
 
   const formatDuration = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
@@ -153,7 +131,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Hero Mascot Banner */}
-      <LettyBanner variant="home" onOpenHowToPlay={openHowToPlayModal} />
+      <LettyBanner
+        variant="home"
+        onOpenHowToPlay={openHowToPlayModal}
+        onOpenHowToUseApp={openHowToUseAppModal}
+      />
 
       {/* Centered Main Actions Section */}
       <div className="flex flex-col items-center justify-center space-y-3 text-center pt-0 pb-1">
@@ -183,7 +165,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-2">
               <span className="bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg">
-                Match Live • Set {activeMatchState.currentSetIndex}
+                Match Live • Game {activeMatchState.currentGameIndex || 1}
               </span>
               <span className="text-xs font-mono text-slate-300">
                 {Math.floor(activeMatchState.timerSeconds / 60)}:
@@ -201,7 +183,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="px-3 py-1 bg-white/10 rounded-xl text-xs font-bold text-slate-300">
-                {activeMatchState.match.p1SetsWon} : {activeMatchState.match.p2SetsWon}
+                {activeMatchState.match.p1GamesWon} : {activeMatchState.match.p2GamesWon}
               </div>
 
               <div className="text-right">
@@ -239,8 +221,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div className="space-y-2">
           {recentMatches.map((m) => {
-            const isP1Winner = m.winnerId === m.player1.id || m.p1SetsWon > m.p2SetsWon;
-            const isP2Winner = m.winnerId === m.player2.id || m.p2SetsWon > m.p1SetsWon;
+            const isP1Winner = m.winnerId === m.player1.id || m.p1GamesWon > m.p2GamesWon;
+            const isP2Winner = m.winnerId === m.player2.id || m.p2GamesWon > m.p1GamesWon;
 
             return (
               <div
@@ -288,7 +270,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       )}
                     </div>
                     <span className={`text-sm font-black ${isP1Winner ? 'text-slate-900' : 'text-slate-400'}`}>
-                      {m.p1SetsWon}
+                      {m.p1GamesWon}
                     </span>
                   </div>
 
@@ -310,7 +292,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       )}
                     </div>
                     <span className={`text-sm font-black ${isP2Winner ? 'text-slate-900' : 'text-slate-400'}`}>
-                      {m.p2SetsWon}
+                      {m.p2GamesWon}
                     </span>
                   </div>
                 </div>
@@ -400,12 +382,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* 3-Tile Aggregate Metrics Grid */}
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-center">
-            <p className="text-lg font-black text-slate-900">{matches.length}</p>
+            <p className="text-lg font-black text-slate-900">{clubMatches.length}</p>
             <p className="text-[10px] text-slate-500 font-medium mt-0.5">Club Matches</p>
           </div>
 
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-center">
-            <p className="text-lg font-black text-amber-500">{players.length}</p>
+            <p className="text-lg font-black text-amber-500">{activePlayers.length}</p>
             <p className="text-[10px] text-slate-500 font-medium mt-0.5">Club Roster</p>
           </div>
 
@@ -416,29 +398,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Dedicated Separate "Club Spotlight Leader" Card */}
-        <div
-          onClick={() => randomFact?.playerObj && onSelectPlayerProfile(randomFact.playerObj)}
-          className="group bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-slate-50 p-3 rounded-xl border border-amber-200/80 flex items-center justify-between cursor-pointer hover:border-amber-300 transition-colors"
-        >
-          <div className="flex items-center space-x-2.5 min-w-0">
-            <span className="text-base flex-shrink-0">{randomFact?.icon || '👑'}</span>
-            <div className="min-w-0">
-              <span className="text-[9px] font-black uppercase tracking-wider text-amber-800 block">
-                {randomFact?.subtitle || 'Club Leader'}
+        {spotlightLeader && (
+          <div
+            onClick={() => spotlightLeader.playerObj && onSelectPlayerProfile(spotlightLeader.playerObj)}
+            className="group bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-slate-50 p-3 rounded-xl border border-amber-200/80 flex items-center justify-between cursor-pointer hover:border-amber-300 transition-colors"
+          >
+            <div className="flex items-center space-x-2.5 min-w-0">
+              <span className="text-base flex-shrink-0">{spotlightLeader.icon}</span>
+              <div className="min-w-0">
+                <span className="text-[9px] font-black uppercase tracking-wider text-amber-800 block">
+                  {spotlightLeader.subtitle}
+                </span>
+                <p className="text-xs font-bold text-slate-900 truncate">
+                  {spotlightLeader.flag} {spotlightLeader.fullName}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-1 flex-shrink-0">
+              <span className="text-[10px] font-extrabold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-lg">
+                Profile
               </span>
-              <p className="text-xs font-bold text-slate-900 truncate">
-                {randomFact?.flag} {randomFact?.fullName}
-              </p>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 transition-transform" />
             </div>
           </div>
-
-          <div className="flex items-center space-x-1 flex-shrink-0">
-            <span className="text-[10px] font-extrabold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-lg">
-              Profile
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 transition-transform" />
-          </div>
-        </div>
+        )}
       </div>
 
       {/* 4. Tips from Letty Card */}
@@ -459,7 +443,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <ClubSelectorModal
         isOpen={isClubSelectorOpen}
         activeClubId={activeClub.id}
-        onSelectClub={(c) => setActiveClub(c)}
+        onSelectClub={handleSelectClub}
         onClose={() => setIsClubSelectorOpen(false)}
       />
     </div>

@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
-import type { NZSquashGrade, Handedness } from '../types/squash';
+import type { NZSquashGrade, Handedness, Club } from '../types/squash';
 import { WORLD_COUNTRIES, DEFAULT_COUNTRY } from '../utils/countries';
 import { X, UserPlus, Search, Globe } from 'lucide-react';
 
 interface AddPlayerModalProps {
   isOpen: boolean;
   onClose: () => void;
+  activeClub?: Club;
 }
 
-export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose }) => {
+export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose, activeClub }) => {
   const { addPlayer } = useSquash();
 
   const [name, setName] = useState('');
@@ -43,7 +44,8 @@ export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose 
       selectedCountry.flag,
       selectedCountry.code,
       handedness,
-      selectedColor
+      selectedColor,
+      activeClub?.id
     );
     setName('');
     onClose();

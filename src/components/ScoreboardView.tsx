@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
 import { MatchDetailModal } from './MatchDetailModal';
-import type { DecisionType, GameResult } from '../types/squash';
+import type { DecisionType, GameResult, Player } from '../types/squash';
 import {
   FileText,
   Plus,
@@ -19,16 +19,18 @@ import {
   RefreshCw,
   Trash2,
   AlertTriangle,
+  User,
 } from 'lucide-react';
 
 interface ScoreboardViewProps {
   openNewMatchModal?: () => void;
   onExitToHome: () => void;
+  onSelectPlayerProfile?: (player: Player) => void;
 }
 
 type DestructiveActionType = 'RESET_GAME' | 'RESET_MATCH' | 'ABANDON_MATCH' | null;
 
-export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome }) => {
+export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, onSelectPlayerProfile }) => {
   const {
     activeMatchState,
     recordPoint,
@@ -755,30 +757,45 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome }) 
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-950 bg-amber-400 px-3 py-1 rounded-full shadow-xs">
                       MATCH CHAMPION
                     </span>
-                    <h2 className="text-xl font-black text-slate-900 mt-2 flex items-center justify-center space-x-1.5">
+                    <h2
+                      onClick={() => onSelectPlayerProfile?.(winnerPlayer)}
+                      className="text-xl font-black text-slate-900 mt-2 flex items-center justify-center space-x-1.5 cursor-pointer hover:underline"
+                      title={`View ${winnerPlayer.name}'s profile`}
+                    >
                       <span>{matchWinnerFlag}</span>
                       <span>{matchWinnerName}</span>
+                      <User className="w-4 h-4 text-slate-400" />
                     </h2>
                   </div>
 
-                  {/* Winner-First Score Bar */}
-                  <div className="bg-gradient-to-r from-amber-500/10 via-amber-400/20 to-amber-500/10 border border-amber-300/80 p-3 rounded-2xl flex items-center justify-between px-3.5 my-2 shadow-2xs">
-                    <div className="text-left min-w-0 flex-1">
-                      <span className="font-extrabold text-slate-900 text-xs block truncate">
-                        {winnerPlayer.countryFlag} {winnerPlayer.name}
-                      </span>
-                      <span className="text-[9px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-md inline-block mt-0.5">
-                        ✓ WINNER
+                  {/* Winner-First Score Bar (Pure Amber + Navy palette, Zero Green, Pixel-perfect baseline & flag alignment) */}
+                  <div className="bg-amber-500/10 border border-amber-300/80 p-3 rounded-2xl flex items-center justify-between px-3.5 my-2 shadow-2xs">
+                    {/* Left Player (Winner) */}
+                    <div
+                      onClick={() => onSelectPlayerProfile?.(winnerPlayer)}
+                      className="text-left min-w-0 flex-1 flex items-center space-x-1.5 cursor-pointer hover:opacity-80 transition-opacity"
+                      title={`View ${winnerPlayer.name}'s profile`}
+                    >
+                      <span className="text-xs">{winnerPlayer.countryFlag}</span>
+                      <span className="font-extrabold text-slate-900 text-xs truncate hover:underline">
+                        {winnerPlayer.name}
                       </span>
                     </div>
 
-                    <div className="text-center font-mono font-black text-2xl text-slate-900 px-2 flex-shrink-0 tracking-tight">
+                    {/* Center Score */}
+                    <div className="text-center font-mono font-black text-2xl text-slate-900 px-3 flex-shrink-0 tracking-tight">
                       {winnerGames} <span className="text-slate-400 font-normal text-lg mx-0.5">—</span> {loserGames}
                     </div>
 
-                    <div className="text-right min-w-0 flex-1">
-                      <span className="font-bold text-slate-600 text-xs block truncate">
-                        {loserPlayer.name} {loserPlayer.countryFlag}
+                    {/* Right Player (Loser) */}
+                    <div
+                      onClick={() => onSelectPlayerProfile?.(loserPlayer)}
+                      className="text-right min-w-0 flex-1 flex items-center justify-end space-x-1.5 cursor-pointer hover:opacity-80 transition-opacity"
+                      title={`View ${loserPlayer.name}'s profile`}
+                    >
+                      <span className="text-xs">{loserPlayer.countryFlag}</span>
+                      <span className="font-bold text-slate-500 text-xs truncate hover:underline">
+                        {loserPlayer.name}
                       </span>
                     </div>
                   </div>
@@ -790,16 +807,31 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome }) 
                     </p>
 
                     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xs">
-                      {/* Table Header with Player Names */}
+                      {/* Table Header with Player Names (Strictly Winner Left, Loser Right) */}
                       <div className="grid grid-cols-5 text-[10px] font-extrabold text-slate-500 bg-slate-100/90 py-1.5 px-2 text-center uppercase tracking-wider border-b border-slate-200">
                         <span className="col-span-1 text-left">GAME</span>
-                        <span className="col-span-2 truncate">{match.player1.name}</span>
-                        <span className="col-span-2 truncate">{match.player2.name}</span>
+                        <span
+                          onClick={() => onSelectPlayerProfile?.(winnerPlayer)}
+                          className="col-span-2 truncate text-slate-900 cursor-pointer hover:underline"
+                          title={`View ${winnerPlayer.name}'s profile`}
+                        >
+                          {winnerPlayer.name}
+                        </span>
+                        <span
+                          onClick={() => onSelectPlayerProfile?.(loserPlayer)}
+                          className="col-span-2 truncate text-amber-600 cursor-pointer hover:underline"
+                          title={`View ${loserPlayer.name}'s profile`}
+                        >
+                          {loserPlayer.name}
+                        </span>
                       </div>
 
                       {/* Table Rows per Game */}
                       {match.games.map((g: GameResult) => {
-                        const isGameP1Winner = g.winnerId === match.player1.id;
+                        const winnerScore = isP1Winner ? g.p1Score : g.p2Score;
+                        const loserScore = isP1Winner ? g.p2Score : g.p1Score;
+                        const isWinnerGameWinner = winnerScore > loserScore;
+
                         return (
                           <div
                             key={g.gameNumber}
@@ -811,23 +843,23 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome }) 
                             <div className="col-span-2 flex justify-center">
                               <span
                                 className={
-                                  isGameP1Winner
+                                  isWinnerGameWinner
                                     ? 'font-black text-slate-900 text-sm font-mono'
                                     : 'font-medium text-slate-400 text-xs font-mono'
                                 }
                               >
-                                {g.p1Score}
+                                {winnerScore}
                               </span>
                             </div>
                             <div className="col-span-2 flex justify-center">
                               <span
                                 className={
-                                  !isGameP1Winner
-                                    ? 'font-black text-slate-900 text-sm font-mono'
+                                  !isWinnerGameWinner
+                                    ? 'font-black text-amber-600 text-sm font-mono'
                                     : 'font-medium text-slate-400 text-xs font-mono'
                                 }
                               >
-                                {g.p2Score}
+                                {loserScore}
                               </span>
                             </div>
                           </div>

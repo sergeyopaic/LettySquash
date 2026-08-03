@@ -2,17 +2,21 @@ import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { Clock, Trash2, Trophy, Calendar, Check } from 'lucide-react';
 import { formatMatchDateGroup, formatMatchTime } from '../utils/dateUtils';
-import type { SquashMatch } from '../types/squash';
+import type { SquashMatch, Club } from '../types/squash';
+import { getMatchesForClub } from '../utils/clubUtils';
 
 interface MatchHistoryViewProps {
   selectMatchDetail: (matchId: string) => void;
+  activeClub?: Club;
 }
 
-export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchDetail }) => {
+export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchDetail, activeClub }) => {
   const { matches, deleteMatch } = useSquash();
   const [filterType, setFilterType] = useState<string>('ALL');
 
-  const filteredMatches = matches.filter((m) => {
+  const clubMatches = activeClub ? getMatchesForClub(matches, activeClub.id) : matches;
+
+  const filteredMatches = clubMatches.filter((m) => {
     if (filterType === 'ALL') return true;
     return m.matchType === filterType;
   });
@@ -34,7 +38,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
     <div className="pb-24 pt-2 px-4 space-y-4">
       <div>
         <h1 className="text-xl font-black text-slate-900 tracking-tight">History</h1>
-        <p className="text-xs text-slate-500">{matches.length} recorded matches</p>
+        <p className="text-xs text-slate-500">{clubMatches.length} recorded matches</p>
       </div>
 
       {/* Filter Chips */}

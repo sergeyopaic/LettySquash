@@ -13,6 +13,7 @@ import type {
   GameWonInfo,
 } from '../types/squash';
 import { INITIAL_PLAYERS, INITIAL_MATCHES } from '../data/mockData';
+import { computePlayerStats } from '../utils/clubUtils';
 import confetti from 'canvas-confetti';
 
 interface SquashContextType {
@@ -27,7 +28,8 @@ interface SquashContextType {
     countryFlag: string,
     countryCode: string,
     handedness: Handedness,
-    avatarBgColor?: string
+    avatarBgColor?: string,
+    clubId?: string
   ) => Player;
   deletePlayer: (id: string) => void;
   startMatch: (
@@ -58,8 +60,8 @@ interface SquashContextType {
 
 const SquashContext = createContext<SquashContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_PLAYERS = 'letty_squash_players_v2';
-const LOCAL_STORAGE_MATCHES = 'letty_squash_matches_v2';
+const LOCAL_STORAGE_PLAYERS = 'letty_squash_players_v4';
+const LOCAL_STORAGE_MATCHES = 'letty_squash_matches_v4';
 const LOCAL_STORAGE_SETTINGS = 'letty_squash_settings_v1';
 
 export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -72,6 +74,11 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const saved = localStorage.getItem(LOCAL_STORAGE_MATCHES);
     return saved ? JSON.parse(saved) : INITIAL_MATCHES;
   });
+
+  // Dynamically compute player W/L statistics based on actual matches in the log
+  const computedPlayers = React.useMemo(() => {
+    return computePlayerStats(players, matches);
+  }, [players, matches]);
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_SETTINGS);
@@ -152,7 +159,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     countryFlag: string,
     countryCode: string,
     handedness: Handedness,
-    avatarBgColor?: string
+    avatarBgColor?: string,
+    clubId?: string
   ): Player => {
     const colors = ['#3B82F6', '#EC4899', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#06B6D4'];
     const randomColor = avatarBgColor || colors[Math.floor(Math.random() * colors.length)];
@@ -164,6 +172,7 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       countryCode,
       handedness,
       avatarBgColor: randomColor,
+      clubId,
       totalMatches: 0,
       wins: 0,
       losses: 0,
@@ -568,12 +577,12 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const getMatchById = (matchId: string) => matches.find((m) => m.id === matchId);
-  const getPlayerById = (playerId: string) => players.find((p) => p.id === playerId);
+  const getPlayerById = (playerId: string) => computedPlayers.find((p) => p.id === playerId);
 
   return (
     <SquashContext.Provider
       value={{
-        players,
+        players: computedPlayers,
         matches,
         activeMatchState,
         settings,
