@@ -15,6 +15,7 @@ import type {
   Competition,
   CompetitionFormat,
   CompetitionStatus,
+  CompetitionFixture,
   PointEvent,
 } from '../types/squash';
 import { INITIAL_PLAYERS, INITIAL_MATCHES, INITIAL_COMPETITIONS } from '../data/mockData';
@@ -46,7 +47,9 @@ interface SquashContextType {
     matchType: MatchType,
     initialServerId: string,
     serveSide: ServeSide,
-    isRated?: boolean
+    isRated?: boolean,
+    competitionId?: string,
+    targetPoints?: number
   ) => void;
   recordPoint: (scoringPlayerId: string) => void;
   recordDecision: (requestingPlayerId: string, decision: DecisionType) => void;
@@ -70,6 +73,9 @@ interface SquashContextType {
     participantIds: string[];
     clubAId?: string;
     clubBId?: string;
+    fixtures?: CompetitionFixture[];
+    matchFormat?: MatchFormat;
+    targetPoints?: number;
   }) => Competition;
   setCompetitionStatus: (competitionId: string, status: CompetitionStatus) => void;
   deleteCompetition: (competitionId: string) => void;
@@ -80,7 +86,7 @@ const SquashContext = createContext<SquashContextType | undefined>(undefined);
 const LOCAL_STORAGE_PLAYERS = 'letty_squash_players_v4';
 const LOCAL_STORAGE_MATCHES = 'letty_squash_matches_v6';
 const LOCAL_STORAGE_SETTINGS = 'letty_squash_settings_v1';
-const LOCAL_STORAGE_COMPETITIONS = 'letty_squash_competitions_v2';
+const LOCAL_STORAGE_COMPETITIONS = 'letty_squash_competitions_v3';
 const LOCAL_STORAGE_ACTIVE_MATCH = 'letty_squash_active_match_v1';
 
 // Corrupted/manually-edited localStorage (or a browser blocking storage entirely, e.g.
@@ -255,7 +261,9 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     matchType: MatchType,
     initialServerId: string,
     serveSide: ServeSide,
-    isRated: boolean = false
+    isRated: boolean = false,
+    competitionId?: string,
+    targetPoints: number = 11
   ) => {
     const p1 = players.find((p) => p.id === player1Id) || players[0];
     const p2 = players.find((p) => p.id === player2Id) || players.find((p) => p.id !== p1?.id) || players[1];
@@ -278,10 +286,11 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       decisions: [],
       matchFormat: format,
       matchType: matchType,
-      targetPoints: 11,
+      targetPoints,
       status: 'IN_PROGRESS',
       totalDurationSeconds: 0,
       isRated,
+      competitionId,
     };
 
     setActiveMatchState({
@@ -685,6 +694,9 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     participantIds: string[];
     clubAId?: string;
     clubBId?: string;
+    fixtures?: CompetitionFixture[];
+    matchFormat?: MatchFormat;
+    targetPoints?: number;
   }): Competition => {
     const newCompetition: Competition = {
       id: `comp_${Date.now()}`,
@@ -694,6 +706,9 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       participantIds: input.participantIds,
       clubAId: input.clubAId,
       clubBId: input.clubBId,
+      fixtures: input.fixtures,
+      matchFormat: input.matchFormat,
+      targetPoints: input.targetPoints,
       createdAt: new Date().toISOString(),
     };
     setCompetitions((prev) => [newCompetition, ...prev]);

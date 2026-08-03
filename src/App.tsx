@@ -9,6 +9,7 @@ import type { TabType } from './components/NavigationTabBar';
 import { NewMatchModal } from './components/NewMatchModal';
 import { NewCompetitionModal } from './components/NewCompetitionModal';
 import { CompetitionsListModal } from './components/CompetitionsListModal';
+import { CompetitionDetailModal } from './components/CompetitionDetailModal';
 import { AddPlayerModal } from './components/AddPlayerModal';
 import { MatchDetailModal } from './components/MatchDetailModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -28,6 +29,7 @@ const MainContainer: React.FC = () => {
   const [isNewMatchOpen, setIsNewMatchOpen] = useState<boolean>(false);
   const [isNewCompetitionOpen, setIsNewCompetitionOpen] = useState<boolean>(false);
   const [isCompetitionsListOpen, setIsCompetitionsListOpen] = useState<boolean>(false);
+  const [openCompetitionId, setOpenCompetitionId] = useState<string | null>(null);
   const [isAddPlayerOpen, setIsAddPlayerOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isAdvancedStatsOpen, setIsAdvancedStatsOpen] = useState<boolean>(false);
@@ -111,6 +113,7 @@ const MainContainer: React.FC = () => {
               openHowToPlayModal={() => setIsHowToPlayOpen(true)}
               openHowToUseAppModal={() => setIsHowToUseAppOpen(true)}
               openCompetitionsListModal={() => setIsCompetitionsListOpen(true)}
+              openCompetitionDetail={(id) => setOpenCompetitionId(id)}
               onSelectPlayerProfile={(p) => setSelectedPlayerProfile(p)}
               setActiveTab={setActiveTab}
               selectMatchDetail={(id) => setSelectedMatchId(id)}
@@ -120,7 +123,10 @@ const MainContainer: React.FC = () => {
           {activeTab === 'match' && (
             <ScoreboardView
               openNewMatchModal={() => setIsNewMatchOpen(true)}
-              onExitToHome={() => setActiveTab('home')}
+              onExitToHome={(competitionId) => {
+                setActiveTab('home');
+                if (competitionId) setOpenCompetitionId(competitionId);
+              }}
               onSelectPlayerProfile={(p) => setSelectedPlayerProfile(p)}
             />
           )}
@@ -137,7 +143,7 @@ const MainContainer: React.FC = () => {
             <MatchHistoryView
               activeClub={activeClub}
               selectMatchDetail={(id) => setSelectedMatchId(id)}
-              openCompetitionsListModal={() => setIsCompetitionsListOpen(true)}
+              openCompetitionDetail={(id) => setOpenCompetitionId(id)}
             />
           )}
         </div>
@@ -155,11 +161,26 @@ const MainContainer: React.FC = () => {
         <NewCompetitionModal
           isOpen={isNewCompetitionOpen}
           onClose={() => setIsNewCompetitionOpen(false)}
+          onCreated={(competition) => setOpenCompetitionId(competition.id)}
         />
 
         <CompetitionsListModal
           isOpen={isCompetitionsListOpen}
           onClose={() => setIsCompetitionsListOpen(false)}
+          onOpenDetail={(id) => {
+            setIsCompetitionsListOpen(false);
+            setOpenCompetitionId(id);
+          }}
+        />
+
+        <CompetitionDetailModal
+          competitionId={openCompetitionId}
+          onClose={() => setOpenCompetitionId(null)}
+          onStartMatch={() => {
+            setOpenCompetitionId(null);
+            setActiveTab('match');
+          }}
+          onSelectMatchDetail={(id) => setSelectedMatchId(id)}
         />
 
         <AddPlayerModal
@@ -172,7 +193,7 @@ const MainContainer: React.FC = () => {
           match={selectedMatch}
           onClose={() => setSelectedMatchId(null)}
           onSelectPlayerProfile={(player) => setSelectedPlayerProfile(player)}
-          openCompetitionsListModal={() => setIsCompetitionsListOpen(true)}
+          openCompetitionDetail={(id) => setOpenCompetitionId(id)}
         />
 
         <PlayerProfileModal

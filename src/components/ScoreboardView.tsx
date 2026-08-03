@@ -24,7 +24,10 @@ import {
 
 interface ScoreboardViewProps {
   openNewMatchModal?: () => void;
-  onExitToHome: () => void;
+  // Called with the finished/abandoned match's competitionId when it belongs to a
+  // competition fixture, so the app can drop the user back on that competition's page
+  // instead of plain Home.
+  onExitToHome: (competitionId?: string) => void;
   onSelectPlayerProfile?: (player: Player) => void;
 }
 
@@ -112,16 +115,18 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
     } else if (confirmActionType === 'RESET_MATCH') {
       resetWholeMatch();
     } else if (confirmActionType === 'ABANDON_MATCH') {
+      const competitionId = match.competitionId;
       cancelActiveMatch();
-      onExitToHome();
+      onExitToHome(competitionId);
     }
     setConfirmActionType(null);
     setIsMoreMenuOpen(false);
   };
 
   const handleSaveAndExit = () => {
+    const competitionId = match.competitionId;
     finishActiveMatch();
-    onExitToHome();
+    onExitToHome(competitionId);
   };
 
   const getLettyCommentary = () => {

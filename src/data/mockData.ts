@@ -835,7 +835,19 @@ export const INITIAL_COMPETITIONS: Competition[] = [
     "status": "COMPLETED",
     "participantIds": [
       "p1",
-      "p2"
+      "p4",
+      "p6",
+      "p8",
+      "p2",
+      "p3",
+      "p5",
+      "p7"
+    ],
+    "fixtures": [
+      { "slot": 1, "player1Id": "p1", "player2Id": "p2" },
+      { "slot": 2, "player1Id": "p4", "player2Id": "p3" },
+      { "slot": 3, "player1Id": "p6", "player2Id": "p5" },
+      { "slot": 4, "player1Id": "p8", "player2Id": "p7" }
     ],
     "clubAId": "c2",
     "clubBId": "c3",
@@ -848,7 +860,19 @@ export const INITIAL_COMPETITIONS: Competition[] = [
     "status": "COMPLETED",
     "participantIds": [
       "dev1",
-      "syd1"
+      "dev2",
+      "dev3",
+      "dev4",
+      "syd1",
+      "syd2",
+      "syd3",
+      "syd4"
+    ],
+    "fixtures": [
+      { "slot": 1, "player1Id": "dev1", "player2Id": "syd1" },
+      { "slot": 2, "player1Id": "dev2", "player2Id": "syd2" },
+      { "slot": 3, "player1Id": "dev3", "player2Id": "syd3" },
+      { "slot": 4, "player1Id": "dev4", "player2Id": "syd4" }
     ],
     "clubAId": "c1",
     "clubBId": "c4",
@@ -860,8 +884,20 @@ export const INITIAL_COMPETITIONS: Competition[] = [
     "format": "INTERCLUB_4VS4",
     "status": "COMPLETED",
     "participantIds": [
+      "dev1",
       "dev2",
-      "p3"
+      "dev3",
+      "dev4",
+      "p2",
+      "p3",
+      "p5",
+      "p7"
+    ],
+    "fixtures": [
+      { "slot": 1, "player1Id": "dev1", "player2Id": "p2" },
+      { "slot": 2, "player1Id": "dev2", "player2Id": "p3" },
+      { "slot": 3, "player1Id": "dev3", "player2Id": "p5" },
+      { "slot": 4, "player1Id": "dev4", "player2Id": "p7" }
     ],
     "clubAId": "c1",
     "clubBId": "c3",

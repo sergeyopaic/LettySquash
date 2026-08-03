@@ -9,7 +9,7 @@ interface MatchDetailModalProps {
   match: SquashMatch | null;
   onClose: () => void;
   onSelectPlayerProfile?: (player: Player) => void;
-  openCompetitionsListModal?: () => void;
+  openCompetitionDetail?: (competitionId: string) => void;
 }
 
 interface RallySegment {
@@ -130,7 +130,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   match,
   onClose,
   onSelectPlayerProfile,
-  openCompetitionsListModal,
+  openCompetitionDetail,
 }) => {
   const { competitions } = useSquash();
   const [copied, setCopied] = useState<boolean>(false);
@@ -258,7 +258,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  openCompetitionsListModal?.();
+                  openCompetitionDetail?.(competition.id);
                 }}
                 className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center space-x-1.5 mt-1 transition-colors"
                 title={`Open ${competition.name} in Competitions`}

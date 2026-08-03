@@ -10,7 +10,7 @@ import { MATCH_MODE_META, getMatchMode, type MatchModeKey } from '../utils/match
 interface MatchHistoryViewProps {
   selectMatchDetail: (matchId: string) => void;
   activeClub?: Club;
-  openCompetitionsListModal?: () => void;
+  openCompetitionDetail?: (competitionId: string) => void;
 }
 
 // One tab per match mode (see utils/matchModeUtils.ts) — a match is classified into
@@ -26,7 +26,7 @@ const FILTER_CHIPS: { id: 'ALL' | MatchModeKey; label: string }[] = [
 export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
   selectMatchDetail,
   activeClub,
-  openCompetitionsListModal,
+  openCompetitionDetail,
 }) => {
   const { matches, competitions, deleteMatch } = useSquash();
   const [filterType, setFilterType] = useState<string>('ALL');
@@ -151,7 +151,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              openCompetitionsListModal?.();
+                              openCompetitionDetail?.(competition.id);
                             }}
                             className="flex items-center space-x-1 text-[11px] font-bold text-slate-500 hover:text-amber-700 transition-colors"
                             title={`Open ${competition.name} in Competitions`}

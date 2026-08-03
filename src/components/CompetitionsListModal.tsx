@@ -9,9 +9,10 @@ import type { CompetitionStatus } from '../types/squash';
 interface CompetitionsListModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenDetail?: (competitionId: string) => void;
 }
 
-export const CompetitionsListModal: React.FC<CompetitionsListModalProps> = ({ isOpen, onClose }) => {
+export const CompetitionsListModal: React.FC<CompetitionsListModalProps> = ({ isOpen, onClose, onOpenDetail }) => {
   const { competitions, setCompetitionStatus, deleteCompetition } = useSquash();
   const [statusFilter, setStatusFilter] = useState<CompetitionStatus>('ACTIVE');
 
@@ -96,7 +97,13 @@ export const CompetitionsListModal: React.FC<CompetitionsListModalProps> = ({ is
               const clubB = c.clubBId ? CLUBS_LIST.find((club) => club.id === c.clubBId) : undefined;
 
               return (
-                <div key={c.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                <div
+                  key={c.id}
+                  onClick={() => onOpenDetail?.(c.id)}
+                  className={`p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-2 ${
+                    onOpenDetail ? 'cursor-pointer hover:bg-slate-100/80 transition-colors' : ''
+                  }`}
+                >
                   <div className="flex items-start justify-between space-x-2">
                     <div className="flex items-start space-x-2.5 min-w-0">
                       <div className="p-2 rounded-xl bg-white shadow-2xs flex-shrink-0 mt-0.5">
@@ -116,7 +123,8 @@ export const CompetitionsListModal: React.FC<CompetitionsListModalProps> = ({ is
                     </div>
 
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         if (confirm(`Delete competition "${c.name}"?`)) {
                           deleteCompetition(c.id);
                         }
@@ -139,7 +147,10 @@ export const CompetitionsListModal: React.FC<CompetitionsListModalProps> = ({ is
 
                     {c.status === 'ACTIVE' ? (
                       <button
-                        onClick={() => setCompetitionStatus(c.id, 'COMPLETED')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCompetitionStatus(c.id, 'COMPLETED');
+                        }}
                         className="text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 px-2 py-1 rounded-lg flex items-center space-x-1 transition-colors cursor-pointer"
                       >
                         <Archive className="w-3 h-3" />
@@ -147,7 +158,10 @@ export const CompetitionsListModal: React.FC<CompetitionsListModalProps> = ({ is
                       </button>
                     ) : (
                       <button
-                        onClick={() => setCompetitionStatus(c.id, 'ACTIVE')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCompetitionStatus(c.id, 'ACTIVE');
+                        }}
                         className="text-[10px] font-bold text-amber-700 hover:text-amber-900 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg flex items-center space-x-1 transition-colors cursor-pointer"
                       >
                         <RotateCcw className="w-3 h-3" />

@@ -20,6 +20,7 @@ interface DashboardViewProps {
   openHowToPlayModal: () => void;
   openHowToUseAppModal?: () => void;
   openCompetitionsListModal: () => void;
+  openCompetitionDetail: (competitionId: string) => void;
   onSelectPlayerProfile: (player: Player) => void;
   setActiveTab: (tab: 'home' | 'match' | 'players' | 'history') => void;
   selectMatchDetail: (matchId: string) => void;
@@ -44,6 +45,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   openHowToPlayModal,
   openHowToUseAppModal,
   openCompetitionsListModal,
+  openCompetitionDetail,
   onSelectPlayerProfile,
   setActiveTab,
   selectMatchDetail,
@@ -160,22 +162,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </button>
       </div>
 
-      {/* Active Game Alert Banner (if match in progress) */}
-      {activeMatchState && (
-        <div className="ios-card rounded-2xl bg-slate-900 text-white p-4 relative overflow-hidden shadow-lg border-none">
+      {/* Active Game Alert Banner (if match in progress).
+          Deliberately NOT using the shared .ios-card class here — it sets a near-opaque
+          white `background` in app.css that (being equal CSS specificity to a single
+          Tailwind class) was winning over `bg-slate-900` and silently painting this
+          banner white, making the white/light-gray text on it unreadable. */}
+      {activeMatchState && (() => {
+        const { meta: liveModeMeta, competition: liveCompetition } = getMatchMode(activeMatchState.match, competitions);
+        return (
+        <div className="rounded-2xl bg-slate-900 text-white p-4 relative overflow-hidden shadow-lg border border-slate-800">
           <div className="absolute right-0 bottom-0 opacity-15 translate-x-4 translate-y-4">
             <Activity className="w-36 h-36" />
           </div>
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-2">
-              <span className="bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg">
-                Match Live • Game {activeMatchState.currentGameIndex || 1}
-              </span>
+              <div className="flex items-center flex-wrap gap-1.5">
+                <span className="bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg">
+                  Match Live • Game {activeMatchState.currentGameIndex || 1}
+                </span>
+                <span
+                  className="bg-white/10 text-white text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-lg border border-white/15"
+                  title={liveCompetition ? `Fixture of ${liveCompetition.name}` : liveModeMeta.label}
+                >
+                  {liveModeMeta.shortLabel}
+                </span>
+              </div>
               <span className="text-xs font-mono text-slate-300">
                 {Math.floor(activeMatchState.timerSeconds / 60)}:
                 {String(activeMatchState.timerSeconds % 60).padStart(2, '0')}
               </span>
             </div>
+            {liveCompetition && (
+              <p className="text-[11px] font-bold text-amber-400/90 -mt-1 mb-2 truncate">
+                {liveCompetition.name}
+              </p>
+            )}
 
             <div className="flex items-center justify-between my-3">
               <div className="text-left">
@@ -208,7 +229,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Active Competitions Preview */}
       <div className="space-y-2">
@@ -238,7 +260,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {activeCompetitions.slice(0, 2).map((c) => (
               <button
                 key={c.id}
-                onClick={openCompetitionsListModal}
+                onClick={() => openCompetitionDetail(c.id)}
                 className="w-full ios-card rounded-2xl p-3 flex items-center justify-between text-left hover:border-slate-300 transition-colors"
               >
                 <div className="flex items-center space-x-2.5 min-w-0">
@@ -294,10 +316,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        openCompetitionsListModal();
+                        openCompetitionDetail(competition.id);
                       }}
                       className="flex items-center space-x-1 text-[10px] font-bold text-slate-500 hover:text-amber-700 transition-colors truncate max-w-[65%]"
-                      title={`Open ${competition.name} in Competitions`}
+                      title={`Open ${competition.name}`}
                     >
                       <Trophy className="w-3 h-3 text-amber-500 flex-shrink-0" />
                       <span className="truncate">{competition.name}</span>

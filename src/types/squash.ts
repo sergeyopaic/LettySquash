@@ -157,6 +157,18 @@ export type CompetitionFormat =
 
 export type CompetitionStatus = 'ACTIVE' | 'COMPLETED';
 
+// A single fixture pairing within a competition (e.g. Interclub rank #1 vs rank #1).
+// Whether it's been played is never stored here — it's derived by looking for a completed
+// match with this competitionId and this exact player pair (see matchModeUtils.ts /
+// CompetitionDetailModal), the same "derive, don't duplicate" pattern the rest of the app
+// uses for stats. Frozen at competition-creation time — later roster/grade changes don't
+// reshuffle an already-declared fixture.
+export interface CompetitionFixture {
+  slot: number;
+  player1Id: string;
+  player2Id: string;
+}
+
 export interface Competition {
   id: string;
   name: string;
@@ -166,4 +178,13 @@ export interface Competition {
   clubAId?: string;
   clubBId?: string;
   createdAt: string;
+  // Only populated for formats whose fixtures can be generated deterministically at
+  // creation time (currently just Interclub 4v4's rank-vs-rank pairing). Other formats
+  // (League round-robin, brackets) need real scheduling logic — not built yet.
+  fixtures?: CompetitionFixture[];
+  // Match ruleset applied to every fixture generated from this competition (e.g. some
+  // interclub ties are played to 15, not the standard PARS-11). Optional + defaulted at
+  // the read site (BEST_OF_5 / 11) so competitions created before this existed still work.
+  matchFormat?: MatchFormat;
+  targetPoints?: number;
 }

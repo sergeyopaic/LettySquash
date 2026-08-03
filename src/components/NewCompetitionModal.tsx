@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSquash } from '../context/SquashContext';
-import type { CompetitionFormat } from '../types/squash';
+import type { CompetitionFormat, Competition, CompetitionFixture, MatchFormat } from '../types/squash';
 import { CLUBS_LIST } from './ClubSelectorModal';
 import { getPlayersForClub } from '../utils/clubUtils';
 import { getGradeRank } from '../utils/gradeUtils';
@@ -13,11 +13,13 @@ import {
   Check,
   Zap,
   ChevronDown,
+  ChevronLeft,
 } from 'lucide-react';
 
 interface NewCompetitionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: (competition: Competition) => void;
 }
 
 export type { CompetitionFormat };
@@ -65,18 +67,42 @@ export const COMPETITION_FORMAT_LABELS: Record<CompetitionFormat, string> = COMP
   {} as Record<CompetitionFormat, string>
 );
 
-export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen, onClose }) => {
+type WizardStep = 'FORMAT' | 'RULES';
+
+export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen, onClose, onCreated }) => {
   const { players, addCompetition } = useSquash();
 
+  const [step, setStep] = useState<WizardStep>('FORMAT');
   const [competitionName, setCompetitionName] = useState('');
   const [selectedFormat, setSelectedFormat] = useState<CompetitionFormat>('INTERCLUB_4VS4');
-  
+  const [matchFormat, setMatchFormat] = useState<MatchFormat>('BEST_OF_5');
+  const [targetPoints, setTargetPoints] = useState<number>(11);
+
   // Standard format selected players
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>(players.map((p) => p.id));
 
   // Interclub 4vs4 club selection IDs
   const [selectedClubAId, setSelectedClubAId] = useState<string>('c2');
   const [selectedClubBId, setSelectedClubBId] = useState<string>('c3');
+
+  const [isCreatedToast, setIsCreatedToast] = useState(false);
+
+  // Fresh wizard every time it's opened — this modal never unmounts between opens
+  // (App.tsx always renders it), so state would otherwise carry over from last time.
+  useEffect(() => {
+    if (isOpen) {
+      setStep('FORMAT');
+      setCompetitionName('');
+      setSelectedFormat('INTERCLUB_4VS4');
+      setMatchFormat('BEST_OF_5');
+      setTargetPoints(11);
+      setSelectedPlayerIds(players.map((p) => p.id));
+      setSelectedClubAId('c2');
+      setSelectedClubBId('c3');
+      setIsCreatedToast(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const clubA = CLUBS_LIST.find((c) => c.id === selectedClubAId) || CLUBS_LIST[1];
   const clubB = CLUBS_LIST.find((c) => c.id === selectedClubBId) || CLUBS_LIST[2];
@@ -93,9 +119,7 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
     .sort((a, b) => getGradeRank(b.skillGrade) - getGradeRank(a.skillGrade))
     .slice(0, 4);
 
-  const [isCreatedToast, setIsCreatedToast] = useState(false);
-
-  // Auto-generate tournament name when Interclub format or club names change
+  // Auto-generate competition name when Interclub format or club names change
   useEffect(() => {
     if (selectedFormat === 'INTERCLUB_4VS4' && clubAName && clubBName) {
       setCompetitionName(`${clubAName} vs ${clubBName}`);
@@ -104,7 +128,7 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
 
   if (!isOpen) return null;
 
-  const formats = COMPETITION_FORMATS;
+  const selectedFormatMeta = COMPETITION_FORMATS.find((f) => f.id === selectedFormat);
 
   const handleToggleStandardPlayer = (id: string) => {
     if (selectedPlayerIds.includes(id)) {
@@ -124,18 +148,35 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
         ? [...teamAPlayers, ...teamBPlayers].map((p) => p.id)
         : selectedPlayerIds;
 
-    addCompetition({
+    // Interclub is the only format whose fixtures can be generated right away — rank #1
+    // plays rank #1, #2 plays #2, etc. League/Groups/brackets need real scheduling logic
+    // that doesn't exist yet, so they're created with no fixtures for now.
+    const fixtures: CompetitionFixture[] | undefined =
+      selectedFormat === 'INTERCLUB_4VS4'
+        ? teamAPlayers
+            .map((p, idx) => {
+              const opponent = teamBPlayers[idx];
+              return opponent ? { slot: idx + 1, player1Id: p.id, player2Id: opponent.id } : null;
+            })
+            .filter((f): f is CompetitionFixture => f !== null)
+        : undefined;
+
+    const created = addCompetition({
       name: competitionName.trim(),
       format: selectedFormat,
       participantIds,
       clubAId: selectedFormat === 'INTERCLUB_4VS4' ? selectedClubAId : undefined,
       clubBId: selectedFormat === 'INTERCLUB_4VS4' ? selectedClubBId : undefined,
+      fixtures,
+      matchFormat,
+      targetPoints,
     });
 
     setIsCreatedToast(true);
     setTimeout(() => {
       setIsCreatedToast(false);
       onClose();
+      onCreated?.(created);
     }, 1500);
   };
 
@@ -160,22 +201,32 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-full bg-slate-900 text-amber-400 flex items-center justify-center font-bold shadow-sm">
+          <div className="flex items-center space-x-2 min-w-0">
+            {step === 'RULES' && !isCreatedToast && (
+              <button
+                type="button"
+                onClick={() => setStep('FORMAT')}
+                className="p-1.5 -ml-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer flex-shrink-0"
+                title="Back to format selection"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+            <div className="w-8 h-8 rounded-full bg-slate-900 text-amber-400 flex items-center justify-center font-bold shadow-sm flex-shrink-0">
               <Trophy className="w-4 h-4" />
             </div>
-            <div>
-              <h2 className="text-lg font-black text-slate-900 leading-none">
-                Create Competition
+            <div className="min-w-0">
+              <h2 className="text-lg font-black text-slate-900 leading-none truncate">
+                {step === 'FORMAT' ? 'Create Competition' : selectedFormatMeta?.title || 'Competition Rules'}
               </h2>
               <span className="text-[10px] font-bold text-amber-600 block mt-0.5">
-                Official WSF / NZ Squash Formats
+                {step === 'FORMAT' ? 'Official WSF / NZ Squash Formats' : 'Step 2 of 2 — Rules & Participants'}
               </span>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+            className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer flex-shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -192,8 +243,34 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
               "{competitionName}" has been successfully configured.
             </p>
           </div>
+        ) : step === 'FORMAT' ? (
+          /* ------------------------------------------------------------- */
+          /* STEP 1 — FORMAT SELECTION ONLY                                 */
+          /* ------------------------------------------------------------- */
+          <div className="space-y-2">
+            {COMPETITION_FORMATS.map((f) => (
+              <button
+                type="button"
+                key={f.id}
+                onClick={() => {
+                  setSelectedFormat(f.id);
+                  setStep('RULES');
+                }}
+                className="w-full p-3 rounded-2xl border text-left flex items-start space-x-3 transition-all cursor-pointer border-slate-200 bg-slate-50/70 hover:bg-slate-100 hover:border-slate-300 text-slate-900"
+              >
+                <div className="p-2 rounded-xl flex-shrink-0 mt-0.5 bg-white shadow-2xs">{f.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-slate-900">{f.title}</p>
+                  <p className="text-[10px] mt-1 leading-relaxed text-slate-500">{f.desc}</p>
+                </div>
+                <ChevronDown className="w-4 h-4 text-slate-300 -rotate-90 flex-shrink-0 mt-1" />
+              </button>
+            ))}
+          </div>
         ) : (
-          /* Main Form */
+          /* ------------------------------------------------------------- */
+          /* STEP 2 — RULES + PARTICIPANTS FOR THE CHOSEN FORMAT            */
+          /* ------------------------------------------------------------- */
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Competition Name */}
             <div className="space-y-1">
@@ -203,50 +280,59 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                 placeholder="e.g. Remuera Rackets Club vs Belmont Squash Club"
                 value={competitionName}
                 onChange={(e) => setCompetitionName(e.target.value)}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-900"
                 required
               />
             </div>
 
-            {/* Competition Formats Selector */}
+            {/* Match Rules — same building blocks as starting a single match, just
+                applied to every fixture this competition generates. */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-600 block">Competition Format</label>
-              <div className="space-y-2">
-                {formats.map((f) => {
-                  const isSelected = selectedFormat === f.id;
-                  return (
-                    <button
-                      type="button"
-                      key={f.id}
-                      onClick={() => setSelectedFormat(f.id)}
-                      className={`w-full p-3 rounded-2xl border text-left flex items-start space-x-3 transition-all cursor-pointer ${
-                        isSelected
-                          ? 'border-slate-900 bg-slate-900 text-white shadow-md ring-2 ring-amber-400'
-                          : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100 text-slate-900'
-                      }`}
-                    >
-                      <div className={`p-2 rounded-xl flex-shrink-0 mt-0.5 ${isSelected ? 'bg-slate-800' : 'bg-white shadow-2xs'}`}>
-                        {f.icon}
-                      </div>
+              <label className="text-xs font-bold text-slate-600 block">Match Format</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'BEST_OF_5', label: 'Best of 5', desc: 'First to 3 games' },
+                  { id: 'BEST_OF_3', label: 'Best of 3', desc: 'First to 2 games' },
+                  { id: 'SINGLE_GAME', label: 'Single Game', desc: '1 game decides it' },
+                ].map((f) => (
+                  <button
+                    type="button"
+                    key={f.id}
+                    onClick={() => setMatchFormat(f.id as MatchFormat)}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      matchFormat === f.id
+                        ? 'border-blue-900 bg-blue-50/80 text-blue-900 font-bold shadow-sm'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <p className="text-xs">{f.label}</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5">{f.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className={`text-xs font-black ${isSelected ? 'text-white' : 'text-slate-900'}`}>
-                            {f.title}
-                          </p>
-                          {isSelected && (
-                            <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center text-[10px] font-black">
-                              ✓
-                            </span>
-                          )}
-                        </div>
-                        <p className={`text-[10px] mt-1 leading-relaxed ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
-                          {f.desc}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-600 block">Points per Game</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { pts: 11, label: 'PARS-11', desc: 'Standard scoring' },
+                  { pts: 15, label: 'Traditional-15', desc: 'Some interclub leagues' },
+                ].map((opt) => (
+                  <button
+                    type="button"
+                    key={opt.pts}
+                    onClick={() => setTargetPoints(opt.pts)}
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                      targetPoints === opt.pts
+                        ? 'border-amber-500 bg-amber-50 text-amber-950 font-bold'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <p className="text-xs">{opt.label}</p>
+                    <p className="text-[9px] text-slate-400 mt-0.5">{opt.desc}</p>
+                  </button>
+                ))}
               </div>
             </div>
 
