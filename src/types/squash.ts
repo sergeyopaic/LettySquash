@@ -90,6 +90,10 @@ export interface SquashMatch {
   // Independent of matchType — a rated match can still be a "friendly" in context; casual
   // quick matches recorded via NewMatchModal never set this.
   isRated?: boolean;
+  // Links this match to the Competition it's a fixture of (see utils/matchModeUtils.ts).
+  // Nothing currently auto-generates fixtures from a Competition — this is only set on
+  // seed data today — but the field exists so that flow has somewhere to write to later.
+  competitionId?: string;
 }
 
 export interface GameWonInfo {

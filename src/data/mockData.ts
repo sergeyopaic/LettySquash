@@ -1,4 +1,4 @@
-import type { Player, SquashMatch, LettyTipItem } from '../types/squash';
+import type { Player, SquashMatch, LettyTipItem, Competition } from '../types/squash';
 
 export const INITIAL_PLAYERS: Player[] = [
   // Club 1: Devonport Squash Club (c1)
@@ -262,6 +262,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'TOURNAMENT',
     isRated: true,
+    competitionId: 'comp_dev_championship',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'dev1',
@@ -285,6 +286,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'LEAGUE',
     isRated: true,
+    competitionId: 'comp_dev_league',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'dev3',
@@ -331,6 +333,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'LEAGUE',
     isRated: true,
+    competitionId: 'comp_dev_league',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'dev2',
@@ -356,6 +359,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'TOURNAMENT',
     isRated: true,
+    competitionId: 'comp_rem_championship',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'p1',
@@ -381,6 +385,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'LEAGUE',
     isRated: true,
+    competitionId: 'comp_rem_league',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'p6',
@@ -405,6 +410,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'TOURNAMENT',
     isRated: true,
+    competitionId: 'comp_rem_championship',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'p1',
@@ -454,6 +460,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'TOURNAMENT',
     isRated: true,
+    competitionId: 'comp_bel_championship',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'p2',
@@ -478,6 +485,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'LEAGUE',
     isRated: true,
+    competitionId: 'comp_bel_league',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'p5',
@@ -501,6 +509,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'TOURNAMENT',
     isRated: true,
+    competitionId: 'comp_bel_championship',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'p2',
@@ -524,6 +533,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'LEAGUE',
     isRated: true,
+    competitionId: 'comp_bel_league',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'p3',
@@ -550,6 +560,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'TOURNAMENT',
     isRated: true,
+    competitionId: 'comp_syd_championship',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'syd1',
@@ -573,6 +584,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'LEAGUE',
     isRated: true,
+    competitionId: 'comp_syd_league',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'syd3',
@@ -597,6 +609,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'TOURNAMENT',
     isRated: true,
+    competitionId: 'comp_syd_championship',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'syd1',
@@ -622,6 +635,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'LEAGUE',
     isRated: true,
+    competitionId: 'comp_syd_league',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'syd2',
@@ -648,6 +662,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'TOURNAMENT',
     isRated: true,
+    competitionId: 'comp_interclub_rem_bel',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'p1',
@@ -673,6 +688,7 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'TOURNAMENT',
     isRated: true,
+    competitionId: 'comp_interclub_dev_syd',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'dev1',
@@ -697,12 +713,160 @@ export const INITIAL_MATCHES: SquashMatch[] = [
     matchFormat: 'BEST_OF_5',
     matchType: 'TOURNAMENT',
     isRated: true,
+    competitionId: 'comp_interclub_dev_bel',
     targetPoints: 11,
     status: 'COMPLETED',
     winnerId: 'dev2',
     totalDurationSeconds: 1800,
     notes: '⚡ Interclub Clash: Devonport vs Belmont',
   },
+];
+
+
+export const INITIAL_COMPETITIONS: Competition[] = [
+  {
+    "id": "comp_dev_championship",
+    "name": "Devonport Club Championship",
+    "format": "SINGLE_ELIMINATION",
+    "status": "COMPLETED",
+    "participantIds": [
+      "dev1",
+      "dev2",
+      "dev3",
+      "dev4"
+    ],
+    "createdAt": "2026-07-24T07:09:39.770Z"
+  },
+  {
+    "id": "comp_dev_league",
+    "name": "Devonport Premier League",
+    "format": "LEAGUE",
+    "status": "ACTIVE",
+    "participantIds": [
+      "dev1",
+      "dev2",
+      "dev3",
+      "dev4"
+    ],
+    "createdAt": "2026-07-20T07:09:39.771Z"
+  },
+  {
+    "id": "comp_rem_championship",
+    "name": "Remuera Rackets Open",
+    "format": "SINGLE_ELIMINATION",
+    "status": "COMPLETED",
+    "participantIds": [
+      "p1",
+      "p4",
+      "p6",
+      "p8"
+    ],
+    "createdAt": "2026-07-24T07:09:39.771Z"
+  },
+  {
+    "id": "comp_rem_league",
+    "name": "Remuera Ladder League",
+    "format": "LEAGUE",
+    "status": "ACTIVE",
+    "participantIds": [
+      "p1",
+      "p4",
+      "p6",
+      "p8"
+    ],
+    "createdAt": "2026-07-20T07:09:39.771Z"
+  },
+  {
+    "id": "comp_bel_championship",
+    "name": "Belmont Club Championship",
+    "format": "SINGLE_ELIMINATION",
+    "status": "COMPLETED",
+    "participantIds": [
+      "p2",
+      "p3",
+      "p5",
+      "p7"
+    ],
+    "createdAt": "2026-07-24T07:09:39.771Z"
+  },
+  {
+    "id": "comp_bel_league",
+    "name": "Belmont Spring League",
+    "format": "LEAGUE",
+    "status": "ACTIVE",
+    "participantIds": [
+      "p2",
+      "p3",
+      "p5",
+      "p7"
+    ],
+    "createdAt": "2026-07-20T07:09:39.771Z"
+  },
+  {
+    "id": "comp_syd_championship",
+    "name": "Sydney Metro Championship",
+    "format": "SINGLE_ELIMINATION",
+    "status": "COMPLETED",
+    "participantIds": [
+      "syd1",
+      "syd2",
+      "syd3",
+      "syd4"
+    ],
+    "createdAt": "2026-07-24T07:09:39.771Z"
+  },
+  {
+    "id": "comp_syd_league",
+    "name": "Sydney Premier League",
+    "format": "LEAGUE",
+    "status": "ACTIVE",
+    "participantIds": [
+      "syd1",
+      "syd2",
+      "syd3",
+      "syd4"
+    ],
+    "createdAt": "2026-07-20T07:09:39.771Z"
+  },
+  {
+    "id": "comp_interclub_rem_bel",
+    "name": "Remuera Rackets vs Belmont Squash",
+    "format": "INTERCLUB_4VS4",
+    "status": "COMPLETED",
+    "participantIds": [
+      "p1",
+      "p2"
+    ],
+    "clubAId": "c2",
+    "clubBId": "c3",
+    "createdAt": "2026-07-31T07:09:39.771Z"
+  },
+  {
+    "id": "comp_interclub_dev_syd",
+    "name": "Devonport vs Sydney",
+    "format": "INTERCLUB_4VS4",
+    "status": "COMPLETED",
+    "participantIds": [
+      "dev1",
+      "syd1"
+    ],
+    "clubAId": "c1",
+    "clubBId": "c4",
+    "createdAt": "2026-07-29T07:09:39.771Z"
+  },
+  {
+    "id": "comp_interclub_dev_bel",
+    "name": "Devonport vs Belmont",
+    "format": "INTERCLUB_4VS4",
+    "status": "COMPLETED",
+    "participantIds": [
+      "dev2",
+      "p3"
+    ],
+    "clubAId": "c1",
+    "clubBId": "c3",
+    "createdAt": "2026-07-27T07:09:39.771Z"
+  }
 ];
 
 export const LETTY_TIP_ITEMS: LettyTipItem[] = [

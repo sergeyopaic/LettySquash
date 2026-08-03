@@ -17,7 +17,7 @@ import type {
   CompetitionStatus,
   PointEvent,
 } from '../types/squash';
-import { INITIAL_PLAYERS, INITIAL_MATCHES } from '../data/mockData';
+import { INITIAL_PLAYERS, INITIAL_MATCHES, INITIAL_COMPETITIONS } from '../data/mockData';
 import { computePlayerStats, getPlayerClubId } from '../utils/clubUtils';
 import confetti from 'canvas-confetti';
 
@@ -78,9 +78,9 @@ interface SquashContextType {
 const SquashContext = createContext<SquashContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_PLAYERS = 'letty_squash_players_v4';
-const LOCAL_STORAGE_MATCHES = 'letty_squash_matches_v4';
+const LOCAL_STORAGE_MATCHES = 'letty_squash_matches_v6';
 const LOCAL_STORAGE_SETTINGS = 'letty_squash_settings_v1';
-const LOCAL_STORAGE_COMPETITIONS = 'letty_squash_competitions_v1';
+const LOCAL_STORAGE_COMPETITIONS = 'letty_squash_competitions_v2';
 const LOCAL_STORAGE_ACTIVE_MATCH = 'letty_squash_active_match_v1';
 
 // Corrupted/manually-edited localStorage (or a browser blocking storage entirely, e.g.
@@ -118,7 +118,7 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 
   const [competitions, setCompetitions] = useState<Competition[]>(() =>
-    loadFromStorage(LOCAL_STORAGE_COMPETITIONS, [])
+    loadFromStorage(LOCAL_STORAGE_COMPETITIONS, INITIAL_COMPETITIONS)
   );
 
   // Dynamically compute player W/L statistics based on actual matches in the log

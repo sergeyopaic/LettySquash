@@ -137,6 +137,7 @@ const MainContainer: React.FC = () => {
             <MatchHistoryView
               activeClub={activeClub}
               selectMatchDetail={(id) => setSelectedMatchId(id)}
+              openCompetitionsListModal={() => setIsCompetitionsListOpen(true)}
             />
           )}
         </div>
@@ -171,6 +172,7 @@ const MainContainer: React.FC = () => {
           match={selectedMatch}
           onClose={() => setSelectedMatchId(null)}
           onSelectPlayerProfile={(player) => setSelectedPlayerProfile(player)}
+          openCompetitionsListModal={() => setIsCompetitionsListOpen(true)}
         />
 
         <PlayerProfileModal

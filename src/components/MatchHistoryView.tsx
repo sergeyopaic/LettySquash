@@ -1,49 +1,41 @@
 import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
-import { Clock, Trash2, Trophy, Calendar, Check, Flame } from 'lucide-react';
+import { Clock, Trash2, Trophy, Calendar, Check } from 'lucide-react';
 import { formatMatchDateGroup, formatMatchTime } from '../utils/dateUtils';
-import type { SquashMatch, Club } from '../types/squash';
-import { getMatchesForClub, getPlayerClubId } from '../utils/clubUtils';
+import type { Club, SquashMatch } from '../types/squash';
+import { getMatchesForClub } from '../utils/clubUtils';
 import { sortMatchesByDateDesc } from '../utils/matchUtils';
+import { MATCH_MODE_META, getMatchMode, type MatchModeKey } from '../utils/matchModeUtils';
 
 interface MatchHistoryViewProps {
   selectMatchDetail: (matchId: string) => void;
   activeClub?: Club;
+  openCompetitionsListModal?: () => void;
 }
 
-// "Tournament" and generic per-matchType tabs were dropped once match creation was
-// simplified to Casual/Rated — League and Interclub stay as they're still meaningful
-// cross-cutting categories (from historical data and, later, real competitions).
-const FILTER_CHIPS = [
+// One tab per match mode (see utils/matchModeUtils.ts) — a match is classified into
+// exactly one of these 7 kinds, so the filter set mirrors the pill set exactly.
+const FILTER_CHIPS: { id: 'ALL' | MatchModeKey; label: string }[] = [
   { id: 'ALL', label: 'All Matches' },
-  { id: 'CASUAL', label: 'Casual' },
-  { id: 'RATED', label: 'Rated' },
-  { id: 'LEAGUE', label: 'League' },
-  { id: 'INTERCLUB', label: 'Interclub' },
-] as const;
+  ...(Object.values(MATCH_MODE_META).map((meta) => ({ id: meta.key, label: meta.label })) as {
+    id: MatchModeKey;
+    label: string;
+  }[]),
+];
 
-const matchesFilter = (m: SquashMatch, filterType: string): boolean => {
-  switch (filterType) {
-    case 'CASUAL':
-      return !m.isRated;
-    case 'RATED':
-      return Boolean(m.isRated);
-    case 'LEAGUE':
-      return m.matchType === 'LEAGUE';
-    case 'INTERCLUB':
-      return getPlayerClubId(m.player1) !== getPlayerClubId(m.player2);
-    default:
-      return true;
-  }
-};
-
-export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchDetail, activeClub }) => {
-  const { matches, deleteMatch } = useSquash();
+export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
+  selectMatchDetail,
+  activeClub,
+  openCompetitionsListModal,
+}) => {
+  const { matches, competitions, deleteMatch } = useSquash();
   const [filterType, setFilterType] = useState<string>('ALL');
 
   const clubMatches = activeClub ? getMatchesForClub(matches, activeClub.id) : matches;
 
-  const filteredMatches = sortMatchesByDateDesc(clubMatches).filter((m) => matchesFilter(m, filterType));
+  const filteredMatches = sortMatchesByDateDesc(clubMatches).filter(
+    (m) => filterType === 'ALL' || getMatchMode(m, competitions).meta.key === filterType
+  );
 
   const formatDuration = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
@@ -114,56 +106,60 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
                     match.winnerId ?? (p1Games > p2Games ? p1.id : p2Games > p1Games ? p2.id : undefined);
                   const isP1Winner = matchWinnerId === p1.id;
                   const isP2Winner = matchWinnerId === p2.id;
+                  const { meta: modeMeta, competition } = getMatchMode(match, competitions);
 
                   return (
                     <div
                       key={match.id}
                       onClick={() => selectMatchDetail(match.id)}
-                      className="group ios-card p-3.5 hover:border-slate-300 transition-colors cursor-pointer space-y-2 rounded-2xl border border-slate-200/90"
+                      className={`group ios-card p-3.5 hover:border-slate-300 transition-colors cursor-pointer space-y-2 rounded-2xl border border-slate-200/90 ${modeMeta.accentBorderClass}`}
                     >
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 border-b border-slate-100 pb-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="bg-slate-900 text-amber-400 font-extrabold px-2 py-0.5 rounded-lg text-[9px] uppercase tracking-wider">
-                            {match.matchType === 'FRIENDLY'
-                              ? 'Friendly'
-                              : match.matchType === 'TOURNAMENT'
-                              ? 'Tournament'
-                              : match.matchType === 'LEAGUE'
-                              ? 'League'
-                              : 'Practice'}
-                          </span>
-                          {match.isRated && (
+                      <div className="space-y-1 border-b border-slate-100 pb-2">
+                        <div className="flex items-center justify-between text-[11px] text-slate-500">
+                          <div className="flex items-center space-x-2 min-w-0">
                             <span
-                              className="flex items-center space-x-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-1.5 py-0.5 font-extrabold text-[9px] uppercase tracking-wider"
-                              title="Counts toward Club Rating"
+                              className={`flex-shrink-0 px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider ${modeMeta.pillClasses}`}
                             >
-                              <Flame className="w-2.5 h-2.5" />
-                              <span>Rated</span>
+                              {modeMeta.shortLabel}
                             </span>
-                          )}
-                          <span className="font-semibold text-slate-600">
-                            {formatMatchDateGroup(match.date)} • {formatMatchTime(match.date)}
-                          </span>
+                            <span className="font-semibold text-slate-600 truncate">
+                              {formatMatchDateGroup(match.date)} • {formatMatchTime(match.date)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center space-x-2 flex-shrink-0">
+                            <div className="flex items-center space-x-1 font-medium text-slate-500">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              <span>{formatDuration(match.totalDurationSeconds || 0)}</span>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm('Delete this match record?')) {
+                                  deleteMatch(match.id);
+                                }
+                              }}
+                              className="text-slate-300 hover:text-rose-500 p-1 rounded transition-colors cursor-pointer"
+                              title="Delete match"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
-                        <div className="flex items-center space-x-2">
-                          <div className="flex items-center space-x-1 font-medium text-slate-500">
-                            <Clock className="w-3 h-3 text-slate-400" />
-                            <span>{formatDuration(match.totalDurationSeconds || 0)}</span>
-                          </div>
+                        {competition && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (confirm('Delete this match record?')) {
-                                deleteMatch(match.id);
-                              }
+                              openCompetitionsListModal?.();
                             }}
-                            className="text-slate-300 hover:text-rose-500 p-1 rounded transition-colors cursor-pointer"
-                            title="Delete match"
+                            className="flex items-center space-x-1 text-[11px] font-bold text-slate-500 hover:text-amber-700 transition-colors"
+                            title={`Open ${competition.name} in Competitions`}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trophy className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                            <span className="truncate">{competition.name}</span>
                           </button>
-                        </div>
+                        )}
                       </div>
 
                       {/* Scorecard Players & Games Score Rows */}

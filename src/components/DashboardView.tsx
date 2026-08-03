@@ -8,6 +8,7 @@ import { formatMatchDateGroup } from '../utils/dateUtils';
 import { getPlayersForClub, getMatchesForClub } from '../utils/clubUtils';
 import { getMatchWinnerId, sortMatchesByDateDesc } from '../utils/matchUtils';
 import { computeClubRatings } from '../utils/ratingUtils';
+import { getMatchMode } from '../utils/matchModeUtils';
 import { COMPETITION_FORMAT_LABELS } from './NewCompetitionModal';
 
 interface DashboardViewProps {
@@ -276,13 +277,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             const matchWinnerId = getMatchWinnerId(m);
             const isP1Winner = matchWinnerId === m.player1.id;
             const isP2Winner = matchWinnerId === m.player2.id;
+            const { meta: modeMeta, competition } = getMatchMode(m, competitions);
 
             return (
               <div
                 key={m.id}
                 onClick={() => selectMatchDetail(m.id)}
-                className="group ios-card rounded-2xl p-3 space-y-2 hover:border-slate-300 transition-colors cursor-pointer"
+                className={`group ios-card rounded-2xl p-3 space-y-2 hover:border-slate-300 transition-colors cursor-pointer ${modeMeta.accentBorderClass}`}
               >
+                {/* Match Mode Pill (one of 7 — Casual/Rated, or the Competition's format) */}
+                <div className="flex items-center justify-between">
+                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold uppercase tracking-wider ${modeMeta.pillClasses}`}>
+                    {modeMeta.shortLabel}
+                  </span>
+                  {competition && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openCompetitionsListModal();
+                      }}
+                      className="flex items-center space-x-1 text-[10px] font-bold text-slate-500 hover:text-amber-700 transition-colors truncate max-w-[65%]"
+                      title={`Open ${competition.name} in Competitions`}
+                    >
+                      <Trophy className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                      <span className="truncate">{competition.name}</span>
+                    </button>
+                  )}
+                </div>
+
                 {/* Meta Header Row */}
                 <div className="flex items-center justify-between text-[10px] text-slate-500 pb-1.5 border-b border-slate-100">
                   <div className="flex items-center space-x-2">

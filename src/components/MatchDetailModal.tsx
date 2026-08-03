@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import type { SquashMatch, GameResult, Player } from '../types/squash';
-import { X, ShieldAlert, Calendar, Share2, Printer, Check, User, AlertTriangle, Flame } from 'lucide-react';
+import { useSquash } from '../context/SquashContext';
+import { getMatchMode } from '../utils/matchModeUtils';
+import { X, ShieldAlert, Calendar, Share2, Printer, Check, User, AlertTriangle, Trophy } from 'lucide-react';
 import { formatFullDateTime, formatMatchDuration, getMatchDurationParts } from '../utils/dateUtils';
 
 interface MatchDetailModalProps {
   match: SquashMatch | null;
   onClose: () => void;
   onSelectPlayerProfile?: (player: Player) => void;
+  openCompetitionsListModal?: () => void;
 }
 
 interface RallySegment {
@@ -123,7 +126,13 @@ const calculateGameRallyRibbon = (
   return { rallies, winnerMaxStreak, loserMaxStreak, isEstimated };
 };
 
-export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClose, onSelectPlayerProfile }) => {
+export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
+  match,
+  onClose,
+  onSelectPlayerProfile,
+  openCompetitionsListModal,
+}) => {
+  const { competitions } = useSquash();
   const [copied, setCopied] = useState<boolean>(false);
   const [showRallyFlow, setShowRallyFlow] = useState<boolean>(false);
   const [activeRallyKey, setActiveRallyKey] = useState<string | null>(null);
@@ -141,6 +150,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
   }, [match, onClose]);
 
   if (!match) return null;
+
+  const { meta: modeMeta, competition } = getMatchMode(match, competitions);
 
   const player1 = match.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🇳🇿', avatarBgColor: '#0F172A', skillGrade: 'C1' };
   const player2 = match.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🇳🇿', avatarBgColor: '#0F172A', skillGrade: 'C1' };
@@ -215,15 +226,14 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
               <span className="font-extrabold text-amber-400 uppercase tracking-wider font-mono text-[10px]">
                 {match.matchFormat === 'BEST_OF_5' ? 'Best of 5 (PARS-11)' : match.matchFormat === 'BEST_OF_3' ? 'Best of 3 (PARS-11)' : 'Single Game'}
               </span>
-              {match.isRated && (
-                <span
-                  className="flex items-center space-x-1 bg-amber-400/15 text-amber-400 border border-amber-400/40 rounded-md px-1.5 py-0.5 font-extrabold uppercase tracking-wider font-mono text-[9px]"
-                  title="Counts toward Club Rating"
-                >
-                  <Flame className="w-2.5 h-2.5" />
-                  <span>Rated</span>
-                </span>
-              )}
+              {/* One of the 7 match modes (see utils/matchModeUtils.ts) — always shown here,
+                  styled consistently against the navy header regardless of which mode. */}
+              <span
+                className="flex items-center space-x-1 bg-amber-400/15 text-amber-400 border border-amber-400/40 rounded-md px-1.5 py-0.5 font-extrabold uppercase tracking-wider font-mono text-[9px]"
+                title={competition ? `Fixture of ${competition.name}` : modeMeta.label}
+              >
+                <span>{modeMeta.shortLabel}</span>
+              </span>
             </div>
 
             <button
@@ -244,6 +254,19 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
               <Calendar className="w-3.5 h-3.5 text-slate-400" />
               <span>{formatFullDateTime(match.date)}</span>
             </span>
+            {competition && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openCompetitionsListModal?.();
+                }}
+                className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center space-x-1.5 mt-1 transition-colors"
+                title={`Open ${competition.name} in Competitions`}
+              >
+                <Trophy className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                <span className="truncate">{competition.name}</span>
+              </button>
+            )}
           </div>
 
           {/* Vertical Winner & Loser Clickable Scorecard Panel */}
