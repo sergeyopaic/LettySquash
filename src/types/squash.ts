@@ -86,6 +86,10 @@ export interface SquashMatch {
   // Rally Flow. Absent on matches recorded before this field existed (e.g. seed data) —
   // those fall back to an estimated reconstruction, clearly labeled as such in the UI.
   pointLog?: PointEvent[];
+  // Whether this match counts toward each player's Club Rating (see utils/ratingUtils.ts).
+  // Independent of matchType — a rated match can still be a "friendly" in context; casual
+  // quick matches recorded via NewMatchModal never set this.
+  isRated?: boolean;
 }
 
 export interface GameWonInfo {

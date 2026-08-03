@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
 import type { Player } from '../types/squash';
 import { useSquash } from '../context/SquashContext';
-import { getPlayerClubId } from '../utils/clubUtils';
+import { getPlayerClubId, getPlayersForClub, getMatchesForClub } from '../utils/clubUtils';
 import { sortMatchesByDateDesc } from '../utils/matchUtils';
+import { computeClubRatings } from '../utils/ratingUtils';
 import { CLUBS_LIST } from './ClubSelectorModal';
-import { X, Trophy, Flame, Activity, Clock, MapPin } from 'lucide-react';
+import { X, Trophy, Flame, Activity, Clock, MapPin, TrendingUp } from 'lucide-react';
 
 interface PlayerProfileModalProps {
   player: Player | null;
@@ -17,7 +18,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   onClose,
   onSelectMatchDetail,
 }) => {
-  const { matches } = useSquash();
+  const { players, matches } = useSquash();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -38,7 +39,16 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
       ? Math.round((player.wins / player.totalMatches) * 100)
       : 0;
 
-  const club = CLUBS_LIST.find((c) => c.id === getPlayerClubId(player));
+  const playerClubId = getPlayerClubId(player);
+  const club = CLUBS_LIST.find((c) => c.id === playerClubId);
+
+  // Club Rating is relative to the rest of the club, so it's computed from the club's
+  // full roster/match history, not just this one player.
+  const clubRatings = computeClubRatings(
+    getPlayersForClub(players, playerClubId),
+    getMatchesForClub(matches, playerClubId)
+  );
+  const clubRating = clubRatings[player.id];
 
   // Filter completed matches involving this player, most recent first
   const playerMatches = sortMatchesByDateDesc(
@@ -108,7 +118,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
         </div>
 
         {/* Player Performance Stats Grid */}
-        <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="grid grid-cols-2 gap-2 text-center">
           <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-0.5">
             <div className="flex items-center justify-center space-x-1 text-slate-900">
               <Activity className="w-3.5 h-3.5 text-blue-500" />
@@ -131,6 +141,19 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
               <span className="text-base font-black">{winRate}%</span>
             </div>
             <p className="text-[10px] font-bold text-slate-500">Win Rate</p>
+          </div>
+
+          <div
+            className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-0.5"
+            title="Club Rating — calculated from rated matches recorded in this app. Not an official NZ Squash rating."
+          >
+            <div className="flex items-center justify-center space-x-1 text-blue-700">
+              <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+              <span className="text-base font-black">
+                {clubRating.ratedMatches > 0 ? Math.round(clubRating.rating) : 'New'}
+              </span>
+            </div>
+            <p className="text-[10px] font-bold text-slate-500">Club Rating</p>
           </div>
         </div>
 

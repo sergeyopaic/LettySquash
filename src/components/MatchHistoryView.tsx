@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
-import { Clock, Trash2, Trophy, Calendar, Check } from 'lucide-react';
+import { Clock, Trash2, Trophy, Calendar, Check, Flame } from 'lucide-react';
 import { formatMatchDateGroup, formatMatchTime } from '../utils/dateUtils';
 import type { SquashMatch, Club } from '../types/squash';
-import { getMatchesForClub } from '../utils/clubUtils';
+import { getMatchesForClub, getPlayerClubId } from '../utils/clubUtils';
 import { sortMatchesByDateDesc } from '../utils/matchUtils';
 
 interface MatchHistoryViewProps {
@@ -11,16 +11,39 @@ interface MatchHistoryViewProps {
   activeClub?: Club;
 }
 
+// "Tournament" and generic per-matchType tabs were dropped once match creation was
+// simplified to Casual/Rated — League and Interclub stay as they're still meaningful
+// cross-cutting categories (from historical data and, later, real competitions).
+const FILTER_CHIPS = [
+  { id: 'ALL', label: 'All Matches' },
+  { id: 'CASUAL', label: 'Casual' },
+  { id: 'RATED', label: 'Rated' },
+  { id: 'LEAGUE', label: 'League' },
+  { id: 'INTERCLUB', label: 'Interclub' },
+] as const;
+
+const matchesFilter = (m: SquashMatch, filterType: string): boolean => {
+  switch (filterType) {
+    case 'CASUAL':
+      return !m.isRated;
+    case 'RATED':
+      return Boolean(m.isRated);
+    case 'LEAGUE':
+      return m.matchType === 'LEAGUE';
+    case 'INTERCLUB':
+      return getPlayerClubId(m.player1) !== getPlayerClubId(m.player2);
+    default:
+      return true;
+  }
+};
+
 export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchDetail, activeClub }) => {
   const { matches, deleteMatch } = useSquash();
   const [filterType, setFilterType] = useState<string>('ALL');
 
   const clubMatches = activeClub ? getMatchesForClub(matches, activeClub.id) : matches;
 
-  const filteredMatches = sortMatchesByDateDesc(clubMatches).filter((m) => {
-    if (filterType === 'ALL') return true;
-    return m.matchType === filterType;
-  });
+  const filteredMatches = sortMatchesByDateDesc(clubMatches).filter((m) => matchesFilter(m, filterType));
 
   const formatDuration = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
@@ -44,12 +67,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
 
       {/* Filter Chips */}
       <div className="flex space-x-2 overflow-x-auto pb-1 no-scrollbar">
-        {[
-          { id: 'ALL', label: 'All Matches' },
-          { id: 'FRIENDLY', label: 'Friendly' },
-          { id: 'TOURNAMENT', label: 'Tournament' },
-          { id: 'LEAGUE', label: 'League' },
-        ].map((chip) => (
+        {FILTER_CHIPS.map((chip) => (
           <button
             key={chip.id}
             onClick={() => setFilterType(chip.id)}
@@ -114,6 +132,15 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
                               ? 'League'
                               : 'Practice'}
                           </span>
+                          {match.isRated && (
+                            <span
+                              className="flex items-center space-x-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-1.5 py-0.5 font-extrabold text-[9px] uppercase tracking-wider"
+                              title="Counts toward Club Rating"
+                            >
+                              <Flame className="w-2.5 h-2.5" />
+                              <span>Rated</span>
+                            </span>
+                          )}
                           <span className="font-semibold text-slate-600">
                             {formatMatchDateGroup(match.date)} • {formatMatchTime(match.date)}
                           </span>

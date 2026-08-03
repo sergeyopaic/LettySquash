@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSquash } from '../context/SquashContext';
-import type { MatchFormat, MatchType, ServeSide } from '../types/squash';
-import { X, Play, AlertCircle } from 'lucide-react';
+import type { MatchFormat, ServeSide } from '../types/squash';
+import { X, Play, AlertCircle, Flame } from 'lucide-react';
 import { SquashBallIcon } from './DashboardView';
 
 interface NewMatchModalProps {
@@ -16,7 +16,9 @@ export const NewMatchModal: React.FC<NewMatchModalProps> = ({ isOpen, onClose, o
   const [p1Id, setP1Id] = useState<string>('');
   const [p2Id, setP2Id] = useState<string>('');
   const [format, setFormat] = useState<MatchFormat>('BEST_OF_5');
-  const [matchType, setMatchType] = useState<MatchType>('FRIENDLY');
+  // Championship/League/Playoff formats live under "My Competitions" now, not here —
+  // this screen only decides whether the match counts toward Club Rating.
+  const [isRated, setIsRated] = useState<boolean>(false);
   const [initialServerId, setInitialServerId] = useState<string>('');
   const [serveSide, setServeSide] = useState<ServeSide>('R');
 
@@ -55,7 +57,7 @@ export const NewMatchModal: React.FC<NewMatchModalProps> = ({ isOpen, onClose, o
       ? initialServerId
       : currentP1Id;
 
-    startMatch(currentP1Id, currentP2Id, format, matchType, server, serveSide);
+    startMatch(currentP1Id, currentP2Id, format, 'FRIENDLY', server, serveSide, isRated);
     onStart();
     onClose();
   };
@@ -150,29 +152,38 @@ export const NewMatchModal: React.FC<NewMatchModalProps> = ({ isOpen, onClose, o
             </div>
           </div>
 
-          {/* Match Type */}
+          {/* Match Mode: casual vs. rated. Championship/League/Playoff formats are
+              created from the "My Competitions" tab instead — this screen stays simple. */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-600 block">Match Type</label>
+            <label className="text-xs font-bold text-slate-600 block">Match Mode</label>
             <div className="grid grid-cols-2 gap-2">
-              {[
-                { id: 'FRIENDLY', label: 'Friendly' },
-                { id: 'TOURNAMENT', label: 'Tournament' },
-                { id: 'LEAGUE', label: 'League' },
-                { id: 'PRACTICE', label: 'Practice' },
-              ].map((t) => (
-                <button
-                  type="button"
-                  key={t.id}
-                  onClick={() => setMatchType(t.id as MatchType)}
-                  className={`p-2 rounded-xl border text-xs text-center transition-all ${
-                    matchType === t.id
-                      ? 'border-amber-500 bg-amber-50 text-amber-950 font-bold'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => setIsRated(false)}
+                className={`p-2.5 rounded-xl border text-left transition-all ${
+                  !isRated
+                    ? 'border-blue-900 bg-blue-50/80 text-blue-900 font-bold shadow-sm'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <p className="text-xs">Casual Match</p>
+                <p className="text-[9px] text-slate-400 mt-0.5">Recorded, doesn't affect Club Rating</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsRated(true)}
+                className={`p-2.5 rounded-xl border text-left transition-all ${
+                  isRated
+                    ? 'border-amber-500 bg-amber-50 text-amber-950 font-bold shadow-sm'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <p className="text-xs flex items-center space-x-1">
+                  <Flame className="w-3 h-3 text-amber-500" />
+                  <span>Rated Match</span>
+                </p>
+                <p className="text-[9px] text-slate-400 mt-0.5">Counts toward Club Rating</p>
+              </button>
             </div>
           </div>
 

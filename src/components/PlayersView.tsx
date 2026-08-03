@@ -2,7 +2,8 @@ import React from 'react';
 import { useSquash } from '../context/SquashContext';
 import type { Player, Club } from '../types/squash';
 import { Plus, Trash2, ChevronRight, MapPin } from 'lucide-react';
-import { getPlayersForClub, getPlayerClubId } from '../utils/clubUtils';
+import { getPlayersForClub, getMatchesForClub, getPlayerClubId } from '../utils/clubUtils';
+import { computeClubRatings } from '../utils/ratingUtils';
 import { CLUBS_LIST } from './ClubSelectorModal';
 
 interface PlayersViewProps {
@@ -12,9 +13,11 @@ interface PlayersViewProps {
 }
 
 export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, onSelectPlayerProfile, activeClub }) => {
-  const { players, deletePlayer, updatePlayerClub } = useSquash();
+  const { players, matches, deletePlayer, updatePlayerClub } = useSquash();
 
   const clubPlayers = activeClub ? getPlayersForClub(players, activeClub.id) : players;
+  const clubMatches = activeClub ? getMatchesForClub(matches, activeClub.id) : matches;
+  const clubRatings = computeClubRatings(clubPlayers, clubMatches);
 
   const getWinRate = (wins: number, total: number) => {
     if (!total) return '0%';
@@ -112,20 +115,29 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, on
               </div>
 
               {/* Player Stats Grid */}
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-center">
+              <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-center">
                 <div className="bg-slate-50 p-2 rounded-xl">
                   <p className="text-[10px] font-semibold text-slate-400">Matches</p>
                   <p className="text-xs font-bold text-slate-800 mt-0.5">{player.totalMatches}</p>
                 </div>
                 <div className="bg-slate-50 p-2 rounded-xl">
-                  <p className="text-[10px] font-semibold text-slate-400">Wins / Losses</p>
+                  <p className="text-[10px] font-semibold text-slate-400">W / L</p>
                   <p className="text-xs font-bold text-slate-900 mt-0.5">
-                    {player.wins} W / {player.losses} L
+                    {player.wins} / {player.losses}
                   </p>
                 </div>
                 <div className="bg-amber-50 p-2 rounded-xl border border-amber-100">
                   <p className="text-[10px] font-semibold text-amber-800">Win Rate</p>
                   <p className="text-xs font-bold text-amber-900 mt-0.5">{winRate}</p>
+                </div>
+                <div
+                  className="bg-blue-50 p-2 rounded-xl border border-blue-100"
+                  title="Club Rating — from rated matches recorded in this app, not an official NZ Squash rating."
+                >
+                  <p className="text-[10px] font-semibold text-blue-700">Club Rating</p>
+                  <p className="text-xs font-bold text-blue-900 mt-0.5">
+                    {clubRatings[player.id]?.ratedMatches ? Math.round(clubRatings[player.id].rating) : 'New'}
+                  </p>
                 </div>
               </div>
             </div>

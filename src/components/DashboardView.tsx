@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
 import { ClubSelectorModal, CLUBS_LIST } from './ClubSelectorModal';
@@ -7,6 +7,7 @@ import { Play, Plus, Activity, ChevronRight, ChevronDown, Clock, Settings, Troph
 import { formatMatchDateGroup } from '../utils/dateUtils';
 import { getPlayersForClub, getMatchesForClub } from '../utils/clubUtils';
 import { getMatchWinnerId, sortMatchesByDateDesc } from '../utils/matchUtils';
+import { computeClubRatings } from '../utils/ratingUtils';
 import { COMPETITION_FORMAT_LABELS } from './NewCompetitionModal';
 
 interface DashboardViewProps {
@@ -66,7 +67,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const clubMatches = getMatchesForClub(matches, activeClub.id);
 
   const recentMatches = sortMatchesByDateDesc(clubMatches).slice(0, 3);
-  const topPlayers = [...activePlayers].sort((a, b) => b.wins - a.wins).slice(0, 3);
+
+  // Club Rating (see utils/ratingUtils.ts) is the single ranking used everywhere on this
+  // screen — Court Leaders and the Spotlight card used to rank by two different metrics
+  // (win count vs. win rate) and could disagree on who's "best"; now both agree.
+  const clubRatings = computeClubRatings(activePlayers, clubMatches);
+  const topPlayers = [...activePlayers]
+    .sort((a, b) => (clubRatings[b.id]?.rating ?? 0) - (clubRatings[a.id]?.rating ?? 0))
+    .slice(0, 3);
 
   // Calculate average match duration in minutes for active club
   const avgMatchDurationMins =
@@ -76,25 +84,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )
       : 32;
 
-  // Stable spotlight leader for active club (Win Rate Leader)
-  const spotlightLeader = useMemo(() => {
-    if (activePlayers.length === 0) return null;
-
-    const topWinRatePlayer = [...activePlayers]
-      .filter((p) => p.totalMatches > 0)
-      .sort((a, b) => b.wins / b.totalMatches - a.wins / a.totalMatches)[0];
-
-    const leader = topWinRatePlayer || activePlayers[0];
-    const wr = leader.totalMatches > 0 ? Math.round((leader.wins / leader.totalMatches) * 100) : 0;
-
-    return {
-      fullName: leader.name,
-      flag: leader.countryFlag,
-      subtitle: `Win Rate Leader (${wr}%)`,
-      icon: '👑',
-      playerObj: leader,
-    };
-  }, [activeClub.id, players]);
+  const spotlightLeader = topPlayers.length > 0
+    ? {
+        fullName: topPlayers[0].name,
+        flag: topPlayers[0].countryFlag,
+        subtitle: `Club Rating Leader (${Math.round(clubRatings[topPlayers[0].id]?.rating ?? 0)})`,
+        icon: '👑',
+        playerObj: topPlayers[0],
+      }
+    : null;
 
   const formatDuration = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
@@ -372,10 +370,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div className="ios-card rounded-2xl divide-y divide-slate-100 p-0 overflow-hidden">
           {topPlayers.map((player) => {
-            const winRate =
-              player.totalMatches > 0
-                ? Math.round((player.wins / player.totalMatches) * 100)
-                : 0;
+            const rating = clubRatings[player.id];
 
             return (
               <div
@@ -401,7 +396,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      {player.wins}W / {player.losses}L • Win Rate {winRate}%
+                      {player.wins}W / {player.losses}L
+                      {rating && rating.ratedMatches > 0 && (
+                        <> • {Math.round(rating.rating)} Club Rating</>
+                      )}
                     </p>
                   </div>
                 </div>

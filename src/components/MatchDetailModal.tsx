@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { SquashMatch, GameResult, Player } from '../types/squash';
-import { X, ShieldAlert, Calendar, Share2, Printer, Check, User, AlertTriangle } from 'lucide-react';
+import { X, ShieldAlert, Calendar, Share2, Printer, Check, User, AlertTriangle, Flame } from 'lucide-react';
 import { formatFullDateTime, formatMatchDuration, getMatchDurationParts } from '../utils/dateUtils';
 
 interface MatchDetailModalProps {
@@ -211,9 +211,20 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
         <div className="bg-slate-900 rounded-t-3xl p-5 text-white shadow-md space-y-3.5 border-b border-slate-800">
           {/* Top Row: Format Tag & Close Button */}
           <div className="flex items-center justify-between">
-            <span className="font-extrabold text-amber-400 uppercase tracking-wider font-mono text-[10px]">
-              {match.matchFormat === 'BEST_OF_5' ? 'Best of 5 (PARS-11)' : match.matchFormat === 'BEST_OF_3' ? 'Best of 3 (PARS-11)' : 'Single Game'}
-            </span>
+            <div className="flex items-center space-x-1.5">
+              <span className="font-extrabold text-amber-400 uppercase tracking-wider font-mono text-[10px]">
+                {match.matchFormat === 'BEST_OF_5' ? 'Best of 5 (PARS-11)' : match.matchFormat === 'BEST_OF_3' ? 'Best of 3 (PARS-11)' : 'Single Game'}
+              </span>
+              {match.isRated && (
+                <span
+                  className="flex items-center space-x-1 bg-amber-400/15 text-amber-400 border border-amber-400/40 rounded-md px-1.5 py-0.5 font-extrabold uppercase tracking-wider font-mono text-[9px]"
+                  title="Counts toward Club Rating"
+                >
+                  <Flame className="w-2.5 h-2.5" />
+                  <span>Rated</span>
+                </span>
+              )}
+            </div>
 
             <button
               onClick={onClose}
