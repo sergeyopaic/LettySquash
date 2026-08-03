@@ -28,14 +28,20 @@ export const computePlayerStats = (players: Player[], matches: SquashMatch[]): P
 
     let wins = 0;
     let losses = 0;
+    let decidedMatches = 0;
 
     playerMatches.forEach((m) => {
       const isP1 = m.player1.id === player.id;
-      const isWinner = m.winnerId
-        ? m.winnerId === player.id
-        : isP1
-        ? m.p1GamesWon > m.p2GamesWon
-        : m.p2GamesWon > m.p1GamesWon;
+      const p1Won = m.p1GamesWon > m.p2GamesWon;
+      const p2Won = m.p2GamesWon > m.p1GamesWon;
+
+      // A match with no winnerId and level games (e.g. saved early via "Save & Exit")
+      // has no decided outcome — count it neither as a win nor a loss for either player,
+      // rather than defaulting both players to a loss.
+      if (!m.winnerId && !p1Won && !p2Won) return;
+
+      decidedMatches += 1;
+      const isWinner = m.winnerId ? m.winnerId === player.id : isP1 ? p1Won : p2Won;
 
       if (isWinner) {
         wins += 1;
@@ -46,7 +52,7 @@ export const computePlayerStats = (players: Player[], matches: SquashMatch[]): P
 
     return {
       ...player,
-      totalMatches: playerMatches.length,
+      totalMatches: decidedMatches,
       wins,
       losses,
     };

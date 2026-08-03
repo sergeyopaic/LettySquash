@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { SquashMatch, GameResult, Player } from '../types/squash';
-import { X, ShieldAlert, Calendar, Share2, Printer, Check, User } from 'lucide-react';
+import { X, ShieldAlert, Calendar, Share2, Printer, Check, User, AlertTriangle } from 'lucide-react';
 import { formatFullDateTime, formatMatchDuration, getMatchDurationParts } from '../utils/dateUtils';
 
 interface MatchDetailModalProps {
@@ -27,26 +27,30 @@ interface GameColumnData {
   rallies: RallySegment[];
   winnerMaxStreak: number;
   loserMaxStreak: number;
+  isEstimated: boolean;
 }
 
 const calculateGameRallyRibbon = (
   match: SquashMatch,
   gameNumber: number,
   isP1Winner: boolean
-): { rallies: RallySegment[]; winnerMaxStreak: number; loserMaxStreak: number } => {
+): { rallies: RallySegment[]; winnerMaxStreak: number; loserMaxStreak: number; isEstimated: boolean } => {
   const targetGame = (match.games || []).find((g) => g.gameNumber === gameNumber);
-  if (!targetGame) return { rallies: [], winnerMaxStreak: 0, loserMaxStreak: 0 };
+  if (!targetGame) return { rallies: [], winnerMaxStreak: 0, loserMaxStreak: 0, isEstimated: false };
 
   const winnerFinal = isP1Winner ? targetGame.p1Score : targetGame.p2Score;
   const loserFinal = isP1Winner ? targetGame.p2Score : targetGame.p1Score;
 
-  const historyEvents = (match as any).history || [];
-  const gameHistory = historyEvents.filter((h: any) => (h.gameIndex ?? h.currentGameIndex) === gameNumber);
+  // Real per-point log recorded live during the match (see SquashContext.recordPoint).
+  // Matches recorded before this field existed (e.g. seed data) won't have it — those
+  // fall back to a deterministic estimate below, clearly flagged via `isEstimated`.
+  const gameHistory = (match.pointLog || []).filter((e) => e.gameIndex === gameNumber);
+  const isEstimated = gameHistory.length === 0;
 
   let rawRallies: { scorer: 'WINNER' | 'LOSER'; isHandout: boolean }[] = [];
 
   if (gameHistory.length > 0) {
-    rawRallies = gameHistory.map((h: any) => {
+    rawRallies = gameHistory.map((h) => {
       const p1Scored = h.scoringPlayerId === (match.player1?.id || 'p1');
       const scorer = isP1Winner ? (p1Scored ? 'WINNER' : 'LOSER') : (p1Scored ? 'LOSER' : 'WINNER');
       return { scorer, isHandout: Boolean(h.isHandout) };
@@ -116,7 +120,7 @@ const calculateGameRallyRibbon = (
     });
   });
 
-  return { rallies, winnerMaxStreak, loserMaxStreak };
+  return { rallies, winnerMaxStreak, loserMaxStreak, isEstimated };
 };
 
 export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClose, onSelectPlayerProfile }) => {
@@ -176,7 +180,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
     const loserScore = isP1Winner ? g.p2Score : g.p1Score;
     const isWinnerGameWinner = winnerScore > loserScore;
 
-    const { rallies, winnerMaxStreak, loserMaxStreak } = calculateGameRallyRibbon(
+    const { rallies, winnerMaxStreak, loserMaxStreak, isEstimated } = calculateGameRallyRibbon(
       match,
       g.gameNumber,
       isP1Winner
@@ -189,7 +193,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
       isWinnerGameWinner,
       rallies,
       winnerMaxStreak,
-      loserMaxStreak
+      loserMaxStreak,
+      isEstimated
     };
   });
 
@@ -444,6 +449,16 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
                   <span>GAME BALL</span>
                 </div>
               </div>
+
+              {/* Estimated Data Notice: shown when no real point-by-point log was recorded for this match */}
+              {gameColumns.some((c) => c.isEstimated) && (
+                <div className="flex items-start space-x-1.5 text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 normal-case font-medium leading-snug">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <span>
+                    No point-by-point log was recorded for this match — the rally sequence shown below is an estimate reconstructed from the final game scores, not the real order of play.
+                  </span>
+                </div>
+              )}
 
               {/* All Game Columns Side-by-Side (Clean Top Alignment, Single-Line Footer Labels) */}
               <div className="flex justify-around items-end gap-1.5 pt-2 pb-1 w-full overflow-x-auto min-h-[180px]">

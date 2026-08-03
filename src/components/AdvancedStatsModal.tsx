@@ -1,26 +1,32 @@
 import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
+import type { Club } from '../types/squash';
+import { getPlayersForClub, getMatchesForClub } from '../utils/clubUtils';
 import { X, Trophy, Flame, Target, Activity, MapPin } from 'lucide-react';
 
 interface AdvancedStatsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  activeClub?: Club;
 }
 
 type SortField = 'WIN_RATE' | 'WINS' | 'POINTS_WON_PCT' | 'TOTAL_MATCHES';
 
-export const AdvancedStatsModal: React.FC<AdvancedStatsModalProps> = ({ isOpen, onClose }) => {
+export const AdvancedStatsModal: React.FC<AdvancedStatsModalProps> = ({ isOpen, onClose, activeClub }) => {
   const { players, matches } = useSquash();
   const [sortField, setSortField] = useState<SortField>('WIN_RATE');
 
   if (!isOpen) return null;
 
-  // Calculate detailed points stats for each player across all completed matches
-  const playerStats = players.map((p) => {
+  const clubPlayers = activeClub ? getPlayersForClub(players, activeClub.id) : players;
+  const clubMatches = activeClub ? getMatchesForClub(matches, activeClub.id) : matches;
+
+  // Calculate detailed points stats for each player across all completed matches for the active club
+  const playerStats = clubPlayers.map((p) => {
     let totalPointsScored = 0;
     let totalPointsConceded = 0;
 
-    matches.forEach((m) => {
+    clubMatches.forEach((m) => {
       if (m.status === 'COMPLETED') {
         m.games.forEach((g) => {
           if (m.player1.id === p.id) {
@@ -64,7 +70,9 @@ export const AdvancedStatsModal: React.FC<AdvancedStatsModalProps> = ({ isOpen, 
           <div>
             <div className="flex items-center space-x-1.5 text-xs font-bold text-amber-600">
               <MapPin className="w-3.5 h-3.5" />
-              <span>Devonport Squash Club • Auckland</span>
+              <span>
+                {activeClub ? `${activeClub.name} • ${activeClub.city}` : 'All Clubs'}
+              </span>
             </div>
             <h2 className="text-lg font-black text-slate-900 mt-0.5">
               Club Analytics & Leaderboard

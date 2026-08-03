@@ -8,6 +8,7 @@ import { NavigationTabBar } from './components/NavigationTabBar';
 import type { TabType } from './components/NavigationTabBar';
 import { NewMatchModal } from './components/NewMatchModal';
 import { NewCompetitionModal } from './components/NewCompetitionModal';
+import { CompetitionsListModal } from './components/CompetitionsListModal';
 import { AddPlayerModal } from './components/AddPlayerModal';
 import { MatchDetailModal } from './components/MatchDetailModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -26,6 +27,7 @@ const MainContainer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [isNewMatchOpen, setIsNewMatchOpen] = useState<boolean>(false);
   const [isNewCompetitionOpen, setIsNewCompetitionOpen] = useState<boolean>(false);
+  const [isCompetitionsListOpen, setIsCompetitionsListOpen] = useState<boolean>(false);
   const [isAddPlayerOpen, setIsAddPlayerOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isAdvancedStatsOpen, setIsAdvancedStatsOpen] = useState<boolean>(false);
@@ -108,6 +110,7 @@ const MainContainer: React.FC = () => {
               openAdvancedStatsModal={() => setIsAdvancedStatsOpen(true)}
               openHowToPlayModal={() => setIsHowToPlayOpen(true)}
               openHowToUseAppModal={() => setIsHowToUseAppOpen(true)}
+              openCompetitionsListModal={() => setIsCompetitionsListOpen(true)}
               onSelectPlayerProfile={(p) => setSelectedPlayerProfile(p)}
               setActiveTab={setActiveTab}
               selectMatchDetail={(id) => setSelectedMatchId(id)}
@@ -153,6 +156,11 @@ const MainContainer: React.FC = () => {
           onClose={() => setIsNewCompetitionOpen(false)}
         />
 
+        <CompetitionsListModal
+          isOpen={isCompetitionsListOpen}
+          onClose={() => setIsCompetitionsListOpen(false)}
+        />
+
         <AddPlayerModal
           isOpen={isAddPlayerOpen}
           onClose={() => setIsAddPlayerOpen(false)}
@@ -180,6 +188,7 @@ const MainContainer: React.FC = () => {
         <AdvancedStatsModal
           isOpen={isAdvancedStatsOpen}
           onClose={() => setIsAdvancedStatsOpen(false)}
+          activeClub={activeClub}
         />
 
         <HowToPlayModal

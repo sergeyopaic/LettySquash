@@ -36,17 +36,12 @@ export interface Player {
 }
 
 export interface PointEvent {
-  timestamp: string;
+  gameIndex: number;
   scoringPlayerId: string;
   p1Score: number;
   p2Score: number;
-  serverPlayerId: string;
-  serveSide: ServeSide;
-  gameIndex: number;
-  serverId?: string;
-  currentGameIndex?: number;
-  p1GamesWon?: number;
-  p2GamesWon?: number;
+  isHandout: boolean;
+  timestamp: string;
 }
 
 export interface RefereeDecision {
@@ -87,6 +82,10 @@ export interface SquashMatch {
   winnerId?: string;
   totalDurationSeconds: number;
   notes?: string;
+  // Real per-point log recorded live during the match, used to render an accurate
+  // Rally Flow. Absent on matches recorded before this field existed (e.g. seed data) —
+  // those fall back to an estimated reconstruction, clearly labeled as such in the UI.
+  pointLog?: PointEvent[];
 }
 
 export interface GameWonInfo {
@@ -125,6 +124,7 @@ export interface LiveMatchState {
   isHandout?: boolean;
   history: any[];
   decisions: RefereeDecision[];
+  pointLog: PointEvent[];
 }
 
 export interface AppSettings {
@@ -138,4 +138,24 @@ export interface LettyTipItem {
   categoryLabel: string;
   title: string;
   text: string;
+}
+
+export type CompetitionFormat =
+  | 'INTERCLUB_4VS4'
+  | 'LEAGUE'
+  | 'GROUPS_PLAYOFF'
+  | 'SINGLE_ELIMINATION'
+  | 'DOUBLE_ELIMINATION';
+
+export type CompetitionStatus = 'ACTIVE' | 'COMPLETED';
+
+export interface Competition {
+  id: string;
+  name: string;
+  format: CompetitionFormat;
+  status: CompetitionStatus;
+  participantIds: string[];
+  clubAId?: string;
+  clubBId?: string;
+  createdAt: string;
 }

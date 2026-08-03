@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSquash } from '../context/SquashContext';
-import type { Player } from '../types/squash';
+import type { CompetitionFormat } from '../types/squash';
 import { CLUBS_LIST } from './ClubSelectorModal';
+import { getPlayersForClub } from '../utils/clubUtils';
 import {
   X,
   Trophy,
@@ -18,12 +19,50 @@ interface NewCompetitionModalProps {
   onClose: () => void;
 }
 
-export type CompetitionFormat =
-  | 'INTERCLUB_4VS4'
-  | 'LEAGUE'
-  | 'GROUPS_PLAYOFF'
-  | 'SINGLE_ELIMINATION'
-  | 'DOUBLE_ELIMINATION';
+export type { CompetitionFormat };
+
+export const COMPETITION_FORMATS: {
+  id: CompetitionFormat;
+  title: string;
+  desc: string;
+  icon: React.ReactNode;
+}[] = [
+  {
+    id: 'INTERCLUB_4VS4',
+    title: 'Interclub 4 vs 4',
+    desc: 'Official Club vs Club team fixture. 4 players per club matched 1vs1.',
+    icon: <Zap className="w-5 h-5 text-amber-400" />,
+  },
+  {
+    id: 'LEAGUE',
+    title: 'League (Round-Robin)',
+    desc: 'Every player plays against every other player in the league.',
+    icon: <Award className="w-5 h-5 text-blue-500" />,
+  },
+  {
+    id: 'GROUPS_PLAYOFF',
+    title: 'Groups + Knockout',
+    desc: 'Group stage qualification followed by playoff bracket.',
+    icon: <Users className="w-5 h-5 text-emerald-500" />,
+  },
+  {
+    id: 'SINGLE_ELIMINATION',
+    title: 'Single Elimination',
+    desc: 'Classic knockout tournament (1 loss = eliminated).',
+    icon: <Trophy className="w-5 h-5 text-purple-500" />,
+  },
+  {
+    id: 'DOUBLE_ELIMINATION',
+    title: 'Double Elimination',
+    desc: 'Knockout bracket with Winners and Losers brackets.',
+    icon: <Shield className="w-5 h-5 text-indigo-500" />,
+  },
+];
+
+export const COMPETITION_FORMAT_LABELS: Record<CompetitionFormat, string> = COMPETITION_FORMATS.reduce(
+  (acc, f) => ({ ...acc, [f.id]: f.title }),
+  {} as Record<CompetitionFormat, string>
+);
 
 export const GRADE_RANKS: Record<string, number> = {
   A1: 100,
@@ -47,40 +86,8 @@ export const getGradeRank = (grade: string): number => {
   return GRADE_RANKS[grade] || 50;
 };
 
-// Independent Dedicated Mock Rosters for Each Club
-export const MOCK_CLUB_ROSTERS: Record<string, Player[]> = {
-  // c1: Devonport Squash Club
-  c1: [
-    { id: 'dev1', name: 'Noah Jenkins', avatarBgColor: '#0F172A', skillGrade: 'A1', countryFlag: '🇳🇿', countryCode: 'NZ', handedness: 'Right', totalMatches: 20, wins: 18, losses: 2, createdAt: '2026-01-01' },
-    { id: 'dev2', name: 'Ethan Ross', avatarBgColor: '#2563EB', skillGrade: 'B1', countryFlag: '🇳🇿', countryCode: 'NZ', handedness: 'Left', totalMatches: 14, wins: 10, losses: 4, createdAt: '2026-01-01' },
-    { id: 'dev3', name: 'Tarek El-Masry', avatarBgColor: '#D97706', skillGrade: 'C1', countryFlag: '🇪🇬', countryCode: 'EG', handedness: 'Right', totalMatches: 10, wins: 6, losses: 4, createdAt: '2026-01-01' },
-    { id: 'dev4', name: 'Ivan Petrov', avatarBgColor: '#1E293B', skillGrade: 'D1', countryFlag: '🇷🇺', countryCode: 'RU', handedness: 'Right', totalMatches: 8, wins: 4, losses: 4, createdAt: '2026-01-01' },
-  ],
-  // c2: Remuera Rackets Club
-  c2: [
-    { id: 'p1', name: 'Liam Walker', avatarBgColor: '#0F172A', skillGrade: 'A2', countryFlag: '🇳🇿', countryCode: 'NZ', handedness: 'Right', totalMatches: 12, wins: 10, losses: 2, createdAt: '2026-01-10' },
-    { id: 'p4', name: 'Marcus Vance', avatarBgColor: '#16A34A', skillGrade: 'C1', countryFlag: '🇺🇸', countryCode: 'US', handedness: 'Right', totalMatches: 8, wins: 5, losses: 3, createdAt: '2026-04-12' },
-    { id: 'p6', name: 'Felix Weber', avatarBgColor: '#9333EA', skillGrade: 'C2', countryFlag: '🇩🇪', countryCode: 'DE', handedness: 'Right', totalMatches: 7, wins: 4, losses: 3, createdAt: '2026-06-10' },
-    { id: 'p8', name: 'Mateo Silva', avatarBgColor: '#6366F1', skillGrade: 'D2', countryFlag: '🇧🇷', countryCode: 'BR', handedness: 'Right', totalMatches: 5, wins: 2, losses: 3, createdAt: '2026-06-20' },
-  ],
-  // c3: Belmont Squash Club
-  c3: [
-    { id: 'p2', name: 'Sophie Bennett', avatarBgColor: '#0F172A', skillGrade: 'B1', countryFlag: '🇦🇺', countryCode: 'AU', handedness: 'Left', totalMatches: 10, wins: 7, losses: 3, createdAt: '2026-02-14' },
-    { id: 'p3', name: 'Oliver Taylor', avatarBgColor: '#2563EB', skillGrade: 'B2', countryFlag: '🇬🇧', countryCode: 'GB', handedness: 'Right', totalMatches: 15, wins: 11, losses: 4, createdAt: '2026-03-01' },
-    { id: 'p5', name: 'Lucas Dubois', avatarBgColor: '#DC2626', skillGrade: 'C2', countryFlag: '🇫🇷', countryCode: 'FR', handedness: 'Left', totalMatches: 9, wins: 6, losses: 3, createdAt: '2026-05-01' },
-    { id: 'p7', name: 'Kenji Sato', avatarBgColor: '#06B6D4', skillGrade: 'D1', countryFlag: '🇯🇵', countryCode: 'JP', handedness: 'Left', totalMatches: 6, wins: 3, losses: 3, createdAt: '2026-06-15' },
-  ],
-  // c4: Sydney Squash Centre
-  c4: [
-    { id: 'syd1', name: 'Jack Robinson', avatarBgColor: '#2563EB', skillGrade: 'A2', countryFlag: '🇦🇺', countryCode: 'AU', handedness: 'Right', totalMatches: 16, wins: 13, losses: 3, createdAt: '2026-01-01' },
-    { id: 'syd2', name: 'Daniel Miller', avatarBgColor: '#0F172A', skillGrade: 'B2', countryFlag: '🇦🇺', countryCode: 'AU', handedness: 'Right', totalMatches: 12, wins: 8, losses: 4, createdAt: '2026-01-01' },
-    { id: 'syd3', name: 'Samuel Wright', avatarBgColor: '#16A34A', skillGrade: 'C1', countryFlag: '🇦🇺', countryCode: 'AU', handedness: 'Left', totalMatches: 11, wins: 7, losses: 4, createdAt: '2026-01-01' },
-    { id: 'syd4', name: 'Ben Cooper', avatarBgColor: '#DC2626', skillGrade: 'D1', countryFlag: '🇦🇺', countryCode: 'AU', handedness: 'Right', totalMatches: 9, wins: 5, losses: 4, createdAt: '2026-01-01' },
-  ],
-};
-
 export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen, onClose }) => {
-  const { players } = useSquash();
+  const { players, addCompetition } = useSquash();
 
   const [competitionName, setCompetitionName] = useState('');
   const [selectedFormat, setSelectedFormat] = useState<CompetitionFormat>('INTERCLUB_4VS4');
@@ -98,14 +105,14 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
   const clubAName = clubA ? clubA.name : 'Club A';
   const clubBName = clubB ? clubB.name : 'Club B';
 
-  // Retrieve dedicated independent rosters for selected clubs
-  const teamAPlayers = [...(MOCK_CLUB_ROSTERS[selectedClubAId] || MOCK_CLUB_ROSTERS.c2)].sort(
-    (a, b) => getGradeRank(b.skillGrade) - getGradeRank(a.skillGrade)
-  );
+  // Top 4 players per club by grade, drawn from the real live roster (not a mock snapshot)
+  const teamAPlayers = getPlayersForClub(players, selectedClubAId)
+    .sort((a, b) => getGradeRank(b.skillGrade) - getGradeRank(a.skillGrade))
+    .slice(0, 4);
 
-  const teamBPlayers = [...(MOCK_CLUB_ROSTERS[selectedClubBId] || MOCK_CLUB_ROSTERS.c3)].sort(
-    (a, b) => getGradeRank(b.skillGrade) - getGradeRank(a.skillGrade)
-  );
+  const teamBPlayers = getPlayersForClub(players, selectedClubBId)
+    .sort((a, b) => getGradeRank(b.skillGrade) - getGradeRank(a.skillGrade))
+    .slice(0, 4);
 
   const [isCreatedToast, setIsCreatedToast] = useState(false);
 
@@ -118,43 +125,7 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
 
   if (!isOpen) return null;
 
-  const formats: {
-    id: CompetitionFormat;
-    title: string;
-    desc: string;
-    icon: React.ReactNode;
-  }[] = [
-    {
-      id: 'INTERCLUB_4VS4',
-      title: 'Interclub 4 vs 4',
-      desc: 'Official Club vs Club team fixture. 4 players per club matched 1vs1.',
-      icon: <Zap className="w-5 h-5 text-amber-400" />,
-    },
-    {
-      id: 'LEAGUE',
-      title: 'League (Round-Robin)',
-      desc: 'Every player plays against every other player in the league.',
-      icon: <Award className="w-5 h-5 text-blue-500" />,
-    },
-    {
-      id: 'GROUPS_PLAYOFF',
-      title: 'Groups + Knockout',
-      desc: 'Group stage qualification followed by playoff bracket.',
-      icon: <Users className="w-5 h-5 text-emerald-500" />,
-    },
-    {
-      id: 'SINGLE_ELIMINATION',
-      title: 'Single Elimination',
-      desc: 'Classic knockout tournament (1 loss = eliminated).',
-      icon: <Trophy className="w-5 h-5 text-purple-500" />,
-    },
-    {
-      id: 'DOUBLE_ELIMINATION',
-      title: 'Double Elimination',
-      desc: 'Knockout bracket with Winners and Losers brackets.',
-      icon: <Shield className="w-5 h-5 text-indigo-500" />,
-    },
-  ];
+  const formats = COMPETITION_FORMATS;
 
   const handleToggleStandardPlayer = (id: string) => {
     if (selectedPlayerIds.includes(id)) {
@@ -169,6 +140,19 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
   };
 
   const executeCreate = () => {
+    const participantIds =
+      selectedFormat === 'INTERCLUB_4VS4'
+        ? [...teamAPlayers, ...teamBPlayers].map((p) => p.id)
+        : selectedPlayerIds;
+
+    addCompetition({
+      name: competitionName.trim(),
+      format: selectedFormat,
+      participantIds,
+      clubAId: selectedFormat === 'INTERCLUB_4VS4' ? selectedClubAId : undefined,
+      clubBId: selectedFormat === 'INTERCLUB_4VS4' ? selectedClubBId : undefined,
+    });
+
     setIsCreatedToast(true);
     setTimeout(() => {
       setIsCreatedToast(false);
@@ -180,6 +164,10 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
     e.preventDefault();
     if (!competitionName.trim()) {
       alert('Please enter a competition name!');
+      return;
+    }
+    if (selectedFormat === 'INTERCLUB_4VS4' && (teamAPlayers.length === 0 || teamBPlayers.length === 0)) {
+      alert('Both clubs need at least 1 registered player to start an Interclub fixture!');
       return;
     }
     executeCreate();
@@ -356,25 +344,31 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                         {clubAName}
                       </span>
                       <span className="text-[10px] font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md">
-                        4/4 Lineup
+                        {teamAPlayers.length}/4 Lineup
                       </span>
                     </div>
 
                     <div className="space-y-1 p-1.5 bg-slate-50 border border-slate-200 rounded-xl">
-                      {teamAPlayers.map((p, idx) => (
-                        <div
-                          key={p.id}
-                          className="p-1.5 rounded-lg text-xs bg-slate-900 text-white font-bold flex items-center justify-between shadow-2xs"
-                        >
-                          <span className="truncate text-[11px]">
-                            <strong className="text-slate-400 font-mono mr-1">#{idx + 1}</strong>
-                            {p.countryFlag} {p.name}
-                          </span>
-                          <span className="text-[9px] font-mono font-bold text-amber-400 ml-1">
-                            {p.skillGrade}
-                          </span>
+                      {teamAPlayers.length === 0 ? (
+                        <div className="p-2 text-[10px] text-slate-400 font-semibold text-center">
+                          No registered players in this club yet
                         </div>
-                      ))}
+                      ) : (
+                        teamAPlayers.map((p, idx) => (
+                          <div
+                            key={p.id}
+                            className="p-1.5 rounded-lg text-xs bg-slate-900 text-white font-bold flex items-center justify-between shadow-2xs"
+                          >
+                            <span className="truncate text-[11px]">
+                              <strong className="text-slate-400 font-mono mr-1">#{idx + 1}</strong>
+                              {p.countryFlag} {p.name}
+                            </span>
+                            <span className="text-[9px] font-mono font-bold text-amber-400 ml-1">
+                              {p.skillGrade}
+                            </span>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
 
@@ -385,28 +379,40 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                         {clubBName}
                       </span>
                       <span className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200">
-                        4/4 Lineup
+                        {teamBPlayers.length}/4 Lineup
                       </span>
                     </div>
 
                     <div className="space-y-1 p-1.5 bg-slate-50 border border-slate-200 rounded-xl">
-                      {teamBPlayers.map((p, idx) => (
-                        <div
-                          key={p.id}
-                          className="p-1.5 rounded-lg text-xs bg-amber-500 text-slate-950 font-bold flex items-center justify-between shadow-2xs"
-                        >
-                          <span className="truncate text-[11px]">
-                            <strong className="text-slate-900 font-mono mr-1">#{idx + 1}</strong>
-                            {p.countryFlag} {p.name}
-                          </span>
-                          <span className="text-[9px] font-mono font-bold text-slate-900 ml-1">
-                            {p.skillGrade}
-                          </span>
+                      {teamBPlayers.length === 0 ? (
+                        <div className="p-2 text-[10px] text-slate-400 font-semibold text-center">
+                          No registered players in this club yet
                         </div>
-                      ))}
+                      ) : (
+                        teamBPlayers.map((p, idx) => (
+                          <div
+                            key={p.id}
+                            className="p-1.5 rounded-lg text-xs bg-amber-500 text-slate-950 font-bold flex items-center justify-between shadow-2xs"
+                          >
+                            <span className="truncate text-[11px]">
+                              <strong className="text-slate-900 font-mono mr-1">#{idx + 1}</strong>
+                              {p.countryFlag} {p.name}
+                            </span>
+                            <span className="text-[9px] font-mono font-bold text-slate-900 ml-1">
+                              {p.skillGrade}
+                            </span>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
+
+                {(teamAPlayers.length < 4 || teamBPlayers.length < 4) && (
+                  <div className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 font-medium leading-snug">
+                    Interclub 4v4 needs 4 registered players per club — add more players to {teamAPlayers.length < 4 ? clubAName : clubBName} first.
+                  </div>
+                )}
 
                 {/* 1vs1 Automated Interclub Fixtures Preview Table */}
                 <div className="space-y-1.5 bg-slate-900 text-white p-3 rounded-2xl shadow-md border border-slate-800">

@@ -6,6 +6,7 @@ import type { Club, Player } from '../types/squash';
 import { Play, Plus, Activity, ChevronRight, ChevronDown, Clock, Settings, Trophy, MapPin, Check } from 'lucide-react';
 import { formatMatchDateGroup } from '../utils/dateUtils';
 import { getPlayersForClub, getMatchesForClub } from '../utils/clubUtils';
+import { COMPETITION_FORMAT_LABELS } from './NewCompetitionModal';
 
 interface DashboardViewProps {
   openNewMatchModal: () => void;
@@ -15,6 +16,7 @@ interface DashboardViewProps {
   openAdvancedStatsModal: () => void;
   openHowToPlayModal: () => void;
   openHowToUseAppModal?: () => void;
+  openCompetitionsListModal: () => void;
   onSelectPlayerProfile: (player: Player) => void;
   setActiveTab: (tab: 'home' | 'match' | 'players' | 'history') => void;
   selectMatchDetail: (matchId: string) => void;
@@ -38,13 +40,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   openAdvancedStatsModal,
   openHowToPlayModal,
   openHowToUseAppModal,
+  openCompetitionsListModal,
   onSelectPlayerProfile,
   setActiveTab,
   selectMatchDetail,
   activeClub: propActiveClub,
   onSelectClub,
 }) => {
-  const { matches, players, activeMatchState } = useSquash();
+  const { matches, players, competitions, activeMatchState } = useSquash();
+  const activeCompetitions = competitions.filter((c) => c.status === 'ACTIVE');
 
   const [internalClub, setInternalClub] = useState<Club>(CLUBS_LIST[0]);
   const activeClub = propActiveClub || internalClub;
@@ -205,6 +209,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Active Competitions Preview */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-sm font-black text-slate-900 tracking-tight">Competitions</h3>
+          <button
+            onClick={openCompetitionsListModal}
+            className="text-xs font-bold text-slate-500 hover:text-slate-900 inline-flex items-center space-x-0.5 transition-colors"
+          >
+            <span>View All</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {activeCompetitions.length === 0 ? (
+          <button
+            onClick={openCompetitionsListModal}
+            className="w-full ios-card rounded-2xl p-4 flex items-center justify-between text-left hover:border-slate-300 transition-colors"
+          >
+            <span className="text-xs font-semibold text-slate-400">
+              No active competitions — view archive
+            </span>
+            <ChevronRight className="w-4 h-4 text-slate-400" />
+          </button>
+        ) : (
+          <div className="space-y-2">
+            {activeCompetitions.slice(0, 2).map((c) => (
+              <button
+                key={c.id}
+                onClick={openCompetitionsListModal}
+                className="w-full ios-card rounded-2xl p-3 flex items-center justify-between text-left hover:border-slate-300 transition-colors"
+              >
+                <div className="flex items-center space-x-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center flex-shrink-0">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-slate-900 truncate">{c.name}</p>
+                    <p className="text-[10px] text-slate-500 font-semibold">
+                      {COMPETITION_FORMAT_LABELS[c.format] || c.format} • {c.participantIds.length} players
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* 1. Recent Matches Activity (Standard Sports Scorecard Layout with Clear Winner Highlight) */}
       <div className="space-y-2">

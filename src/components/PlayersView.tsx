@@ -1,8 +1,9 @@
 import React from 'react';
 import { useSquash } from '../context/SquashContext';
 import type { Player, Club } from '../types/squash';
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
-import { getPlayersForClub } from '../utils/clubUtils';
+import { Plus, Trash2, ChevronRight, MapPin } from 'lucide-react';
+import { getPlayersForClub, getPlayerClubId } from '../utils/clubUtils';
+import { CLUBS_LIST } from './ClubSelectorModal';
 
 interface PlayersViewProps {
   openAddPlayerModal: () => void;
@@ -11,7 +12,7 @@ interface PlayersViewProps {
 }
 
 export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, onSelectPlayerProfile, activeClub }) => {
-  const { players, deletePlayer } = useSquash();
+  const { players, deletePlayer, updatePlayerClub } = useSquash();
 
   const clubPlayers = activeClub ? getPlayersForClub(players, activeClub.id) : players;
 
@@ -73,6 +74,22 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, on
                       </span>
                       <span>•</span>
                       <span>{player.handedness === 'Right' ? 'Right-handed' : 'Left-handed'}</span>
+                    </div>
+
+                    <div className="flex items-center space-x-1 mt-1" onClick={(e) => e.stopPropagation()}>
+                      <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                      <select
+                        value={getPlayerClubId(player)}
+                        onChange={(e) => updatePlayerClub(player.id, e.target.value)}
+                        className="text-[10px] font-semibold text-slate-500 bg-transparent border-none focus:outline-none cursor-pointer -ml-0.5 py-0"
+                        title="Reassign this player to a different club"
+                      >
+                        {CLUBS_LIST.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </div>
