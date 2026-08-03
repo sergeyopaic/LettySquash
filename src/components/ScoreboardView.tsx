@@ -14,7 +14,6 @@ import {
   HelpCircle,
   XCircle,
   ChevronRight,
-  Trophy,
   MoreVertical,
   RefreshCw,
   Trash2,
@@ -579,16 +578,19 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
       {isGameWonModalOpen && lastGameWon && !isMatchCompleted && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-4 text-center animate-in zoom-in-95 duration-200 border border-slate-100">
-            {/* Mascot Thumbs Up Artwork (STATIC: no letty-bounce) */}
-            <div className="relative w-32 h-32 mx-auto rounded-3xl overflow-hidden shadow-xl border-2 border-amber-400 bg-amber-50">
+            {/* Mascot Thumbs Up Artwork (STATIC: no letty-bounce).
+                No colored border/corner badge here — the amber ring read as a meaningless
+                "selected layer" outline (not a status/achievement indicator, and not part
+                of any frame system elsewhere in the app), and the trophy badge collided
+                with the established "small circle in the corner = unread notification"
+                pattern, on top of low gold-on-gold contrast. The "Game N Completed" pill
+                below already carries the celebratory framing — this just shows the art. */}
+            <div className="relative w-32 h-32 mx-auto rounded-3xl overflow-hidden shadow-xl bg-amber-50">
               <img
                 src="/assets/letty_thumbs_up.png"
                 alt="Letty Game Won Thumbs Up"
                 className="w-full h-full object-cover"
               />
-              <div className="absolute top-2 right-2 bg-amber-400 text-blue-950 p-1.5 rounded-full shadow">
-                <Trophy className="w-4 h-4" />
-              </div>
             </div>
 
             <div>
@@ -740,8 +742,10 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
       {isMatchCompleted && (
         <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-5 max-w-sm w-full shadow-2xl space-y-4 text-center animate-in zoom-in-95 duration-200 border border-slate-100">
-            {/* Mascot Victory Artwork (STATIC: no letty-bounce) */}
-            <div className="relative w-36 h-36 mx-auto rounded-3xl overflow-hidden shadow-xl border-2 border-amber-400 bg-amber-50">
+            {/* Mascot Victory Artwork (STATIC: no letty-bounce) — same reasoning as the
+                Game Won mascot above: no meaningless amber outline, "MATCH CHAMPION" pill
+                below already carries the celebratory framing. */}
+            <div className="relative w-36 h-36 mx-auto rounded-3xl overflow-hidden shadow-xl bg-amber-50">
               <img
                 src="/assets/letty_winner.png"
                 alt="Letty Match Champion"
