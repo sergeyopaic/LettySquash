@@ -4,6 +4,7 @@ import type { CompetitionFormat, Competition, CompetitionFixture, MatchFormat } 
 import { CLUBS_LIST } from './ClubSelectorModal';
 import { getPlayersForClub } from '../utils/clubUtils';
 import { getGradeRank } from '../utils/gradeUtils';
+import { generateRoundRobinFixtures, generateSingleEliminationBracket, nextPowerOfTwo } from '../utils/fixtureUtils';
 import {
   X,
   Trophy,
@@ -81,6 +82,10 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
   // Standard format selected players
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>(players.map((p) => p.id));
 
+  // League-only: play every pairing twice (a "return match", second half of rounds with
+  // sides swapped) instead of once.
+  const [isDoubleRoundRobin, setIsDoubleRoundRobin] = useState(false);
+
   // Interclub 4vs4 club selection IDs
   const [selectedClubAId, setSelectedClubAId] = useState<string>('c2');
   const [selectedClubBId, setSelectedClubBId] = useState<string>('c3');
@@ -99,6 +104,7 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
       setSelectedPlayerIds(players.map((p) => p.id));
       setSelectedClubAId('c2');
       setSelectedClubBId('c3');
+      setIsDoubleRoundRobin(false);
       setIsCreatedToast(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -142,23 +148,37 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
     }
   };
 
+  // Seeded best-to-worst by grade, so byes (when the field isn't a power of two) go to the
+  // strongest players — same fix real single-elimination draws use.
+  const seededPlayerIds = [...selectedPlayerIds].sort((a, b) => {
+    const gradeA = players.find((p) => p.id === a)?.skillGrade;
+    const gradeB = players.find((p) => p.id === b)?.skillGrade;
+    return getGradeRank(gradeB ?? 'C1') - getGradeRank(gradeA ?? 'C1');
+  });
+
   const executeCreate = () => {
     const participantIds =
       selectedFormat === 'INTERCLUB_4VS4'
         ? [...teamAPlayers, ...teamBPlayers].map((p) => p.id)
         : selectedPlayerIds;
 
-    // Interclub is the only format whose fixtures can be generated right away — rank #1
-    // plays rank #1, #2 plays #2, etc. League/Groups/brackets need real scheduling logic
-    // that doesn't exist yet, so they're created with no fixtures for now.
+    // Interclub: rank #1 plays rank #1, #2 plays #2, etc. League: full round-robin, every
+    // participant plays every other once. Single Elimination: seeded knockout bracket,
+    // padded to the next power of two with byes for the top seeds. Groups+Playoff/Double
+    // Elimination need real scheduling logic that doesn't exist yet, so they're still
+    // created with no fixtures for now.
     const fixtures: CompetitionFixture[] | undefined =
       selectedFormat === 'INTERCLUB_4VS4'
         ? teamAPlayers
-            .map((p, idx) => {
+            .map((p, idx): CompetitionFixture | null => {
               const opponent = teamBPlayers[idx];
-              return opponent ? { slot: idx + 1, player1Id: p.id, player2Id: opponent.id } : null;
+              return opponent ? { slot: idx + 1, round: 1, player1Id: p.id, player2Id: opponent.id } : null;
             })
             .filter((f): f is CompetitionFixture => f !== null)
+        : selectedFormat === 'LEAGUE'
+        ? generateRoundRobinFixtures(selectedPlayerIds, { doubleRound: isDoubleRoundRobin })
+        : selectedFormat === 'SINGLE_ELIMINATION'
+        ? generateSingleEliminationBracket(seededPlayerIds)
         : undefined;
 
     const created = addCompetition({
@@ -188,6 +208,10 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
     }
     if (selectedFormat === 'INTERCLUB_4VS4' && (teamAPlayers.length === 0 || teamBPlayers.length === 0)) {
       alert('Both clubs need at least 1 registered player to start an Interclub fixture!');
+      return;
+    }
+    if (selectedFormat === 'LEAGUE' && selectedPlayerIds.length < 3) {
+      alert('A League needs at least 3 participants — there\'s no point in a round-robin of 2!');
       return;
     }
     executeCreate();
@@ -555,6 +579,57 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                     );
                   })}
                 </div>
+
+                {selectedFormat === 'LEAGUE' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsDoubleRoundRobin(!isDoubleRoundRobin)}
+                      className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                        isDoubleRoundRobin
+                          ? 'border-blue-900 bg-blue-50/80'
+                          : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div className="pr-2">
+                        <p className="text-xs font-bold text-slate-900">Play two legs (return matches)</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          Every pairing is played twice — doubles the rounds and fixtures.
+                        </p>
+                      </div>
+                      <div
+                        className={`w-9 h-5 rounded-full flex-shrink-0 flex items-center px-0.5 transition-colors ${
+                          isDoubleRoundRobin ? 'bg-blue-900 justify-end' : 'bg-slate-300 justify-start'
+                        }`}
+                      >
+                        <div className="w-4 h-4 rounded-full bg-white shadow-2xs" />
+                      </div>
+                    </button>
+
+                    {selectedPlayerIds.length >= 3 && (
+                      <p className="text-[10px] text-slate-500 font-medium px-0.5">
+                        {(() => {
+                          const preview = generateRoundRobinFixtures(selectedPlayerIds, { doubleRound: isDoubleRoundRobin });
+                          const roundCount = new Set(preview.map((f) => f.round ?? 1)).size;
+                          return `${preview.length} fixtures across ${roundCount} round${roundCount === 1 ? '' : 's'}.`;
+                        })()}
+                      </p>
+                    )}
+                  </>
+                )}
+
+                {selectedFormat === 'SINGLE_ELIMINATION' && selectedPlayerIds.length >= 2 && (
+                  <p className="text-[10px] text-slate-500 font-medium px-0.5">
+                    {(() => {
+                      const n = selectedPlayerIds.length;
+                      const bracketSize = nextPowerOfTwo(n);
+                      const byes = bracketSize - n;
+                      return byes > 0
+                        ? `${n} players don't fill a bracket of ${bracketSize} — top ${byes} seed${byes === 1 ? '' : 's'} get a bye into round 2.`
+                        : `${n} players — a clean bracket of ${bracketSize}, no byes needed.`;
+                    })()}
+                  </p>
+                )}
               </div>
             )}
 

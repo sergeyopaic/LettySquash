@@ -9,9 +9,9 @@
 
 Сейчас автогенерация фикстур работает **только** для Interclub 4×4 (ранг vs ранг, замороженный состав). Остальные 4 формата в `CompetitionDetailModal` показывают заглушку «fixture generation isn't built yet»:
 
-- [ ] **League (Round-Robin)** — каждый с каждым, генерация расписания.
+- [x] **League (Round-Robin)** — каждый с каждым, генерация расписания. *(`src/utils/fixtureUtils.ts` — `generateRoundRobinFixtures`, подключено в `NewCompetitionModal`; попутно поправил в `CompetitionDetailModal`: лейбл "Rank #N" теперь "Fixture #N" для не-interclub форматов, и заблокировал старт матчей на заархивированных турнирах.)*
 - [ ] **Groups + Knockout** — распределение по группам + плей-офф сетка после группового этапа.
-- [ ] **Single Elimination** — генерация сетки на выбывание, посев (seeding) по рейтингу/грейду.
+- [x] **Single Elimination** — генерация сетки на выбывание, посев (seeding) по грейду. *(`src/utils/fixtureUtils.ts` — `generateSingleEliminationBracket`: стандартный seed order, поле дополняется до ближайшей степени двойки байами, которые достаются топ-сидам; `resolveFixturePlayers`/`getFixtureWinnerId` разрешают игроков следующих раундов "на лету" по победителям предыдущих, ничего не хранится заранее. Визуальная сетка с колонками по раундам и автоматическим отображением чемпиона — в `CompetitionDetailModal`.)*
 - [ ] **Double Elimination** — сетка с winners/losers-бранчами.
 - [ ] **Замены игроков в Interclub** — отдельный разговор, который мы отложили ("об этом чуть попозже побеседуем"). Нужно решить: как редактировать уже сгенерированные fixture-пары после создания турнира.
 

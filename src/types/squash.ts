@@ -165,8 +165,22 @@ export type CompetitionStatus = 'ACTIVE' | 'COMPLETED';
 // reshuffle an already-declared fixture.
 export interface CompetitionFixture {
   slot: number;
+  // Groups fixtures into tours for round-robin-style formats (each participant plays at
+  // most once per round), or into bracket rounds for elimination formats. Absent/1 means
+  // a single-round format like Interclub 4v4.
+  round?: number;
+  // For elimination brackets: player1Id/player2Id are '' (empty) when the participant
+  // isn't known yet — it's whoever wins the fixture referenced by player1FromSlot /
+  // player2FromSlot. Resolved on demand via resolveFixturePlayers/getFixtureWinnerId in
+  // fixtureUtils.ts, never stored, so it can't drift out of sync as earlier rounds finish.
   player1Id: string;
   player2Id: string;
+  player1FromSlot?: number;
+  player2FromSlot?: number;
+  // A walkover: player1Id advances automatically (player2Id is '') because the bracket
+  // size was padded to the next power of two and this seed drew no opponent. No real
+  // match is ever created for a bye fixture.
+  isBye?: boolean;
 }
 
 export interface Competition {
