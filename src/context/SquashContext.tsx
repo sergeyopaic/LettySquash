@@ -80,6 +80,7 @@ const LOCAL_STORAGE_PLAYERS = 'letty_squash_players_v4';
 const LOCAL_STORAGE_MATCHES = 'letty_squash_matches_v4';
 const LOCAL_STORAGE_SETTINGS = 'letty_squash_settings_v1';
 const LOCAL_STORAGE_COMPETITIONS = 'letty_squash_competitions_v1';
+const LOCAL_STORAGE_ACTIVE_MATCH = 'letty_squash_active_match_v1';
 
 // Corrupted/manually-edited localStorage (or a browser blocking storage entirely, e.g.
 // strict private-browsing modes) must never crash the app on load — fall back to defaults.
@@ -128,7 +129,12 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     loadFromStorage(LOCAL_STORAGE_SETTINGS, { showMascotTips: true, soundEffects: true, hapticFeedback: true })
   );
 
-  const [activeMatchState, setActiveMatchState] = useState<LiveMatchState | null>(null);
+  // Persisted so an in-progress match (and its point-by-point log) survives a page
+  // reload/tab crash instead of being silently lost — previously this was purely
+  // in-memory state.
+  const [activeMatchState, setActiveMatchState] = useState<LiveMatchState | null>(() =>
+    loadFromStorage(LOCAL_STORAGE_ACTIVE_MATCH, null)
+  );
 
   useEffect(() => {
     saveToStorage(LOCAL_STORAGE_PLAYERS, players);
@@ -141,6 +147,10 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     saveToStorage(LOCAL_STORAGE_COMPETITIONS, competitions);
   }, [competitions]);
+
+  useEffect(() => {
+    saveToStorage(LOCAL_STORAGE_ACTIVE_MATCH, activeMatchState);
+  }, [activeMatchState]);
 
   useEffect(() => {
     saveToStorage(LOCAL_STORAGE_SETTINGS, settings);

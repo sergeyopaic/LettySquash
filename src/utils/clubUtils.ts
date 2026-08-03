@@ -1,4 +1,5 @@
 import type { Player, SquashMatch } from '../types/squash';
+import { getMatchWinnerId } from './matchUtils';
 
 /**
  * Returns a guaranteed clubId for any player object,
@@ -31,19 +32,13 @@ export const computePlayerStats = (players: Player[], matches: SquashMatch[]): P
     let decidedMatches = 0;
 
     playerMatches.forEach((m) => {
-      const isP1 = m.player1.id === player.id;
-      const p1Won = m.p1GamesWon > m.p2GamesWon;
-      const p2Won = m.p2GamesWon > m.p1GamesWon;
-
-      // A match with no winnerId and level games (e.g. saved early via "Save & Exit")
-      // has no decided outcome — count it neither as a win nor a loss for either player,
-      // rather than defaulting both players to a loss.
-      if (!m.winnerId && !p1Won && !p2Won) return;
+      const winnerId = getMatchWinnerId(m);
+      // No decided outcome (e.g. saved early via "Save & Exit" while games were level) —
+      // count it neither as a win nor a loss for either player.
+      if (!winnerId) return;
 
       decidedMatches += 1;
-      const isWinner = m.winnerId ? m.winnerId === player.id : isP1 ? p1Won : p2Won;
-
-      if (isWinner) {
+      if (winnerId === player.id) {
         wins += 1;
       } else {
         losses += 1;

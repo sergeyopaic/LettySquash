@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import type { Player } from '../types/squash';
 import { useSquash } from '../context/SquashContext';
 import { getPlayerClubId } from '../utils/clubUtils';
+import { sortMatchesByDateDesc } from '../utils/matchUtils';
 import { CLUBS_LIST } from './ClubSelectorModal';
 import { X, Trophy, Flame, Activity, Clock, MapPin } from 'lucide-react';
 
@@ -39,9 +40,11 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
 
   const club = CLUBS_LIST.find((c) => c.id === getPlayerClubId(player));
 
-  // Filter completed matches involving this player
-  const playerMatches = matches.filter(
-    (m) => (m.player1 && m.player1.id === player.id) || (m.player2 && m.player2.id === player.id)
+  // Filter completed matches involving this player, most recent first
+  const playerMatches = sortMatchesByDateDesc(
+    matches.filter(
+      (m) => (m.player1 && m.player1.id === player.id) || (m.player2 && m.player2.id === player.id)
+    )
   );
 
   const formatDuration = (totalSec: number = 0) => {
@@ -152,6 +155,9 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                 // Games won from this player's perspective, not raw p1/p2 order
                 const playerGamesWon = isP1 ? m.p1GamesWon ?? 0 : m.p2GamesWon ?? 0;
                 const opponentGamesWon = isP1 ? m.p2GamesWon ?? 0 : m.p1GamesWon ?? 0;
+                // No winnerId and level games (e.g. saved early via "Save & Exit") means
+                // no decided outcome — don't show it as a loss for either player.
+                const isDecided = Boolean(m.winnerId) || playerGamesWon !== opponentGamesWon;
                 const isWinner = m.winnerId
                   ? m.winnerId === player.id
                   : playerGamesWon > opponentGamesWon;
@@ -166,7 +172,9 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                       }
                     }}
                     className={`p-3 rounded-2xl border flex items-center justify-between transition-colors cursor-pointer ${
-                      isWinner
+                      !isDecided
+                        ? 'bg-slate-50 border-slate-200 hover:bg-slate-100/80'
+                        : isWinner
                         ? 'bg-emerald-50/60 border-emerald-200 hover:bg-emerald-50'
                         : 'bg-rose-50/50 border-rose-200 hover:bg-rose-50'
                     }`}
@@ -175,12 +183,14 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                       <div className="flex items-center space-x-2">
                         <span
                           className={`text-[9px] font-extrabold px-2 py-0.5 rounded-lg flex-shrink-0 ${
-                            isWinner
+                            !isDecided
+                              ? 'bg-slate-200 text-slate-600'
+                              : isWinner
                               ? 'bg-emerald-100 text-emerald-900'
                               : 'bg-rose-100 text-rose-900'
                           }`}
                         >
-                          {isWinner ? 'WON' : 'LOST'}
+                          {!isDecided ? 'NO RESULT' : isWinner ? 'WON' : 'LOST'}
                         </span>
                         <span className="text-xs font-bold text-slate-900 truncate">
                           vs {opponent.countryFlag} {opponent.name}
@@ -197,7 +207,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
 
                     <span
                       className={`text-sm font-black px-2.5 py-1 rounded-xl shadow-2xs flex-shrink-0 ${
-                        isWinner ? 'bg-emerald-500 text-white' : 'bg-white text-slate-900'
+                        isDecided && isWinner ? 'bg-emerald-500 text-white' : 'bg-white text-slate-900'
                       }`}
                       title={`${player.name} ${playerGamesWon} - ${opponentGamesWon} ${opponent.name}`}
                     >

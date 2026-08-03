@@ -4,6 +4,7 @@ import { Clock, Trash2, Trophy, Calendar, Check } from 'lucide-react';
 import { formatMatchDateGroup, formatMatchTime } from '../utils/dateUtils';
 import type { SquashMatch, Club } from '../types/squash';
 import { getMatchesForClub } from '../utils/clubUtils';
+import { sortMatchesByDateDesc } from '../utils/matchUtils';
 
 interface MatchHistoryViewProps {
   selectMatchDetail: (matchId: string) => void;
@@ -16,7 +17,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
 
   const clubMatches = activeClub ? getMatchesForClub(matches, activeClub.id) : matches;
 
-  const filteredMatches = clubMatches.filter((m) => {
+  const filteredMatches = sortMatchesByDateDesc(clubMatches).filter((m) => {
     if (filterType === 'ALL') return true;
     return m.matchType === filterType;
   });
@@ -89,8 +90,12 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({ selectMatchD
                   const p2 = match.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🇳🇿' };
                   const p1Games = match.p1GamesWon ?? 0;
                   const p2Games = match.p2GamesWon ?? 0;
-                  const isP1Winner = match.winnerId ? match.winnerId === p1.id : p1Games > p2Games;
-                  const isP2Winner = match.winnerId ? match.winnerId === p2.id : p2Games > p1Games;
+                  // Same winnerId → games-won priority as getMatchWinnerId, inlined here
+                  // to keep working with the defensive p1/p2 fallback objects above.
+                  const matchWinnerId =
+                    match.winnerId ?? (p1Games > p2Games ? p1.id : p2Games > p1Games ? p2.id : undefined);
+                  const isP1Winner = matchWinnerId === p1.id;
+                  const isP2Winner = matchWinnerId === p2.id;
 
                   return (
                     <div

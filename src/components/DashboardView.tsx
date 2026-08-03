@@ -6,6 +6,7 @@ import type { Club, Player } from '../types/squash';
 import { Play, Plus, Activity, ChevronRight, ChevronDown, Clock, Settings, Trophy, MapPin, Check } from 'lucide-react';
 import { formatMatchDateGroup } from '../utils/dateUtils';
 import { getPlayersForClub, getMatchesForClub } from '../utils/clubUtils';
+import { getMatchWinnerId, sortMatchesByDateDesc } from '../utils/matchUtils';
 import { COMPETITION_FORMAT_LABELS } from './NewCompetitionModal';
 
 interface DashboardViewProps {
@@ -64,7 +65,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const activePlayers = getPlayersForClub(players, activeClub.id);
   const clubMatches = getMatchesForClub(matches, activeClub.id);
 
-  const recentMatches = clubMatches.slice(0, 3);
+  const recentMatches = sortMatchesByDateDesc(clubMatches).slice(0, 3);
   const topPlayers = [...activePlayers].sort((a, b) => b.wins - a.wins).slice(0, 3);
 
   // Calculate average match duration in minutes for active club
@@ -274,8 +275,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div className="space-y-2">
           {recentMatches.map((m) => {
-            const isP1Winner = m.winnerId === m.player1.id || m.p1GamesWon > m.p2GamesWon;
-            const isP2Winner = m.winnerId === m.player2.id || m.p2GamesWon > m.p1GamesWon;
+            const matchWinnerId = getMatchWinnerId(m);
+            const isP1Winner = matchWinnerId === m.player1.id;
+            const isP2Winner = matchWinnerId === m.player2.id;
 
             return (
               <div

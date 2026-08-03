@@ -450,13 +450,16 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({ match, onClo
                 </div>
               </div>
 
-              {/* Estimated Data Notice: shown when no real point-by-point log was recorded for this match */}
+              {/* Estimated-data note: only fires for matches with no stored point-by-point
+                  log (e.g. legacy data from before this was tracked). A quiet inline badge,
+                  not an alert — this is now the rare exception rather than the norm. */}
               {gameColumns.some((c) => c.isEstimated) && (
-                <div className="flex items-start space-x-1.5 text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 normal-case font-medium leading-snug">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <span>
-                    No point-by-point log was recorded for this match — the rally sequence shown below is an estimate reconstructed from the final game scores, not the real order of play.
-                  </span>
+                <div
+                  className="inline-flex items-center space-x-1 text-[9px] text-slate-400 font-semibold normal-case tracking-normal"
+                  title="No point-by-point log was recorded for this match — the rally sequence shown is an estimate reconstructed from the final game scores, not the real order of play."
+                >
+                  <AlertTriangle className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                  <span>Estimated rally sequence (no point-by-point log on record)</span>
                 </div>
               )}
 
