@@ -6,6 +6,7 @@ import { PlayersView } from './components/PlayersView';
 import { MatchHistoryView } from './components/MatchHistoryView';
 import { NavigationTabBar } from './components/NavigationTabBar';
 import type { TabType } from './components/NavigationTabBar';
+import { NewMatchModal } from './components/NewMatchModal';
 import { NewCompetitionModal } from './components/NewCompetitionModal';
 import { CompetitionsListModal } from './components/CompetitionsListModal';
 import { CompetitionDetailModal } from './components/CompetitionDetailModal';
@@ -25,10 +26,11 @@ const MainContainer: React.FC = () => {
   const [activeFolderId, setActiveFolderId] = useState<string>(() => folders[0]?.id ?? '');
   const activeFolder = folders.find((f) => f.id === activeFolderId) ?? folders[0];
   const [activeTab, setActiveTab] = useState<TabType>('home');
-  // Quick Match lives inline on the Home tab now (see DashboardView -> QuickMatchCard) —
-  // every other "start a match" entry point (nav bar, How to Play/Use guides) just
-  // navigates there instead of opening a separate modal.
-  const goToQuickMatch = () => setActiveTab('home');
+  // Quick Match lives inline on the Home tab (see DashboardView -> QuickMatchCard) for the
+  // fast path. Every other "start a match" entry point — nav bar, How to Play/Use guides —
+  // is reachable from ANY tab, so it opens the global NewMatchModal instead (same form,
+  // shown with the format panel expanded by default).
+  const [isNewMatchOpen, setIsNewMatchOpen] = useState<boolean>(false);
   const [isNewCompetitionOpen, setIsNewCompetitionOpen] = useState<boolean>(false);
   const [isCompetitionsListOpen, setIsCompetitionsListOpen] = useState<boolean>(false);
   const [openCompetitionId, setOpenCompetitionId] = useState<string | null>(null);
@@ -149,6 +151,13 @@ const MainContainer: React.FC = () => {
         </div>
 
         {/* Modals Container inside Phone Frame */}
+        <NewMatchModal
+          isOpen={isNewMatchOpen}
+          onClose={() => setIsNewMatchOpen(false)}
+          onStart={() => setActiveTab('match')}
+          openSettingsModal={() => setIsSettingsOpen(true)}
+        />
+
         <NewCompetitionModal
           isOpen={isNewCompetitionOpen}
           onClose={() => setIsNewCompetitionOpen(false)}
@@ -208,13 +217,13 @@ const MainContainer: React.FC = () => {
         <HowToPlayModal
           isOpen={isHowToPlayOpen}
           onClose={() => setIsHowToPlayOpen(false)}
-          openNewMatch={goToQuickMatch}
+          openNewMatch={() => setIsNewMatchOpen(true)}
         />
 
         <HowToUseAppModal
           isOpen={isHowToUseAppOpen}
           onClose={() => setIsHowToUseAppOpen(false)}
-          openNewMatch={goToQuickMatch}
+          openNewMatch={() => setIsNewMatchOpen(true)}
         />
 
         {/* Bottom Tab Bar Navigation */}
@@ -222,7 +231,7 @@ const MainContainer: React.FC = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           hasActiveMatch={Boolean(activeMatchState)}
-          goToNewMatch={goToQuickMatch}
+          goToNewMatch={() => setIsNewMatchOpen(true)}
         />
       </div>
     </div>

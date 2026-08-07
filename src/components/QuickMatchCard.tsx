@@ -4,9 +4,22 @@ import type { MatchFormat, Player, ServeSide } from '../types/squash';
 import { Search, Plus, X, ChevronDown, Play, Settings as SettingsIcon } from 'lucide-react';
 import { SquashBallIcon } from './DashboardView';
 
-interface QuickMatchCardProps {
+interface MatchStarterFormProps {
   onStart: () => void;
   openSettingsModal?: () => void;
+  // The dashboard's inline card starts collapsed (fast path, defaults hidden away); the
+  // global "New Match" modal (opened from the nav bar, reachable from any tab) starts
+  // with it open instead — that's the one place we still show every knob up front, the
+  // way the old standalone "Custom Match" screen used to.
+  defaultFormatExpanded?: boolean;
+  // Same reasoning applied to the player Recent lists — collapsed on the always-visible
+  // dashboard card, open by default in the modal.
+  alwaysShowRecent?: boolean;
+  // 'dark' matches the navy treatment DashboardView already uses for its Active Match
+  // banner (bg-slate-900 + amber accents) — QuickMatchCard uses it to stand out as the
+  // dashboard's primary action instead of blending into the row of white ios-cards below
+  // it. NewMatchModal keeps 'light' (default) since it already sits on a white modal card.
+  variant?: 'light' | 'dark';
 }
 
 const FORMAT_OPTIONS: { id: MatchFormat; label: string; desc: string }[] = [
@@ -36,8 +49,8 @@ const COLOR_PALETTE = [
 // At icon sizes (~14px) a thin-outline oval-plus-handle is indistinguishable from a
 // magnifying glass — there's no room left for string texture to read as "racket". Using a
 // thick stroke + a solid filled grip (instead of a thin handle line) gives it a distinct
-// "paddle" silhouette instead; the "1st" text label on the active chip (see MatchPlayerSlot)
-// removes any remaining ambiguity for the case that actually matters.
+// "paddle" silhouette instead; the "Serve" text label on the active chip (see
+// MatchPlayerSlot) removes any remaining ambiguity for the case that actually matters.
 const RacketIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
   <svg className={className} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <ellipse cx="9.5" cy="8.5" rx="6" ry="7" fill="none" stroke="currentColor" strokeWidth="3" />
@@ -94,6 +107,11 @@ const MatchPlayerSlot: React.FC<{
   onMakeServer: () => void;
   color: string;
   onChangeColor: (c: string) => void;
+  // Dashboard's card sits permanently on screen, so its Recent list stays collapsed
+  // until tapped (see the earlier fix — it was cluttering Home by default). A modal is
+  // already a deliberate, temporary "I want to do this now" context, so there's no
+  // clutter concern there — showing Recent immediately just saves a tap.
+  alwaysShowRecent?: boolean;
 }> = ({
   label,
   players,
@@ -106,6 +124,7 @@ const MatchPlayerSlot: React.FC<{
   onMakeServer,
   color,
   onChangeColor,
+  alwaysShowRecent,
 }) => {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -162,7 +181,7 @@ const MatchPlayerSlot: React.FC<{
             }`}
           >
             <RacketIcon className="w-3.5 h-3.5" />
-            {isServer && <span className="text-[9px] font-black uppercase tracking-wide">1st</span>}
+            {isServer && <span className="text-[9px] font-black uppercase tracking-wide">Serve</span>}
           </button>
           <ColorSwatchButton color={color} onChange={onChangeColor} />
           <button
@@ -195,8 +214,8 @@ const MatchPlayerSlot: React.FC<{
         />
       </div>
 
-      {(isFocused || trimmed) && (filtered.length > 0 || trimmed) && (
-        <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
+      {(alwaysShowRecent || isFocused || trimmed) && (filtered.length > 0 || trimmed) && (
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">
           {!trimmed && filtered.length > 0 && (
             <div className="px-3 py-1 text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-50">
               Recent
@@ -239,7 +258,14 @@ const MatchPlayerSlot: React.FC<{
   );
 };
 
-export const QuickMatchCard: React.FC<QuickMatchCardProps> = ({ onStart, openSettingsModal }) => {
+export const MatchStarterForm: React.FC<MatchStarterFormProps> = ({
+  onStart,
+  openSettingsModal,
+  defaultFormatExpanded = false,
+  alwaysShowRecent = false,
+  variant = 'light',
+}) => {
+  const isDark = variant === 'dark';
   const { players, addPlayer, startMatch, settings } = useSquash();
 
   const [p1Id, setP1Id] = useState('');
@@ -249,7 +275,7 @@ export const QuickMatchCard: React.FC<QuickMatchCardProps> = ({ onStart, openSet
   const [initialServerId, setInitialServerId] = useState('');
   const [serveSide, setServeSide] = useState<ServeSide>('R');
 
-  const [isFormatExpanded, setIsFormatExpanded] = useState(false);
+  const [isFormatExpanded, setIsFormatExpanded] = useState(defaultFormatExpanded);
   const [format, setFormat] = useState<MatchFormat>(settings.quickMatchFormat);
   const [targetPoints, setTargetPoints] = useState<number>(settings.quickMatchTargetPoints);
   const [twoPointGap, setTwoPointGap] = useState<boolean>(settings.quickMatchTwoPointGap);
@@ -295,12 +321,7 @@ export const QuickMatchCard: React.FC<QuickMatchCardProps> = ({ onStart, openSet
   };
 
   return (
-    <div className="ios-card rounded-2xl p-4 space-y-3">
-      <div className="flex items-center space-x-2">
-        <SquashBallIcon className="w-5 h-5" />
-        <h3 className="text-sm font-black text-slate-900 tracking-tight">Quick Match</h3>
-      </div>
-
+    <div className="space-y-3">
       <MatchPlayerSlot
         label="Player 1"
         players={players}
@@ -320,6 +341,7 @@ export const QuickMatchCard: React.FC<QuickMatchCardProps> = ({ onStart, openSet
         onMakeServer={() => setInitialServerId(p1Id)}
         color={p1Color}
         onChangeColor={setP1ColorOverride}
+        alwaysShowRecent={alwaysShowRecent}
       />
 
       <MatchPlayerSlot
@@ -341,13 +363,16 @@ export const QuickMatchCard: React.FC<QuickMatchCardProps> = ({ onStart, openSet
         onMakeServer={() => setInitialServerId(p2Id)}
         color={p2Color}
         onChangeColor={setP2ColorOverride}
+        alwaysShowRecent={alwaysShowRecent}
       />
 
       <div>
         <button
           type="button"
           onClick={() => setIsFormatExpanded((e) => !e)}
-          className="w-full flex items-center justify-between text-[11px] font-semibold text-slate-500 hover:text-slate-800 transition-colors py-0.5"
+          className={`w-full flex items-center justify-between text-[11px] font-semibold transition-colors py-0.5 ${
+            isDark ? 'text-slate-300 hover:text-white' : 'text-slate-500 hover:text-slate-800'
+          }`}
         >
           <span className="flex items-center space-x-1.5">
             <SettingsIcon className="w-3 h-3" />
@@ -360,7 +385,7 @@ export const QuickMatchCard: React.FC<QuickMatchCardProps> = ({ onStart, openSet
         </button>
 
         {isFormatExpanded && (
-          <div className="space-y-3 pt-3">
+          <div className={isDark ? 'mt-3 bg-white/95 rounded-2xl p-3 space-y-3' : 'space-y-3 pt-3'}>
             <div className="grid grid-cols-3 gap-2">
               {FORMAT_OPTIONS.map((f) => (
                 <button
@@ -427,15 +452,23 @@ export const QuickMatchCard: React.FC<QuickMatchCardProps> = ({ onStart, openSet
       </div>
 
       {bothSelected && (
-        <div className="space-y-3 pt-2 border-t border-slate-100">
+        <div className={`space-y-3 pt-2 border-t ${isDark ? 'border-white/10' : 'border-slate-100'}`}>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-600">Initial Serve Box</span>
+            <span className={`text-[11px] font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+              Initial Serve Box
+            </span>
             <div className="flex space-x-1.5">
               <button
                 type="button"
                 onClick={() => setServeSide('L')}
                 className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold transition-all ${
-                  serveSide === 'L' ? 'border-blue-900 bg-blue-900 text-amber-400' : 'border-slate-200 text-slate-600'
+                  serveSide === 'L'
+                    ? isDark
+                      ? 'border-amber-400 bg-amber-400 text-slate-950'
+                      : 'border-blue-900 bg-blue-900 text-amber-400'
+                    : isDark
+                    ? 'border-white/20 text-slate-300'
+                    : 'border-slate-200 text-slate-600'
                 }`}
               >
                 Left
@@ -444,7 +477,13 @@ export const QuickMatchCard: React.FC<QuickMatchCardProps> = ({ onStart, openSet
                 type="button"
                 onClick={() => setServeSide('R')}
                 className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold transition-all ${
-                  serveSide === 'R' ? 'border-blue-900 bg-blue-900 text-amber-400' : 'border-slate-200 text-slate-600'
+                  serveSide === 'R'
+                    ? isDark
+                      ? 'border-amber-400 bg-amber-400 text-slate-950'
+                      : 'border-blue-900 bg-blue-900 text-amber-400'
+                    : isDark
+                    ? 'border-white/20 text-slate-300'
+                    : 'border-slate-200 text-slate-600'
                 }`}
               >
                 Right
@@ -455,9 +494,13 @@ export const QuickMatchCard: React.FC<QuickMatchCardProps> = ({ onStart, openSet
           <button
             type="button"
             onClick={handleStart}
-            className="w-full py-3.5 bg-gradient-to-r from-blue-900 to-slate-900 hover:from-slate-800 hover:to-blue-950 text-white font-black text-sm rounded-2xl shadow-lg flex items-center justify-center space-x-2 transition-transform active:scale-98"
+            className={`w-full py-3.5 font-black text-sm rounded-2xl shadow-lg flex items-center justify-center space-x-2 transition-transform active:scale-98 ${
+              isDark
+                ? 'bg-amber-400 hover:bg-amber-300 text-slate-950'
+                : 'bg-gradient-to-r from-blue-900 to-slate-900 hover:from-slate-800 hover:to-blue-950 text-white'
+            }`}
           >
-            <Play className="w-4 h-4 fill-current ml-0.5 text-amber-400" />
+            <Play className={`w-4 h-4 fill-current ml-0.5 ${isDark ? 'text-slate-950' : 'text-amber-400'}`} />
             <span>Start Refereeing</span>
           </button>
         </div>
@@ -465,3 +508,22 @@ export const QuickMatchCard: React.FC<QuickMatchCardProps> = ({ onStart, openSet
     </div>
   );
 };
+
+// Dashboard-inline shell: the fast path, defaults collapsed, navy card — same treatment
+// DashboardView already uses for its Active Match banner, reused here so the app's single
+// most important action reads as such instead of blending into the row of white ios-cards
+// below it. See NewMatchModal.tsx for the modal shell (light, defaults expanded).
+export const QuickMatchCard: React.FC<{ onStart: () => void; openSettingsModal?: () => void }> = ({
+  onStart,
+  openSettingsModal,
+}) => (
+  <div className="rounded-2xl bg-slate-900 border border-slate-800 shadow-lg p-4 space-y-3">
+    <div className="flex items-center space-x-2">
+      <div className="w-7 h-7 rounded-full bg-amber-400 flex items-center justify-center flex-shrink-0">
+        <SquashBallIcon className="w-4 h-4" />
+      </div>
+      <h3 className="text-sm font-black text-white tracking-tight">Quick Match</h3>
+    </div>
+    <MatchStarterForm onStart={onStart} openSettingsModal={openSettingsModal} variant="dark" />
+  </div>
+);

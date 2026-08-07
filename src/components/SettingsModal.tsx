@@ -19,7 +19,10 @@ const FORMAT_OPTIONS: { id: MatchFormat; label: string; desc: string }[] = [
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onOpenHowToPlay }) => {
   const { settings, updateSettings } = useSquash();
-  const [tab, setTab] = useState<SettingsTab>('MASCOT');
+  // Quick Match is the tab people actually get sent here for (from the "Manage my
+  // default format" link in the match starter) — it's the default and leads the tab
+  // order; Mascot Tips is a minor toggle, not the first thing worth showing.
+  const [tab, setTab] = useState<SettingsTab>('QUICK_MATCH');
 
   if (!isOpen) return null;
 
@@ -29,8 +32,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   };
 
   const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'MASCOT', label: 'Mascot Tips', icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: 'QUICK_MATCH', label: 'Quick Match', icon: <Zap className="w-3.5 h-3.5" /> },
+    { id: 'MASCOT', label: 'Mascot Tips', icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: 'ABOUT', label: 'About', icon: <Info className="w-3.5 h-3.5" /> },
   ];
 
