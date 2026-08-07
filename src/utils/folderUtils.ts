@@ -2,18 +2,11 @@ import type { Player, SquashMatch } from '../types/squash';
 import { getMatchWinnerId } from './matchUtils';
 
 /**
- * Returns a guaranteed clubId for any player object,
- * using fallback mapping if player.clubId is undefined.
+ * Returns a player's folder id, or undefined if they haven't been filed into one.
+ * Unlike the old club system, a player with no folder is a normal, expected state.
  */
-export const getPlayerClubId = (player: Player | undefined): string => {
-  if (!player) return 'c1';
-  if (player.clubId) return player.clubId;
-
-  const id = player.id;
-  if (id.startsWith('dev') || id === 'p9' || id === 'p10') return 'c1'; // Devonport
-  if (id.startsWith('syd')) return 'c4'; // Sydney
-  if (['p2', 'p3', 'p5', 'p7'].includes(id)) return 'c3'; // Belmont
-  return 'c2'; // Remuera (default fallback)
+export const getPlayerFolderId = (player: Player | undefined): string | undefined => {
+  return player?.folderId;
 };
 
 /**
@@ -55,17 +48,17 @@ export const computePlayerStats = (players: Player[], matches: SquashMatch[]): P
 };
 
 /**
- * Filters players belonging to a specific club
+ * Filters players belonging to a specific folder
  */
-export const getPlayersForClub = (players: Player[], clubId: string): Player[] => {
-  return players.filter((p) => getPlayerClubId(p) === clubId);
+export const getPlayersForFolder = (players: Player[], folderId: string): Player[] => {
+  return players.filter((p) => getPlayerFolderId(p) === folderId);
 };
 
 /**
- * Filters matches for a specific club (internal matches + interclub matches where a club member played)
+ * Filters matches for a specific folder (matches where a member of that folder played)
  */
-export const getMatchesForClub = (matches: SquashMatch[], clubId: string): SquashMatch[] => {
+export const getMatchesForFolder = (matches: SquashMatch[], folderId: string): SquashMatch[] => {
   return matches.filter(
-    (m) => getPlayerClubId(m.player1) === clubId || getPlayerClubId(m.player2) === clubId
+    (m) => getPlayerFolderId(m.player1) === folderId || getPlayerFolderId(m.player2) === folderId
   );
 };

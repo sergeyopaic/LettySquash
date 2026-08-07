@@ -87,7 +87,6 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
   const isP1Serving = currentServerId === match.player1.id;
   const isMatchCompleted = match.status === 'COMPLETED' && Boolean(match.winnerId);
   const matchWinnerName = match.winnerId === match.player1.id ? match.player1.name : match.player2.name;
-  const matchWinnerFlag = match.winnerId === match.player1.id ? match.player1.countryFlag : match.player2.countryFlag;
 
   const formatTimer = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
@@ -248,7 +247,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
           </span>
           {lastRallyLog ? (
             <span className="truncate text-slate-200">
-              <strong className="text-amber-400 font-mono">{lastRallyLog.p1Score}-{lastRallyLog.p2Score}</strong> • {lastRallyLog.scoringPlayerFlag} {lastRallyLog.scoringPlayerName}
+              <strong className="text-amber-400 font-mono">{lastRallyLog.p1Score}-{lastRallyLog.p2Score}</strong> • {lastRallyLog.scoringPlayerName}
             </span>
           ) : (
             <span className="text-slate-400 text-[11px]">Match started • Awaiting first rally</span>
@@ -305,21 +304,13 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
           )}
 
           <div className="mt-4 flex flex-col items-center">
-            <div className="relative mb-1">
-              <div
-                className="w-12 h-12 rounded-full text-white font-bold flex items-center justify-center text-sm shadow-md ring-2 ring-white"
-                style={{ backgroundColor: match.player1.avatarBgColor }}
-              >
-                {match.player1.name.charAt(0)}
-              </div>
-              <span className="absolute -bottom-1 -right-1 text-xs bg-white rounded-full p-0.5 shadow-2xs">
-                {match.player1.countryFlag}
-              </span>
+            <div
+              className="w-12 h-12 rounded-full text-white font-bold flex items-center justify-center text-sm shadow-md ring-2 ring-white mb-1"
+              style={{ backgroundColor: match.player1.avatarBgColor }}
+            >
+              {match.player1.name.charAt(0)}
             </div>
             <h3 className="font-bold text-slate-900 text-xs line-clamp-1 mt-1">{match.player1.name}</h3>
-            <span className="text-[9px] text-amber-700 font-extrabold bg-amber-100/80 px-2 py-0.5 rounded-md mt-0.5">
-              {match.player1.skillGrade}
-            </span>
           </div>
 
           {/* GIANT SCORE NUMBER */}
@@ -369,21 +360,13 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
           )}
 
           <div className="mt-4 flex flex-col items-center">
-            <div className="relative mb-1">
-              <div
-                className="w-12 h-12 rounded-full text-white font-bold flex items-center justify-center text-sm shadow-md ring-2 ring-white"
-                style={{ backgroundColor: match.player2.avatarBgColor }}
-              >
-                {match.player2.name.charAt(0)}
-              </div>
-              <span className="absolute -bottom-1 -right-1 text-xs bg-white rounded-full p-0.5 shadow-2xs">
-                {match.player2.countryFlag}
-              </span>
+            <div
+              className="w-12 h-12 rounded-full text-white font-bold flex items-center justify-center text-sm shadow-md ring-2 ring-white mb-1"
+              style={{ backgroundColor: match.player2.avatarBgColor }}
+            >
+              {match.player2.name.charAt(0)}
             </div>
             <h3 className="font-bold text-slate-900 text-xs line-clamp-1 mt-1">{match.player2.name}</h3>
-            <span className="text-[9px] text-amber-700 font-extrabold bg-amber-100/80 px-2 py-0.5 rounded-md mt-0.5">
-              {match.player2.skillGrade}
-            </span>
           </div>
 
           {/* GIANT SCORE NUMBER */}
@@ -771,7 +754,6 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
                       className="text-xl font-black text-slate-900 mt-2 flex items-center justify-center space-x-1.5 cursor-pointer hover:underline"
                       title={`View ${winnerPlayer.name}'s profile`}
                     >
-                      <span>{matchWinnerFlag}</span>
                       <span>{matchWinnerName}</span>
                       <User className="w-4 h-4 text-slate-400" />
                     </h2>
@@ -785,7 +767,6 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
                       className="text-left min-w-0 flex-1 flex items-center space-x-1.5 cursor-pointer hover:opacity-80 transition-opacity"
                       title={`View ${winnerPlayer.name}'s profile`}
                     >
-                      <span className="text-xs">{winnerPlayer.countryFlag}</span>
                       <span className="font-extrabold text-slate-900 text-xs truncate hover:underline">
                         {winnerPlayer.name}
                       </span>
@@ -802,7 +783,6 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
                       className="text-right min-w-0 flex-1 flex items-center justify-end space-x-1.5 cursor-pointer hover:opacity-80 transition-opacity"
                       title={`View ${loserPlayer.name}'s profile`}
                     >
-                      <span className="text-xs">{loserPlayer.countryFlag}</span>
                       <span className="font-bold text-slate-500 text-xs truncate hover:underline">
                         {loserPlayer.name}
                       </span>

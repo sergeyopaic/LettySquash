@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useSquash } from '../context/SquashContext';
-import { CLUBS_LIST } from './ClubSelectorModal';
 import { COMPETITION_FORMATS, COMPETITION_FORMAT_LABELS } from './NewCompetitionModal';
 import { formatMatchDateGroup } from '../utils/dateUtils';
 import { X, Trophy, Users, Archive, RotateCcw, Trash2 } from 'lucide-react';
@@ -13,7 +12,7 @@ interface CompetitionsListModalProps {
 }
 
 export const CompetitionsListModal: React.FC<CompetitionsListModalProps> = ({ isOpen, onClose, onOpenDetail }) => {
-  const { competitions, setCompetitionStatus, deleteCompetition } = useSquash();
+  const { competitions, setCompetitionStatus, deleteCompetition, folders } = useSquash();
   const [statusFilter, setStatusFilter] = useState<CompetitionStatus>('ACTIVE');
 
   useEffect(() => {
@@ -93,8 +92,8 @@ export const CompetitionsListModal: React.FC<CompetitionsListModalProps> = ({ is
           <div className="space-y-2">
             {filtered.map((c) => {
               const formatMeta = COMPETITION_FORMATS.find((f) => f.id === c.format);
-              const clubA = c.clubAId ? CLUBS_LIST.find((club) => club.id === c.clubAId) : undefined;
-              const clubB = c.clubBId ? CLUBS_LIST.find((club) => club.id === c.clubBId) : undefined;
+              const folderA = c.folderAId ? folders.find((f) => f.id === c.folderAId) : undefined;
+              const folderB = c.folderBId ? folders.find((f) => f.id === c.folderBId) : undefined;
 
               return (
                 <div
@@ -114,9 +113,9 @@ export const CompetitionsListModal: React.FC<CompetitionsListModalProps> = ({ is
                         <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
                           {COMPETITION_FORMAT_LABELS[c.format] || c.format}
                         </p>
-                        {clubA && clubB && (
+                        {folderA && folderB && (
                           <p className="text-[10px] text-slate-400 font-medium mt-0.5 truncate">
-                            {clubA.name} vs {clubB.name}
+                            {folderA.name} vs {folderB.name}
                           </p>
                         )}
                       </div>

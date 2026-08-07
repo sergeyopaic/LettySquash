@@ -1,10 +1,9 @@
 import React, { useEffect } from 'react';
 import type { Player } from '../types/squash';
 import { useSquash } from '../context/SquashContext';
-import { getPlayerClubId, getPlayersForClub, getMatchesForClub } from '../utils/clubUtils';
+import { getPlayerFolderId, getPlayersForFolder, getMatchesForFolder } from '../utils/folderUtils';
 import { sortMatchesByDateDesc } from '../utils/matchUtils';
 import { computeClubRatings } from '../utils/ratingUtils';
-import { CLUBS_LIST } from './ClubSelectorModal';
 import { X, Trophy, Flame, Activity, Clock, MapPin, TrendingUp } from 'lucide-react';
 
 interface PlayerProfileModalProps {
@@ -18,7 +17,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   onClose,
   onSelectMatchDetail,
 }) => {
-  const { players, matches } = useSquash();
+  const { players, matches, folders } = useSquash();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -39,16 +38,16 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
       ? Math.round((player.wins / player.totalMatches) * 100)
       : 0;
 
-  const playerClubId = getPlayerClubId(player);
-  const club = CLUBS_LIST.find((c) => c.id === playerClubId);
+  const playerFolderId = getPlayerFolderId(player);
+  const folder = folders.find((f) => f.id === playerFolderId);
 
-  // Club Rating is relative to the rest of the club, so it's computed from the club's
-  // full roster/match history, not just this one player.
-  const clubRatings = computeClubRatings(
-    getPlayersForClub(players, playerClubId),
-    getMatchesForClub(matches, playerClubId)
-  );
-  const clubRating = clubRatings[player.id];
+  // Rating is relative to the rest of the folder (if any), so it's computed from the
+  // folder's full roster/match history, not just this one player. Unfiled players are
+  // rated against the whole player pool instead.
+  const ratingPoolPlayers = playerFolderId ? getPlayersForFolder(players, playerFolderId) : players;
+  const ratingPoolMatches = playerFolderId ? getMatchesForFolder(matches, playerFolderId) : matches;
+  const ratings = computeClubRatings(ratingPoolPlayers, ratingPoolMatches);
+  const rating = ratings[player.id];
 
   // Filter completed matches involving this player, most recent first
   const playerMatches = sortMatchesByDateDesc(
@@ -87,31 +86,27 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
         {/* Player Identity Hero Block */}
         <div className="flex items-center space-x-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
           <div
-            className="w-14 h-14 rounded-2xl text-white font-black text-xl flex items-center justify-center shadow-md flex-shrink-0 relative"
+            className="w-14 h-14 rounded-2xl text-white font-black text-xl flex items-center justify-center shadow-md flex-shrink-0"
             style={{ backgroundColor: player.avatarBgColor || '#0F172A' }}
           >
             {player.name ? player.name.charAt(0) : 'P'}
-            <span className="absolute -bottom-1 -right-1 text-sm bg-white p-0.5 rounded-full shadow-2xs">
-              {player.countryFlag}
-            </span>
           </div>
 
           <div className="flex-1 min-w-0 space-y-0.5">
             <div className="flex items-center space-x-2">
               <h2 className="text-base font-black text-slate-900 truncate">
-                {player.name}
+                {player.nickname || player.name}
               </h2>
-              <span className="text-[10px] text-amber-700 font-extrabold bg-amber-100 px-2 py-0.5 rounded-lg flex-shrink-0">
-                Grade {player.skillGrade}
-              </span>
             </div>
-            <p className="text-xs font-medium text-slate-500">
-              {player.countryCode} • {player.handedness}-handed Player
-            </p>
-            {club && (
+            {player.handedness && (
+              <p className="text-xs font-medium text-slate-500">
+                {player.handedness}-handed Player
+              </p>
+            )}
+            {folder && (
               <p className="text-[11px] font-semibold text-slate-400 flex items-center space-x-1 pt-0.5">
                 <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                <span className="truncate">{club.name}</span>
+                <span className="truncate">{folder.name}</span>
               </p>
             )}
           </div>
@@ -145,15 +140,15 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
 
           <div
             className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-0.5"
-            title="Club Rating — calculated from rated matches recorded in this app. Not an official NZ Squash rating."
+            title="Rating — calculated from rated matches recorded in this app."
           >
             <div className="flex items-center justify-center space-x-1 text-blue-700">
               <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
               <span className="text-base font-black">
-                {clubRating.ratedMatches > 0 ? Math.round(clubRating.rating) : 'New'}
+                {rating && rating.ratedMatches > 0 ? Math.round(rating.rating) : 'New'}
               </span>
             </div>
-            <p className="text-[10px] font-bold text-slate-500">Club Rating</p>
+            <p className="text-[10px] font-bold text-slate-500">Rating</p>
           </div>
         </div>
 
@@ -170,8 +165,8 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
           ) : (
             <div className="space-y-2">
               {playerMatches.map((m) => {
-                const p1 = m.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🇳🇿' };
-                const p2 = m.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🇳🇿' };
+                const p1 = m.player1 || { id: 'p1', name: 'Player 1' };
+                const p2 = m.player2 || { id: 'p2', name: 'Player 2' };
                 const isP1 = p1.id === player.id;
                 const opponent = isP1 ? p2 : p1;
 
@@ -216,7 +211,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                           {!isDecided ? 'NO RESULT' : isWinner ? 'WON' : 'LOST'}
                         </span>
                         <span className="text-xs font-bold text-slate-900 truncate">
-                          vs {opponent.countryFlag} {opponent.name}
+                          vs {opponent.name}
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-500 flex items-center space-x-2">

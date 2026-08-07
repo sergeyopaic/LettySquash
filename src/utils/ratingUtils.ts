@@ -1,5 +1,4 @@
 import type { Player, SquashMatch } from '../types/squash';
-import { getGradeRank } from './gradeUtils';
 
 export interface ClubRatingEntry {
   playerId: string;
@@ -22,15 +21,10 @@ const PROVISIONAL_MATCH_THRESHOLD = 10;
 const POINTS_WEIGHT = 0.5;
 const GAMES_WEIGHT = 1 - POINTS_WEIGHT;
 
-/**
- * A brand-new player doesn't start at a flat, uninformative rating — seed it from their
- * existing NZ Squash grade so the rating has a sensible prior instead of a slow cold start.
- * grade rank 1..100 (getGradeRank) maps to roughly 510..1500.
- */
-const seedRating = (player: Player): number => {
-  const rank = getGradeRank(player.skillGrade);
-  return BASE_RATING + (rank - 50) * 10;
-};
+// Every player starts at the same base rating — there's no external grade to seed from
+// (players are offline-only, self-added; see REWORK_TODO.md Phase 1). Ratings converge
+// from actual rated match results instead, faster at first via PROVISIONAL_K.
+const seedRating = (_player: Player): number => BASE_RATING;
 
 /**
  * Computes each player's Club Rating from their rated match history — an ELO-style

@@ -1,32 +1,32 @@
 import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
-import type { Club } from '../types/squash';
-import { getPlayersForClub, getMatchesForClub } from '../utils/clubUtils';
+import type { Folder } from '../types/squash';
+import { getPlayersForFolder, getMatchesForFolder } from '../utils/folderUtils';
 import { X, Trophy, Flame, Target, Activity, MapPin } from 'lucide-react';
 
 interface AdvancedStatsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  activeClub?: Club;
+  activeFolder?: Folder;
 }
 
 type SortField = 'WIN_RATE' | 'WINS' | 'POINTS_WON_PCT' | 'TOTAL_MATCHES';
 
-export const AdvancedStatsModal: React.FC<AdvancedStatsModalProps> = ({ isOpen, onClose, activeClub }) => {
+export const AdvancedStatsModal: React.FC<AdvancedStatsModalProps> = ({ isOpen, onClose, activeFolder }) => {
   const { players, matches } = useSquash();
   const [sortField, setSortField] = useState<SortField>('WIN_RATE');
 
   if (!isOpen) return null;
 
-  const clubPlayers = activeClub ? getPlayersForClub(players, activeClub.id) : players;
-  const clubMatches = activeClub ? getMatchesForClub(matches, activeClub.id) : matches;
+  const folderPlayers = activeFolder ? getPlayersForFolder(players, activeFolder.id) : players;
+  const folderMatches = activeFolder ? getMatchesForFolder(matches, activeFolder.id) : matches;
 
-  // Calculate detailed points stats for each player across all completed matches for the active club
-  const playerStats = clubPlayers.map((p) => {
+  // Calculate detailed points stats for each player across all completed matches for the active folder
+  const playerStats = folderPlayers.map((p) => {
     let totalPointsScored = 0;
     let totalPointsConceded = 0;
 
-    clubMatches.forEach((m) => {
+    folderMatches.forEach((m) => {
       if (m.status === 'COMPLETED') {
         m.games.forEach((g) => {
           if (m.player1.id === p.id) {
@@ -71,11 +71,11 @@ export const AdvancedStatsModal: React.FC<AdvancedStatsModalProps> = ({ isOpen, 
             <div className="flex items-center space-x-1.5 text-xs font-bold text-amber-600">
               <MapPin className="w-3.5 h-3.5" />
               <span>
-                {activeClub ? `${activeClub.name} • ${activeClub.city}` : 'All Clubs'}
+                {activeFolder ? activeFolder.name : 'All Players'}
               </span>
             </div>
             <h2 className="text-lg font-black text-slate-900 mt-0.5">
-              Club Analytics & Leaderboard
+              Analytics & Leaderboard
             </h2>
           </div>
           <button
@@ -153,24 +153,16 @@ export const AdvancedStatsModal: React.FC<AdvancedStatsModalProps> = ({ isOpen, 
                     #{rank}
                   </span>
 
-                  <div className="relative">
-                    <div
-                      className="w-10 h-10 rounded-full text-white font-bold flex items-center justify-center text-xs shadow-xs"
-                      style={{ backgroundColor: p.avatarBgColor }}
-                    >
-                      {p.name.charAt(0)}
-                    </div>
-                    <span className="absolute -bottom-1 -right-1 text-[10px]">
-                      {p.countryFlag}
-                    </span>
+                  <div
+                    className="w-10 h-10 rounded-full text-white font-bold flex items-center justify-center text-xs shadow-xs"
+                    style={{ backgroundColor: p.avatarBgColor }}
+                  >
+                    {p.name.charAt(0)}
                   </div>
 
                   <div>
                     <div className="flex items-center space-x-1.5">
                       <span className="text-xs font-bold text-slate-900">{p.name}</span>
-                      <span className="text-[9px] text-amber-700 font-extrabold bg-amber-100 px-1.5 py-0.5 rounded">
-                        {p.skillGrade}
-                      </span>
                     </div>
 
                     {isRookie ? (

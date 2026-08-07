@@ -7,7 +7,6 @@ import type {
   MatchType,
   ServeSide,
   DecisionType,
-  NZSquashGrade,
   Handedness,
   AppSettings,
   GameWonInfo,
@@ -17,29 +16,34 @@ import type {
   CompetitionStatus,
   CompetitionFixture,
   PointEvent,
+  Folder,
 } from '../types/squash';
-import { INITIAL_PLAYERS, INITIAL_MATCHES, INITIAL_COMPETITIONS } from '../data/mockData';
-import { computePlayerStats, getPlayerClubId } from '../utils/clubUtils';
+import { INITIAL_PLAYERS, INITIAL_MATCHES, INITIAL_COMPETITIONS, INITIAL_FOLDERS } from '../data/mockData';
+import { computePlayerStats } from '../utils/folderUtils';
 import confetti from 'canvas-confetti';
+
+export interface AddPlayerInput {
+  nickname?: string;
+  handedness?: Handedness;
+  notes?: string;
+  avatarBgColor?: string;
+  folderId?: string;
+}
 
 interface SquashContextType {
   players: Player[];
   matches: SquashMatch[];
   competitions: Competition[];
+  folders: Folder[];
   activeMatchState: LiveMatchState | null;
   settings: AppSettings;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
-  addPlayer: (
-    name: string,
-    skillGrade: NZSquashGrade,
-    countryFlag: string,
-    countryCode: string,
-    handedness: Handedness,
-    avatarBgColor?: string,
-    clubId?: string
-  ) => Player;
+  addPlayer: (name: string, options?: AddPlayerInput) => Player;
   deletePlayer: (id: string) => void;
-  updatePlayerClub: (playerId: string, clubId: string) => void;
+  updatePlayerFolder: (playerId: string, folderId: string) => void;
+  addFolder: (name: string) => Folder;
+  updateFolder: (folderId: string, name: string) => void;
+  deleteFolder: (folderId: string) => void;
   startMatch: (
     player1Id: string,
     player2Id: string,
@@ -50,7 +54,8 @@ interface SquashContextType {
     isRated?: boolean,
     competitionId?: string,
     targetPoints?: number,
-    fixtureSlot?: number
+    fixtureSlot?: number,
+    twoPointGap?: boolean
   ) => void;
   recordPoint: (scoringPlayerId: string) => void;
   recordDecision: (requestingPlayerId: string, decision: DecisionType) => void;
@@ -72,8 +77,8 @@ interface SquashContextType {
     name: string;
     format: CompetitionFormat;
     participantIds: string[];
-    clubAId?: string;
-    clubBId?: string;
+    folderAId?: string;
+    folderBId?: string;
     fixtures?: CompetitionFixture[];
     matchFormat?: MatchFormat;
     targetPoints?: number;
@@ -84,11 +89,12 @@ interface SquashContextType {
 
 const SquashContext = createContext<SquashContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_PLAYERS = 'letty_squash_players_v4';
-const LOCAL_STORAGE_MATCHES = 'letty_squash_matches_v6';
-const LOCAL_STORAGE_SETTINGS = 'letty_squash_settings_v1';
-const LOCAL_STORAGE_COMPETITIONS = 'letty_squash_competitions_v3';
+const LOCAL_STORAGE_PLAYERS = 'letty_squash_players_v5';
+const LOCAL_STORAGE_MATCHES = 'letty_squash_matches_v7';
+const LOCAL_STORAGE_SETTINGS = 'letty_squash_settings_v2';
+const LOCAL_STORAGE_COMPETITIONS = 'letty_squash_competitions_v4';
 const LOCAL_STORAGE_ACTIVE_MATCH = 'letty_squash_active_match_v1';
+const LOCAL_STORAGE_FOLDERS = 'letty_squash_folders_v1';
 
 // Corrupted/manually-edited localStorage (or a browser blocking storage entirely, e.g.
 // strict private-browsing modes) must never crash the app on load — fall back to defaults.
@@ -111,14 +117,9 @@ const saveToStorage = (key: string, value: unknown) => {
 };
 
 export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [players, setPlayers] = useState<Player[]>(() => {
-    const loaded = loadFromStorage(LOCAL_STORAGE_PLAYERS, INITIAL_PLAYERS);
-    // One-time migration: players persisted before clubId was tracked (e.g. created via
-    // the old addPlayer flow) get a guessed clubId materialized onto them here, instead
-    // of the fragile id-prefix fallback in getPlayerClubId being silently re-run forever
-    // on every read. Users can still correct a wrong guess via updatePlayerClub.
-    return loaded.map((p) => (p.clubId ? p : { ...p, clubId: getPlayerClubId(p) }));
-  });
+  const [players, setPlayers] = useState<Player[]>(() =>
+    loadFromStorage(LOCAL_STORAGE_PLAYERS, INITIAL_PLAYERS)
+  );
 
   const [matches, setMatches] = useState<SquashMatch[]>(() =>
     loadFromStorage(LOCAL_STORAGE_MATCHES, INITIAL_MATCHES)
@@ -128,13 +129,22 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     loadFromStorage(LOCAL_STORAGE_COMPETITIONS, INITIAL_COMPETITIONS)
   );
 
+  const [folders, setFolders] = useState<Folder[]>(() =>
+    loadFromStorage(LOCAL_STORAGE_FOLDERS, INITIAL_FOLDERS)
+  );
+
   // Dynamically compute player W/L statistics based on actual matches in the log
   const computedPlayers = React.useMemo(() => {
     return computePlayerStats(players, matches);
   }, [players, matches]);
 
   const [settings, setSettings] = useState<AppSettings>(() =>
-    loadFromStorage(LOCAL_STORAGE_SETTINGS, { showMascotTips: true, soundEffects: true, hapticFeedback: true })
+    loadFromStorage(LOCAL_STORAGE_SETTINGS, {
+      showMascotTips: true,
+      quickMatchFormat: 'BEST_OF_3' as MatchFormat,
+      quickMatchTargetPoints: 11,
+      quickMatchTwoPointGap: true,
+    })
   );
 
   // Persisted so an in-progress match (and its point-by-point log) survives a page
@@ -155,6 +165,10 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     saveToStorage(LOCAL_STORAGE_COMPETITIONS, competitions);
   }, [competitions]);
+
+  useEffect(() => {
+    saveToStorage(LOCAL_STORAGE_FOLDERS, folders);
+  }, [folders]);
 
   useEffect(() => {
     saveToStorage(LOCAL_STORAGE_ACTIVE_MATCH, activeMatchState);
@@ -218,26 +232,18 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     activeMatchState?.match.status,
   ]);
 
-  const addPlayer = (
-    name: string,
-    skillGrade: NZSquashGrade,
-    countryFlag: string,
-    countryCode: string,
-    handedness: Handedness,
-    avatarBgColor?: string,
-    clubId?: string
-  ): Player => {
+  const addPlayer = (name: string, options: AddPlayerInput = {}): Player => {
     const colors = ['#3B82F6', '#EC4899', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#06B6D4'];
-    const randomColor = avatarBgColor || colors[Math.floor(Math.random() * colors.length)];
+    const randomColor = options.avatarBgColor || colors[Math.floor(Math.random() * colors.length)];
     const newPlayer: Player = {
       id: `p_${Date.now()}`,
+      uuid: `local_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       name,
-      skillGrade,
-      countryFlag,
-      countryCode,
-      handedness,
+      nickname: options.nickname,
+      handedness: options.handedness,
+      notes: options.notes,
       avatarBgColor: randomColor,
-      clubId,
+      folderId: options.folderId,
       totalMatches: 0,
       wins: 0,
       losses: 0,
@@ -251,8 +257,34 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setPlayers((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const updatePlayerClub = (playerId: string, clubId: string) => {
-    setPlayers((prev) => prev.map((p) => (p.id === playerId ? { ...p, clubId } : p)));
+  const updatePlayerFolder = (playerId: string, folderId: string) => {
+    setPlayers((prev) => prev.map((p) => (p.id === playerId ? { ...p, folderId } : p)));
+  };
+
+  const addFolder = (name: string): Folder => {
+    const newFolder: Folder = {
+      id: `f_${Date.now()}`,
+      name,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setFolders((prev) => [newFolder, ...prev]);
+    return newFolder;
+  };
+
+  const updateFolder = (folderId: string, name: string) => {
+    setFolders((prev) =>
+      prev.map((f) => (f.id === folderId ? { ...f, name, updatedAt: new Date().toISOString() } : f))
+    );
+  };
+
+  const deleteFolder = (folderId: string) => {
+    setFolders((prev) => prev.filter((f) => f.id !== folderId));
+    // Players in a deleted folder aren't deleted — they just fall back to unsorted,
+    // same as a player who was never filed into a folder at all.
+    setPlayers((prev) =>
+      prev.map((p) => (p.folderId === folderId ? { ...p, folderId: undefined } : p))
+    );
   };
 
   const startMatch = (
@@ -265,7 +297,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     isRated: boolean = false,
     competitionId?: string,
     targetPoints: number = 11,
-    fixtureSlot?: number
+    fixtureSlot?: number,
+    twoPointGap: boolean = true
   ) => {
     const p1 = players.find((p) => p.id === player1Id) || players[0];
     const p2 = players.find((p) => p.id === player2Id) || players.find((p) => p.id !== p1?.id) || players[1];
@@ -289,6 +322,7 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       matchFormat: format,
       matchType: matchType,
       targetPoints,
+      twoPointGap,
       status: 'IN_PROGRESS',
       totalDurationSeconds: 0,
       isRated,
@@ -318,9 +352,19 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   };
 
-  const checkGameWinner = (p1Score: number, p2Score: number, target: number): 'p1' | 'p2' | null => {
-    if (p1Score >= target && p1Score - p2Score >= 2) return 'p1';
-    if (p2Score >= target && p2Score - p1Score >= 2) return 'p2';
+  const checkGameWinner = (
+    p1Score: number,
+    p2Score: number,
+    target: number,
+    requireTwoPointGap: boolean
+  ): 'p1' | 'p2' | null => {
+    if (requireTwoPointGap) {
+      if (p1Score >= target && p1Score - p2Score >= 2) return 'p1';
+      if (p2Score >= target && p2Score - p1Score >= 2) return 'p2';
+    } else {
+      if (p1Score >= target) return 'p1';
+      if (p2Score >= target) return 'p2';
+    }
     return null;
   };
 
@@ -365,7 +409,6 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       p1Score: newP1Score,
       p2Score: newP2Score,
       scoringPlayerName: scoringPlayer.name,
-      scoringPlayerFlag: scoringPlayer.countryFlag,
       isHandout,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
@@ -381,7 +424,7 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       timestamp: new Date().toISOString(),
     };
 
-    const gameWinner = checkGameWinner(newP1Score, newP2Score, match.targetPoints);
+    const gameWinner = checkGameWinner(newP1Score, newP2Score, match.targetPoints, match.twoPointGap ?? true);
 
     let updatedP1GamesWon = match.p1GamesWon;
     let updatedP2GamesWon = match.p2GamesWon;
@@ -695,8 +738,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     name: string;
     format: CompetitionFormat;
     participantIds: string[];
-    clubAId?: string;
-    clubBId?: string;
+    folderAId?: string;
+    folderBId?: string;
     fixtures?: CompetitionFixture[];
     matchFormat?: MatchFormat;
     targetPoints?: number;
@@ -707,8 +750,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       format: input.format,
       status: 'ACTIVE',
       participantIds: input.participantIds,
-      clubAId: input.clubAId,
-      clubBId: input.clubBId,
+      folderAId: input.folderAId,
+      folderBId: input.folderBId,
       fixtures: input.fixtures,
       matchFormat: input.matchFormat,
       targetPoints: input.targetPoints,
@@ -734,12 +777,16 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         players: computedPlayers,
         matches,
         competitions,
+        folders,
         activeMatchState,
         settings,
         updateSettings,
         addPlayer,
         deletePlayer,
-        updatePlayerClub,
+        updatePlayerFolder,
+        addFolder,
+        updateFolder,
+        deleteFolder,
         startMatch,
         recordPoint,
         recordDecision,

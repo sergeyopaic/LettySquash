@@ -1,23 +1,22 @@
 import React from 'react';
 import { useSquash } from '../context/SquashContext';
-import type { Player, Club } from '../types/squash';
+import type { Player, Folder } from '../types/squash';
 import { Plus, Trash2, ChevronRight, MapPin } from 'lucide-react';
-import { getPlayersForClub, getMatchesForClub, getPlayerClubId } from '../utils/clubUtils';
+import { getPlayersForFolder, getMatchesForFolder, getPlayerFolderId } from '../utils/folderUtils';
 import { computeClubRatings } from '../utils/ratingUtils';
-import { CLUBS_LIST } from './ClubSelectorModal';
 
 interface PlayersViewProps {
   openAddPlayerModal: () => void;
   onSelectPlayerProfile?: (player: Player) => void;
-  activeClub?: Club;
+  activeFolder?: Folder;
 }
 
-export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, onSelectPlayerProfile, activeClub }) => {
-  const { players, matches, deletePlayer, updatePlayerClub } = useSquash();
+export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, onSelectPlayerProfile, activeFolder }) => {
+  const { players, matches, deletePlayer, updatePlayerFolder, folders } = useSquash();
 
-  const clubPlayers = activeClub ? getPlayersForClub(players, activeClub.id) : players;
-  const clubMatches = activeClub ? getMatchesForClub(matches, activeClub.id) : matches;
-  const clubRatings = computeClubRatings(clubPlayers, clubMatches);
+  const folderPlayers = activeFolder ? getPlayersForFolder(players, activeFolder.id) : players;
+  const folderMatches = activeFolder ? getMatchesForFolder(matches, activeFolder.id) : matches;
+  const ratings = computeClubRatings(folderPlayers, folderMatches);
 
   const getWinRate = (wins: number, total: number) => {
     if (!total) return '0%';
@@ -29,7 +28,7 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, on
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-slate-900 tracking-tight">Players</h1>
-          <p className="text-xs text-slate-500">{clubPlayers.length} active profiles</p>
+          <p className="text-xs text-slate-500">{folderPlayers.length} active profiles</p>
         </div>
         <button
           onClick={openAddPlayerModal}
@@ -41,7 +40,7 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, on
       </div>
 
       <div className="space-y-3">
-        {clubPlayers.map((player) => {
+        {folderPlayers.map((player) => {
           const winRate = getWinRate(player.wins, player.totalMatches);
           return (
             <div
@@ -53,16 +52,11 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, on
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <div
-                      className="w-12 h-12 rounded-2xl text-white font-black flex items-center justify-center text-lg shadow-md"
-                      style={{ backgroundColor: player.avatarBgColor }}
-                    >
-                      {player.name.charAt(0)}
-                    </div>
-                    <span className="absolute -bottom-1 -right-1 text-sm bg-white rounded-full p-0.5 shadow-xs">
-                      {player.countryFlag || '🇳🇿'}
-                    </span>
+                  <div
+                    className="w-12 h-12 rounded-2xl text-white font-black flex items-center justify-center text-lg shadow-md"
+                    style={{ backgroundColor: player.avatarBgColor }}
+                  >
+                    {player.name.charAt(0)}
                   </div>
 
                   <div>
@@ -71,25 +65,24 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, on
                         {player.name}
                       </h3>
                     </div>
-                    <div className="flex items-center space-x-2 text-[10px] text-slate-500 mt-0.5">
-                      <span className="bg-slate-900 text-amber-400 font-extrabold px-2 py-0.5 rounded-lg">
-                        {player.skillGrade}
-                      </span>
-                      <span>•</span>
-                      <span>{player.handedness === 'Right' ? 'Right-handed' : 'Left-handed'}</span>
-                    </div>
+                    {player.handedness && (
+                      <div className="flex items-center space-x-2 text-[10px] text-slate-500 mt-0.5">
+                        <span>{player.handedness === 'Right' ? 'Right-handed' : 'Left-handed'}</span>
+                      </div>
+                    )}
 
                     <div className="flex items-center space-x-1 mt-1" onClick={(e) => e.stopPropagation()}>
                       <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
                       <select
-                        value={getPlayerClubId(player)}
-                        onChange={(e) => updatePlayerClub(player.id, e.target.value)}
+                        value={getPlayerFolderId(player) ?? ''}
+                        onChange={(e) => updatePlayerFolder(player.id, e.target.value)}
                         className="text-[10px] font-semibold text-slate-500 bg-transparent border-none focus:outline-none cursor-pointer -ml-0.5 py-0"
-                        title="Reassign this player to a different club"
+                        title="Reassign this player to a different folder"
                       >
-                        {CLUBS_LIST.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
+                        <option value="">No folder</option>
+                        {folders.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.name}
                           </option>
                         ))}
                       </select>
@@ -132,11 +125,11 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, on
                 </div>
                 <div
                   className="bg-blue-50 p-2 rounded-xl border border-blue-100"
-                  title="Club Rating — from rated matches recorded in this app, not an official NZ Squash rating."
+                  title="Rating — from rated matches recorded in this app."
                 >
-                  <p className="text-[10px] font-semibold text-blue-700">Club Rating</p>
+                  <p className="text-[10px] font-semibold text-blue-700">Rating</p>
                   <p className="text-xs font-bold text-blue-900 mt-0.5">
-                    {clubRatings[player.id]?.ratedMatches ? Math.round(clubRatings[player.id].rating) : 'New'}
+                    {ratings[player.id]?.ratedMatches ? Math.round(ratings[player.id].rating) : 'New'}
                   </p>
                 </div>
               </div>

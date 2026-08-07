@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { Clock, Trash2, Trophy, Calendar, Check } from 'lucide-react';
 import { formatMatchDateGroup, formatMatchTime } from '../utils/dateUtils';
-import type { Club, SquashMatch } from '../types/squash';
-import { getMatchesForClub } from '../utils/clubUtils';
+import type { Folder, SquashMatch } from '../types/squash';
+import { getMatchesForFolder } from '../utils/folderUtils';
 import { sortMatchesByDateDesc } from '../utils/matchUtils';
 import { MATCH_MODE_META, getMatchMode, type MatchModeKey } from '../utils/matchModeUtils';
 
 interface MatchHistoryViewProps {
   selectMatchDetail: (matchId: string) => void;
-  activeClub?: Club;
+  activeFolder?: Folder;
   openCompetitionDetail?: (competitionId: string) => void;
 }
 
@@ -25,15 +25,15 @@ const FILTER_CHIPS: { id: 'ALL' | MatchModeKey; label: string }[] = [
 
 export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
   selectMatchDetail,
-  activeClub,
+  activeFolder,
   openCompetitionDetail,
 }) => {
   const { matches, competitions, deleteMatch } = useSquash();
   const [filterType, setFilterType] = useState<string>('ALL');
 
-  const clubMatches = activeClub ? getMatchesForClub(matches, activeClub.id) : matches;
+  const folderMatches = activeFolder ? getMatchesForFolder(matches, activeFolder.id) : matches;
 
-  const filteredMatches = sortMatchesByDateDesc(clubMatches).filter(
+  const filteredMatches = sortMatchesByDateDesc(folderMatches).filter(
     (m) => filterType === 'ALL' || getMatchMode(m, competitions).meta.key === filterType
   );
 
@@ -54,7 +54,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
     <div className="pb-24 pt-2 px-4 space-y-4">
       <div>
         <h1 className="text-xl font-black text-slate-900 tracking-tight">History</h1>
-        <p className="text-xs text-slate-500">{clubMatches.length} recorded matches</p>
+        <p className="text-xs text-slate-500">{folderMatches.length} recorded matches</p>
       </div>
 
       {/* Filter Chips */}
@@ -96,8 +96,8 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
               {/* Match Items under Date Group */}
               <div className="space-y-2">
                 {groupMatches.map((match) => {
-                  const p1 = match.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🇳🇿' };
-                  const p2 = match.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🇳🇿' };
+                  const p1 = match.player1 || { id: 'p1', name: 'Player 1' };
+                  const p2 = match.player2 || { id: 'p2', name: 'Player 2' };
                   const p1Games = match.p1GamesWon ?? 0;
                   const p2Games = match.p2GamesWon ?? 0;
                   // Same winnerId → games-won priority as getMatchWinnerId, inlined here
@@ -173,7 +173,6 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
                           }`}
                         >
                           <div className="flex items-center space-x-2 min-w-0">
-                            <span className="text-xs">{p1.countryFlag}</span>
                             <span className="text-xs truncate">{p1.name}</span>
                             {isP1Winner && (
                               <span className="inline-flex items-center justify-center bg-amber-200/90 text-amber-950 p-0.5 rounded-md">
@@ -195,7 +194,6 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
                           }`}
                         >
                           <div className="flex items-center space-x-2 min-w-0">
-                            <span className="text-xs">{p2.countryFlag}</span>
                             <span className="text-xs truncate">{p2.name}</span>
                             {isP2Winner && (
                               <span className="inline-flex items-center justify-center bg-amber-200/90 text-amber-950 p-0.5 rounded-md">

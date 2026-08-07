@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
-import { ClubSelectorModal, CLUBS_LIST } from './ClubSelectorModal';
-import type { Club, Player } from '../types/squash';
-import { Play, Plus, Activity, ChevronRight, ChevronDown, Clock, Settings, Trophy, MapPin, Check } from 'lucide-react';
+import { FolderSelectorModal } from './FolderSelectorModal';
+import type { Folder, Player } from '../types/squash';
+import { Play, Plus, Activity, ChevronRight, ChevronDown, Clock, Settings, Trophy, MapPin, Check, SlidersHorizontal } from 'lucide-react';
 import { formatMatchDateGroup } from '../utils/dateUtils';
-import { getPlayersForClub, getMatchesForClub } from '../utils/clubUtils';
+import { getPlayersForFolder, getMatchesForFolder } from '../utils/folderUtils';
 import { getMatchWinnerId, sortMatchesByDateDesc } from '../utils/matchUtils';
 import { computeClubRatings } from '../utils/ratingUtils';
 import { getMatchMode } from '../utils/matchModeUtils';
 import { COMPETITION_FORMAT_LABELS } from './NewCompetitionModal';
 
 interface DashboardViewProps {
-  openNewMatchModal: () => void;
+  openNewMatchModal: (mode?: 'quick' | 'custom') => void;
   openNewCompetitionModal: () => void;
   openAddPlayerModal: () => void;
   openSettingsModal: () => void;
@@ -24,8 +24,8 @@ interface DashboardViewProps {
   onSelectPlayerProfile: (player: Player) => void;
   setActiveTab: (tab: 'home' | 'match' | 'players' | 'history') => void;
   selectMatchDetail: (matchId: string) => void;
-  activeClub?: Club;
-  onSelectClub?: (club: Club) => void;
+  activeFolder?: Folder;
+  onSelectFolder?: (folder: Folder) => void;
 }
 
 export const SquashBallIcon: React.FC<{ className?: string }> = ({ className = 'w-6 h-6' }) => (
@@ -49,49 +49,48 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSelectPlayerProfile,
   setActiveTab,
   selectMatchDetail,
-  activeClub: propActiveClub,
-  onSelectClub,
+  activeFolder: propActiveFolder,
+  onSelectFolder,
 }) => {
-  const { matches, players, competitions, activeMatchState } = useSquash();
+  const { matches, players, competitions, activeMatchState, folders, addFolder } = useSquash();
   const activeCompetitions = competitions.filter((c) => c.status === 'ACTIVE');
 
-  const [internalClub, setInternalClub] = useState<Club>(CLUBS_LIST[0]);
-  const activeClub = propActiveClub || internalClub;
+  const [internalFolder, setInternalFolder] = useState<Folder | undefined>(folders[0]);
+  const activeFolder = propActiveFolder || internalFolder || folders[0];
 
-  const handleSelectClub = (club: Club) => {
-    setInternalClub(club);
-    if (onSelectClub) onSelectClub(club);
+  const handleSelectFolder = (folder: Folder) => {
+    setInternalFolder(folder);
+    if (onSelectFolder) onSelectFolder(folder);
   };
 
-  const [isClubSelectorOpen, setIsClubSelectorOpen] = useState<boolean>(false);
+  const [isFolderSelectorOpen, setIsFolderSelectorOpen] = useState<boolean>(false);
 
-  // Retrieve players and matches belonging to active club
-  const activePlayers = getPlayersForClub(players, activeClub.id);
-  const clubMatches = getMatchesForClub(matches, activeClub.id);
+  // Retrieve players and matches belonging to active folder
+  const activePlayers = activeFolder ? getPlayersForFolder(players, activeFolder.id) : [];
+  const folderMatches = activeFolder ? getMatchesForFolder(matches, activeFolder.id) : [];
 
-  const recentMatches = sortMatchesByDateDesc(clubMatches).slice(0, 3);
+  const recentMatches = sortMatchesByDateDesc(folderMatches).slice(0, 3);
 
-  // Club Rating (see utils/ratingUtils.ts) is the single ranking used everywhere on this
+  // Rating (see utils/ratingUtils.ts) is the single ranking used everywhere on this
   // screen — Court Leaders and the Spotlight card used to rank by two different metrics
   // (win count vs. win rate) and could disagree on who's "best"; now both agree.
-  const clubRatings = computeClubRatings(activePlayers, clubMatches);
+  const ratings = computeClubRatings(activePlayers, folderMatches);
   const topPlayers = [...activePlayers]
-    .sort((a, b) => (clubRatings[b.id]?.rating ?? 0) - (clubRatings[a.id]?.rating ?? 0))
+    .sort((a, b) => (ratings[b.id]?.rating ?? 0) - (ratings[a.id]?.rating ?? 0))
     .slice(0, 3);
 
-  // Calculate average match duration in minutes for active club
+  // Calculate average match duration in minutes for active folder
   const avgMatchDurationMins =
-    clubMatches.length > 0
+    folderMatches.length > 0
       ? Math.round(
-          clubMatches.reduce((acc, m) => acc + m.totalDurationSeconds, 0) / clubMatches.length / 60
+          folderMatches.reduce((acc, m) => acc + m.totalDurationSeconds, 0) / folderMatches.length / 60
         )
       : 32;
 
   const spotlightLeader = topPlayers.length > 0
     ? {
         fullName: topPlayers[0].name,
-        flag: topPlayers[0].countryFlag,
-        subtitle: `Club Rating Leader (${Math.round(clubRatings[topPlayers[0].id]?.rating ?? 0)})`,
+        subtitle: `Rating Leader (${Math.round(ratings[topPlayers[0].id]?.rating ?? 0)})`,
         icon: '👑',
         playerObj: topPlayers[0],
       }
@@ -112,15 +111,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <SquashBallIcon className="w-6 h-6 inline-block" />
           </h1>
 
-          {/* Clickable Club Selector */}
+          {/* Clickable Folder Selector */}
           <button
-            onClick={() => setIsClubSelectorOpen(true)}
+            onClick={() => setIsFolderSelectorOpen(true)}
             className="group flex items-center space-x-1 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors pt-0.5"
-            title="Switch Active Club"
+            title="Switch Active Folder"
           >
             <MapPin className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-500 transition-colors flex-shrink-0" />
             <span className="truncate max-w-[170px] sm:max-w-[240px]">
-              {activeClub.name}
+              {activeFolder?.name ?? 'No folder selected'}
             </span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 transition-transform flex-shrink-0" />
           </button>
@@ -143,23 +142,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onOpenHowToUseApp={openHowToUseAppModal}
       />
 
-      {/* Centered Main Actions Section */}
-      <div className="flex flex-col items-center justify-center space-y-3 text-center pt-0 pb-1">
+      {/* Centered Main Actions Section — Quick Match is the primary path (start refereeing
+          in a few taps using saved defaults); Custom Match and Competitions are secondary,
+          deliberately half the size so they don't compete with the main CTA. */}
+      <div className="flex flex-col items-center justify-center space-y-2 text-center pt-0 pb-1">
         <button
-          onClick={openNewMatchModal}
-          className="w-full min-h-[48px] py-3.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-black text-sm rounded-2xl shadow-md flex items-center justify-center space-x-2 transition-transform active:scale-98 border border-slate-800"
+          onClick={() => openNewMatchModal('quick')}
+          className="w-full min-h-[56px] py-4 bg-slate-900 hover:bg-slate-800 text-amber-400 font-black text-base rounded-2xl shadow-md flex items-center justify-center space-x-2 transition-transform active:scale-98 border border-slate-800"
         >
-          <Play className="w-4 h-4 fill-current" />
-          <span>Start New Match</span>
+          <Play className="w-5 h-5 fill-current" />
+          <span>Quick Match</span>
         </button>
 
-        <button
-          onClick={openNewCompetitionModal}
-          className="w-full min-h-[48px] py-3.5 bg-white hover:bg-slate-50 text-slate-900 font-black text-sm rounded-2xl shadow-2xs border-2 border-slate-900 flex items-center justify-center space-x-2 transition-all active:scale-98"
-        >
-          <Trophy className="w-4 h-4 text-amber-500" />
-          <span>Create Competition</span>
-        </button>
+        <div className="w-full grid grid-cols-2 gap-2">
+          <button
+            onClick={() => openNewMatchModal('custom')}
+            className="min-h-[40px] py-2.5 bg-white hover:bg-slate-50 text-slate-900 font-bold text-xs rounded-xl shadow-2xs border border-slate-200 flex items-center justify-center space-x-1.5 transition-all active:scale-98"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
+            <span>Custom Match</span>
+          </button>
+
+          <button
+            onClick={openNewCompetitionModal}
+            className="min-h-[40px] py-2.5 bg-white hover:bg-slate-50 text-slate-900 font-bold text-xs rounded-xl shadow-2xs border border-slate-200 flex items-center justify-center space-x-1.5 transition-all active:scale-98"
+          >
+            <Trophy className="w-3.5 h-3.5 text-amber-500" />
+            <span>New Competition</span>
+          </button>
+        </div>
       </div>
 
       {/* Active Game Alert Banner (if match in progress).
@@ -200,9 +211,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <div className="flex items-center justify-between my-3">
               <div className="text-left">
-                <p className="text-sm font-bold text-slate-100 flex items-center space-x-1">
-                  <span>{activeMatchState.match.player1.countryFlag}</span>
-                  <span>{activeMatchState.match.player1.name}</span>
+                <p className="text-sm font-bold text-slate-100">
+                  {activeMatchState.match.player1.name}
                 </p>
                 <p className="text-2xl font-black text-amber-400">{activeMatchState.p1CurrentScore}</p>
               </div>
@@ -212,9 +222,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="text-right">
-                <p className="text-sm font-bold text-slate-100 flex items-center justify-end space-x-1">
-                  <span>{activeMatchState.match.player2.name}</span>
-                  <span>{activeMatchState.match.player2.countryFlag}</span>
+                <p className="text-sm font-bold text-slate-100">
+                  {activeMatchState.match.player2.name}
                 </p>
                 <p className="text-2xl font-black text-amber-400">{activeMatchState.p2CurrentScore}</p>
               </div>
@@ -358,7 +367,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     }`}
                   >
                     <div className="flex items-center space-x-2 min-w-0">
-                      <span className="text-xs">{m.player1.countryFlag}</span>
                       <span className="text-xs truncate">{m.player1.name}</span>
                       {isP1Winner && (
                         <span className="inline-flex items-center justify-center bg-amber-200/90 text-amber-950 p-0.5 rounded-md">
@@ -380,7 +388,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     }`}
                   >
                     <div className="flex items-center space-x-2 min-w-0">
-                      <span className="text-xs">{m.player2.countryFlag}</span>
                       <span className="text-xs truncate">{m.player2.name}</span>
                       {isP2Winner && (
                         <span className="inline-flex items-center justify-center bg-amber-200/90 text-amber-950 p-0.5 rounded-md">
@@ -414,7 +421,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div className="ios-card rounded-2xl divide-y divide-slate-100 p-0 overflow-hidden">
           {topPlayers.map((player) => {
-            const rating = clubRatings[player.id];
+            const rating = ratings[player.id];
 
             return (
               <div
@@ -434,15 +441,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <span className="text-xs font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
                         {player.name}
                       </span>
-                      <span className="text-xs">{player.countryFlag}</span>
-                      <span className="text-[10px] text-amber-700 font-extrabold bg-amber-50 px-2 py-0.5 rounded-lg">
-                        {player.skillGrade}
-                      </span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-0.5">
                       {player.wins}W / {player.losses}L
                       {rating && rating.ratedMatches > 0 && (
-                        <> • {Math.round(rating.rating)} Club Rating</>
+                        <> • {Math.round(rating.rating)} Rating</>
                       )}
                     </p>
                   </div>
@@ -457,14 +460,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 3. Active Club Statistics */}
+      {/* 3. Active Folder Statistics */}
       <div className="ios-card rounded-2xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="min-w-0 pr-2">
             <h3 className="text-sm font-black text-slate-900 tracking-tight truncate">
-              {activeClub.name} Stats
+              {activeFolder?.name ?? 'Folder'} Stats
             </h3>
-            <p className="text-[10px] text-slate-400 font-semibold truncate">{activeClub.city}, {activeClub.country}</p>
           </div>
 
           <button
@@ -479,13 +481,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* 3-Tile Aggregate Metrics Grid */}
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-center">
-            <p className="text-lg font-black text-slate-900">{clubMatches.length}</p>
-            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Club Matches</p>
+            <p className="text-lg font-black text-slate-900">{folderMatches.length}</p>
+            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Matches</p>
           </div>
 
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-center">
             <p className="text-lg font-black text-amber-500">{activePlayers.length}</p>
-            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Club Roster</p>
+            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Roster</p>
           </div>
 
           <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-center">
@@ -494,7 +496,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Dedicated Separate "Club Spotlight Leader" Card */}
+        {/* Dedicated Separate "Spotlight Leader" Card */}
         {spotlightLeader && (
           <div
             onClick={() => spotlightLeader.playerObj && onSelectPlayerProfile(spotlightLeader.playerObj)}
@@ -507,7 +509,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {spotlightLeader.subtitle}
                 </span>
                 <p className="text-xs font-bold text-slate-900 truncate">
-                  {spotlightLeader.flag} {spotlightLeader.fullName}
+                  {spotlightLeader.fullName}
                 </p>
               </div>
             </div>
@@ -536,12 +538,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </button>
       </div>
 
-      {/* Club Selector Modal */}
-      <ClubSelectorModal
-        isOpen={isClubSelectorOpen}
-        activeClubId={activeClub.id}
-        onSelectClub={handleSelectClub}
-        onClose={() => setIsClubSelectorOpen(false)}
+      {/* Folder Selector Modal */}
+      <FolderSelectorModal
+        isOpen={isFolderSelectorOpen}
+        folders={folders}
+        activeFolderId={activeFolder?.id ?? ''}
+        onSelectFolder={handleSelectFolder}
+        onCreateFolder={addFolder}
+        onClose={() => setIsFolderSelectorOpen(false)}
       />
     </div>
   );

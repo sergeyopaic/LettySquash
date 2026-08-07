@@ -1,78 +1,63 @@
 import React, { useState } from 'react';
-import type { Club } from '../types/squash';
-import { X, MapPin, Check, Plus, RefreshCw } from 'lucide-react';
+import type { Folder } from '../types/squash';
+import { X, FolderIcon, Check, Plus, RefreshCw } from 'lucide-react';
 
-export const CLUBS_LIST: Club[] = [
-  {
-    id: 'c1',
-    name: 'Devonport Squash Club',
-    city: 'Auckland',
-    country: 'New Zealand',
-    countryFlag: '🇳🇿',
-  },
-  {
-    id: 'c2',
-    name: 'Remuera Rackets Club',
-    city: 'Auckland',
-    country: 'New Zealand',
-    countryFlag: '🇳🇿',
-  },
-  {
-    id: 'c3',
-    name: 'Belmont Squash Club',
-    city: 'North Shore',
-    country: 'New Zealand',
-    countryFlag: '🇳🇿',
-  },
-  {
-    id: 'c4',
-    name: 'Sydney Squash Centre',
-    city: 'Sydney',
-    country: 'Australia',
-    countryFlag: '🇦🇺',
-  },
-];
-
-interface ClubSelectorModalProps {
+interface FolderSelectorModalProps {
   isOpen: boolean;
-  activeClubId: string;
-  onSelectClub: (club: Club) => void;
+  folders: Folder[];
+  activeFolderId: string;
+  onSelectFolder: (folder: Folder) => void;
+  onCreateFolder: (name: string) => Folder;
   onClose: () => void;
 }
 
-export const ClubSelectorModal: React.FC<ClubSelectorModalProps> = ({
+export const FolderSelectorModal: React.FC<FolderSelectorModalProps> = ({
   isOpen,
-  activeClubId,
-  onSelectClub,
+  folders,
+  activeFolderId,
+  onSelectFolder,
+  onCreateFolder,
   onClose,
 }) => {
-  const [pendingClub, setPendingClub] = useState<Club | null>(null);
+  const [pendingFolder, setPendingFolder] = useState<Folder | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
 
   if (!isOpen) return null;
 
-  const currentClub = CLUBS_LIST.find((c) => c.id === activeClubId) || CLUBS_LIST[0];
+  const currentFolder = folders.find((f) => f.id === activeFolderId) || folders[0];
 
-  const handleSelectClick = (club: Club) => {
-    if (club.id === activeClubId) {
+  const handleSelectClick = (folder: Folder) => {
+    if (folder.id === activeFolderId) {
       onClose();
       return;
     }
-    // Open confirmation prompt before switching main home club
-    setPendingClub(club);
+    setPendingFolder(folder);
   };
 
   const handleConfirmSwitch = () => {
-    if (pendingClub) {
-      onSelectClub(pendingClub);
-      setPendingClub(null);
+    if (pendingFolder) {
+      onSelectFolder(pendingFolder);
+      setPendingFolder(null);
       onClose();
     }
+  };
+
+  const handleCreateSubmit = () => {
+    const trimmed = newFolderName.trim();
+    if (!trimmed) return;
+    const created = onCreateFolder(trimmed);
+    setNewFolderName('');
+    setIsCreating(false);
+    onSelectFolder(created);
+    onClose();
   };
 
   return (
     <div
       onClick={() => {
-        setPendingClub(null);
+        setPendingFolder(null);
+        setIsCreating(false);
         onClose();
       }}
       className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 cursor-pointer"
@@ -84,15 +69,16 @@ export const ClubSelectorModal: React.FC<ClubSelectorModalProps> = ({
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
             <h2 className="text-base font-black text-slate-900">
-              Select Home Club
+              Select Folder
             </h2>
             <p className="text-xs text-slate-500 font-medium">
-              Choose active club location for your dashboard
+              Choose the active folder for your dashboard
             </p>
           </div>
           <button
             onClick={() => {
-              setPendingClub(null);
+              setPendingFolder(null);
+              setIsCreating(false);
               onClose();
             }}
             className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
@@ -101,28 +87,27 @@ export const ClubSelectorModal: React.FC<ClubSelectorModalProps> = ({
           </button>
         </div>
 
-        {/* Confirmation Screen when Switching Home Club */}
-        {pendingClub ? (
+        {pendingFolder ? (
           <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl space-y-3 animate-in zoom-in duration-150">
             <div className="flex items-center space-x-2 text-amber-900">
               <RefreshCw className="w-5 h-5 text-amber-600 flex-shrink-0 animate-spin" />
               <h4 className="font-black text-xs uppercase tracking-wider">
-                Confirm Home Club Switch
+                Confirm Folder Switch
               </h4>
             </div>
 
             <p className="text-xs text-amber-950 font-medium leading-relaxed">
-              Switching home club from <strong>"{currentClub.name}"</strong> to{' '}
-              <strong>"{pendingClub.name}"</strong> will reload your main dashboard, recent match history, and active player roster for {pendingClub.name}.
+              Switching from <strong>"{currentFolder?.name}"</strong> to{' '}
+              <strong>"{pendingFolder.name}"</strong> will reload your dashboard, recent match history, and player list for {pendingFolder.name}.
             </p>
 
             <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => setPendingClub(null)}
+                onClick={() => setPendingFolder(null)}
                 className="py-2.5 px-3 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 text-center transition-colors cursor-pointer"
               >
-                Keep {currentClub.name}
+                Keep {currentFolder?.name}
               </button>
 
               <button
@@ -130,20 +115,19 @@ export const ClubSelectorModal: React.FC<ClubSelectorModalProps> = ({
                 onClick={handleConfirmSwitch}
                 className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl shadow-xs text-center transition-colors cursor-pointer"
               >
-                Switch Home Club
+                Switch Folder
               </button>
             </div>
           </div>
         ) : (
-          /* Club List */
           <div className="space-y-2">
-            {CLUBS_LIST.map((club) => {
-              const isSelected = club.id === activeClubId;
+            {folders.map((folder) => {
+              const isSelected = folder.id === activeFolderId;
 
               return (
                 <div
-                  key={club.id}
-                  onClick={() => handleSelectClick(club)}
+                  key={folder.id}
+                  onClick={() => handleSelectClick(folder)}
                   className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
                     isSelected
                       ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-400/50'
@@ -152,15 +136,11 @@ export const ClubSelectorModal: React.FC<ClubSelectorModalProps> = ({
                 >
                   <div className="flex items-center space-x-3 min-w-0 pr-2">
                     <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-sm shadow-xs flex-shrink-0">
-                      {club.countryFlag}
+                      {folder.icon || <FolderIcon className="w-4 h-4 text-slate-400" />}
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-black text-slate-900 truncate">
-                        {club.name}
-                      </p>
-                      <p className="text-[10px] font-semibold text-slate-500 flex items-center space-x-1 mt-0.5">
-                        <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                        <span className="truncate">{club.city}, {club.country}</span>
+                        {folder.name}
                       </p>
                     </div>
                   </div>
@@ -176,16 +156,34 @@ export const ClubSelectorModal: React.FC<ClubSelectorModalProps> = ({
           </div>
         )}
 
-        <div className="pt-2 border-t border-slate-100 text-center">
-          <button
-            onClick={() => {
-              alert('Custom club registration feature coming soon!');
-            }}
-            className="text-xs font-semibold text-slate-500 hover:text-blue-900 inline-flex items-center space-x-1 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Register New Squash Club</span>
-          </button>
+        <div className="pt-2 border-t border-slate-100">
+          {isCreating ? (
+            <div className="flex items-center space-x-2">
+              <input
+                autoFocus
+                type="text"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateSubmit()}
+                placeholder="Folder name..."
+                className="flex-1 px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+              <button
+                onClick={handleCreateSubmit}
+                className="px-3 py-2 bg-slate-900 text-amber-400 text-xs font-bold rounded-xl cursor-pointer"
+              >
+                Add
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsCreating(true)}
+              className="w-full text-xs font-semibold text-slate-500 hover:text-blue-900 inline-flex items-center justify-center space-x-1 cursor-pointer py-1"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Folder</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

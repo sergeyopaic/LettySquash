@@ -17,16 +17,21 @@ import { AdvancedStatsModal } from './components/AdvancedStatsModal';
 import { HowToPlayModal } from './components/HowToPlayModal';
 import { HowToUseAppModal } from './components/HowToUseAppModal';
 import { PlayerProfileModal } from './components/PlayerProfileModal';
-import { CLUBS_LIST } from './components/ClubSelectorModal';
-import type { Player, Club } from './types/squash';
+import type { Player } from './types/squash';
 import { Smartphone, Monitor, Wifi, Signal, BatteryMedium } from 'lucide-react';
 
 const MainContainer: React.FC = () => {
-  const { activeMatchState, getMatchById } = useSquash();
+  const { activeMatchState, getMatchById, folders } = useSquash();
 
-  const [activeClub, setActiveClub] = useState<Club>(CLUBS_LIST[0]);
+  const [activeFolderId, setActiveFolderId] = useState<string>(() => folders[0]?.id ?? '');
+  const activeFolder = folders.find((f) => f.id === activeFolderId) ?? folders[0];
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [isNewMatchOpen, setIsNewMatchOpen] = useState<boolean>(false);
+  const [newMatchMode, setNewMatchMode] = useState<'quick' | 'custom'>('quick');
+  const openNewMatchModal = (mode: 'quick' | 'custom' = 'quick') => {
+    setNewMatchMode(mode);
+    setIsNewMatchOpen(true);
+  };
   const [isNewCompetitionOpen, setIsNewCompetitionOpen] = useState<boolean>(false);
   const [isCompetitionsListOpen, setIsCompetitionsListOpen] = useState<boolean>(false);
   const [openCompetitionId, setOpenCompetitionId] = useState<string | null>(null);
@@ -103,9 +108,9 @@ const MainContainer: React.FC = () => {
         <div className="flex-1 overflow-y-auto app-bg-gradient relative">
           {activeTab === 'home' && (
             <DashboardView
-              activeClub={activeClub}
-              onSelectClub={(c) => setActiveClub(c)}
-              openNewMatchModal={() => setIsNewMatchOpen(true)}
+              activeFolder={activeFolder}
+              onSelectFolder={(f) => setActiveFolderId(f.id)}
+              openNewMatchModal={openNewMatchModal}
               openNewCompetitionModal={() => setIsNewCompetitionOpen(true)}
               openAddPlayerModal={() => setIsAddPlayerOpen(true)}
               openSettingsModal={() => setIsSettingsOpen(true)}
@@ -122,7 +127,7 @@ const MainContainer: React.FC = () => {
 
           {activeTab === 'match' && (
             <ScoreboardView
-              openNewMatchModal={() => setIsNewMatchOpen(true)}
+              openNewMatchModal={openNewMatchModal}
               onExitToHome={(competitionId) => {
                 setActiveTab('home');
                 if (competitionId) setOpenCompetitionId(competitionId);
@@ -133,7 +138,7 @@ const MainContainer: React.FC = () => {
 
           {activeTab === 'players' && (
             <PlayersView
-              activeClub={activeClub}
+              activeFolder={activeFolder}
               openAddPlayerModal={() => setIsAddPlayerOpen(true)}
               onSelectPlayerProfile={(p) => setSelectedPlayerProfile(p)}
             />
@@ -141,7 +146,7 @@ const MainContainer: React.FC = () => {
 
           {activeTab === 'history' && (
             <MatchHistoryView
-              activeClub={activeClub}
+              activeFolder={activeFolder}
               selectMatchDetail={(id) => setSelectedMatchId(id)}
               openCompetitionDetail={(id) => setOpenCompetitionId(id)}
             />
@@ -151,11 +156,13 @@ const MainContainer: React.FC = () => {
         {/* Modals Container inside Phone Frame */}
         <NewMatchModal
           isOpen={isNewMatchOpen}
+          mode={newMatchMode}
           onClose={() => setIsNewMatchOpen(false)}
           onStart={() => {
             setIsNewMatchOpen(false);
             setActiveTab('match');
           }}
+          openSettingsModal={() => setIsSettingsOpen(true)}
         />
 
         <NewCompetitionModal
@@ -186,7 +193,7 @@ const MainContainer: React.FC = () => {
         <AddPlayerModal
           isOpen={isAddPlayerOpen}
           onClose={() => setIsAddPlayerOpen(false)}
-          activeClub={activeClub}
+          activeFolder={activeFolder}
         />
 
         <MatchDetailModal
@@ -211,19 +218,19 @@ const MainContainer: React.FC = () => {
         <AdvancedStatsModal
           isOpen={isAdvancedStatsOpen}
           onClose={() => setIsAdvancedStatsOpen(false)}
-          activeClub={activeClub}
+          activeFolder={activeFolder}
         />
 
         <HowToPlayModal
           isOpen={isHowToPlayOpen}
           onClose={() => setIsHowToPlayOpen(false)}
-          openNewMatch={() => setIsNewMatchOpen(true)}
+          openNewMatch={() => openNewMatchModal("quick")}
         />
 
         <HowToUseAppModal
           isOpen={isHowToUseAppOpen}
           onClose={() => setIsHowToUseAppOpen(false)}
-          openNewMatch={() => setIsNewMatchOpen(true)}
+          openNewMatch={() => openNewMatchModal("quick")}
         />
 
         {/* Bottom Tab Bar Navigation */}
@@ -231,7 +238,7 @@ const MainContainer: React.FC = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           hasActiveMatch={Boolean(activeMatchState)}
-          openNewMatchModal={() => setIsNewMatchOpen(true)}
+          openNewMatchModal={openNewMatchModal}
         />
       </div>
     </div>

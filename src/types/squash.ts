@@ -1,37 +1,51 @@
-export type NZSquashGrade = 
-  | 'A1' | 'A2' 
-  | 'B1' | 'B2' 
-  | 'C1' | 'C2' 
-  | 'D1' | 'D2' 
-  | 'E1' | 'E2' 
-  | 'F' 
-  | 'J1' | 'J2' | 'J3' | 'J4';
-
 export type Handedness = 'Right' | 'Left';
 export type ServeSide = 'L' | 'R';
 export type DecisionType = 'YES_LET' | 'STROKE' | 'NO_LET';
 
-export interface Club {
+// A user-defined container for players — replaces the old fixed "Club" concept.
+// The user decides what it means: a real club roster, a weekly hit-around group,
+// a tournament's entrant list, or nothing at all (players can have no folder).
+export interface Folder {
   id: string;
   name: string;
-  city: string;
-  country: string;
-  countryFlag: string;
+  icon?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Player {
   id: string;
+  // Present once this player has been through the (not-yet-built) cloud sync flow.
+  // Optional for now — see SyncMetadata below — so nothing here is a real dependency
+  // on Phase 2 shipping.
+  uuid?: string;
   name: string;
-  avatarUrl?: string;
+  nickname?: string;
   avatarBgColor: string;
-  skillGrade: NZSquashGrade;
-  countryFlag: string;
-  countryCode: string;
-  handedness: Handedness;
-  clubId?: string;
+  handedness?: Handedness;
+  notes?: string;
+  folderId?: string;
   totalMatches: number;
   wins: number;
   losses: number;
+  createdAt: string;
+}
+
+// Not wired up anywhere yet — laid down now so the future cloud-sync work (Phase 2)
+// doesn't require reshaping Player/Match/Competition/Folder records again. A record
+// with isDirty: true has local changes a future sync pass still needs to push up.
+export interface SyncMetadata {
+  localUUID: string;
+  cloudUUID?: string;
+  lastSyncedAt?: string;
+  isDirty: boolean;
+}
+
+// Placeholder shape for a future optional identity layer (Apple ID, etc.). Not used
+// anywhere yet — the app has no accounts in Phase 1.
+export interface UserProfile {
+  id?: string;
+  displayName: string;
   createdAt: string;
 }
 
@@ -78,6 +92,11 @@ export interface SquashMatch {
   matchFormat: MatchFormat;
   matchType: MatchType;
   targetPoints: number; // 11 (PARS)
+  // Whether a game past targetPoints still needs a 2-clear margin to end (standard PARS
+  // sudden-death) or ends the instant either side reaches targetPoints. Absent on matches
+  // recorded before this field existed — those default to true (the universal PARS rule)
+  // at every read site, since that's what the engine always enforced back then.
+  twoPointGap?: boolean;
   status: MatchStatus;
   winnerId?: string;
   totalDurationSeconds: number;
@@ -116,7 +135,6 @@ export interface RallyEventLog {
   p1Score: number;
   p2Score: number;
   scoringPlayerName: string;
-  scoringPlayerFlag: string;
   isHandout: boolean;
   timestamp: string;
 }
@@ -143,10 +161,14 @@ export interface LiveMatchState {
   pointLog: PointEvent[];
 }
 
+// Defaults applied to every Quick Match (see NewMatchModal) until changed in Settings.
+// Custom Match reads these as its starting point but never writes back to them — a
+// one-off different format there shouldn't silently change the user's standing default.
 export interface AppSettings {
   showMascotTips: boolean;
-  soundEffects: boolean;
-  hapticFeedback: boolean;
+  quickMatchFormat: MatchFormat;
+  quickMatchTargetPoints: number;
+  quickMatchTwoPointGap: boolean;
 }
 
 export interface LettyTipItem {
@@ -219,8 +241,11 @@ export interface Competition {
   format: CompetitionFormat;
   status: CompetitionStatus;
   participantIds: string[];
-  clubAId?: string;
-  clubBId?: string;
+  // Interclub 4v4 only: the two rosters facing off. Was clubAId/clubBId when Club was
+  // a fixed real-world entity — now just references two Folders, same as any other
+  // player grouping.
+  folderAId?: string;
+  folderBId?: string;
   createdAt: string;
   // Only populated for formats whose fixtures can be generated deterministically at
   // creation time (currently just Interclub 4v4's rank-vs-rank pairing). Other formats

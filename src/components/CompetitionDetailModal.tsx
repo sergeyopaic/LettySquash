@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSquash } from '../context/SquashContext';
-import { CLUBS_LIST } from './ClubSelectorModal';
 import { COMPETITION_FORMATS, COMPETITION_FORMAT_LABELS } from './NewCompetitionModal';
 import { getMatchWinnerId } from '../utils/matchUtils';
 import { formatMatchDateGroup } from '../utils/dateUtils';
@@ -41,7 +40,7 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
   onStartMatch,
   onSelectMatchDetail,
 }) => {
-  const { competitions, matches, players, activeMatchState, startMatch } = useSquash();
+  const { competitions, matches, players, activeMatchState, startMatch, folders } = useSquash();
 
   // null = "follow the current round automatically"; a number once the user taps a
   // specific round tab. Reset whenever a different competition is opened.
@@ -73,8 +72,8 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
   if (!competition) return null;
 
   const formatMeta = COMPETITION_FORMATS.find((f) => f.id === competition.format);
-  const clubA = competition.clubAId ? CLUBS_LIST.find((c) => c.id === competition.clubAId) : undefined;
-  const clubB = competition.clubBId ? CLUBS_LIST.find((c) => c.id === competition.clubBId) : undefined;
+  const folderA = competition.folderAId ? folders.find((f) => f.id === competition.folderAId) : undefined;
+  const folderB = competition.folderBId ? folders.find((f) => f.id === competition.folderBId) : undefined;
   const getPlayer = (id: string) => players.find((p) => p.id === id);
   const hasLiveMatch = Boolean(activeMatchState);
 
@@ -217,7 +216,7 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
                   >
                     <span className="text-[8px] font-black text-amber-600 uppercase tracking-wider">Bye</span>
                     <span className="text-[11px] font-bold text-slate-800 truncate">
-                      {p1 ? `${p1.countryFlag} ${p1.name}` : '—'}
+                      {p1 ? `${p1.name}` : '—'}
                     </span>
                   </div>
                 ) : playedMatch ? (
@@ -227,10 +226,10 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
                     className="flex-1 px-2 py-1 rounded-xl border border-emerald-200 bg-emerald-50/70 flex flex-col justify-center text-left hover:bg-emerald-50 transition-colors cursor-pointer"
                   >
                     <span className={`text-[11px] truncate ${winnerId === p1?.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
-                      {p1 ? `${p1.countryFlag} ${p1.name}` : 'TBD'}
+                      {p1 ? `${p1.name}` : 'TBD'}
                     </span>
                     <span className={`text-[11px] truncate ${winnerId === p2?.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
-                      {p2 ? `${p2.countryFlag} ${p2.name}` : 'TBD'}
+                      {p2 ? `${p2.name}` : 'TBD'}
                     </span>
                   </button>
                 ) : (
@@ -242,10 +241,10 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
                   >
                     <span className="min-w-0">
                       <span className="block text-[11px] font-bold text-slate-900 truncate">
-                        {p1 ? `${p1.countryFlag} ${p1.name}` : 'TBD'}
+                        {p1 ? `${p1.name}` : 'TBD'}
                       </span>
                       <span className="block text-[11px] font-bold text-slate-900 truncate">
-                        {p2 ? `${p2.countryFlag} ${p2.name}` : 'TBD'}
+                        {p2 ? `${p2.name}` : 'TBD'}
                       </span>
                     </span>
                     {bothKnown && !isArchived && <Play className="w-3 h-3 text-blue-700 fill-current flex-shrink-0 ml-1" />}
@@ -286,13 +285,13 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className={`truncate ${winnerId === p1.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
-              {p1.countryFlag} {p1.name}
+              {p1.name}
             </span>
             <span className={`font-black ${winnerId === p1.id ? 'text-emerald-700' : 'text-slate-400'}`}>{p1Games}</span>
           </div>
           <div className="flex items-center justify-between text-xs">
             <span className={`truncate ${winnerId === p2.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
-              {p2.countryFlag} {p2.name}
+              {p2.name}
             </span>
             <span className={`font-black ${winnerId === p2.id ? 'text-emerald-700' : 'text-slate-400'}`}>{p2Games}</span>
           </div>
@@ -311,11 +310,11 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
           {label} #{fixture.slot} • Not played
         </span>
         <div className="text-xs font-bold text-slate-900 truncate">
-          {p1.countryFlag} {p1.name}
+          {p1.name}
         </div>
         <div className="text-[10px] text-slate-400 font-bold uppercase">vs</div>
         <div className="text-xs font-bold text-slate-900 truncate">
-          {p2.countryFlag} {p2.name}
+          {p2.name}
         </div>
         {!isArchived && (
           <div className="flex items-center space-x-1 text-[10px] font-bold text-blue-700 pt-0.5">
@@ -350,10 +349,10 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
           </span>
           <div className="flex items-center justify-between text-xs">
             <span className={`truncate ${winnerId === p1?.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
-              {p1 ? `${p1.countryFlag} ${p1.name}` : 'TBD'}
+              {p1 ? `${p1.name}` : 'TBD'}
             </span>
             <span className={`truncate ${winnerId === p2?.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
-              {p2 ? `${p2.countryFlag} ${p2.name}` : 'TBD'}
+              {p2 ? `${p2.name}` : 'TBD'}
             </span>
           </div>
         </button>
@@ -368,9 +367,9 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
       >
         <span className="text-[9px] font-black text-amber-700 uppercase tracking-wider">Grand Final • Not played</span>
         <div className="flex items-center justify-between text-xs font-bold text-slate-900">
-          <span className="truncate">{p1 ? `${p1.countryFlag} ${p1.name}` : 'TBD'}</span>
+          <span className="truncate">{p1 ? `${p1.name}` : 'TBD'}</span>
           <span className="text-slate-400 font-black text-[10px] px-1">vs</span>
-          <span className="truncate">{p2 ? `${p2.countryFlag} ${p2.name}` : 'TBD'}</span>
+          <span className="truncate">{p2 ? `${p2.name}` : 'TBD'}</span>
         </div>
         {bothKnown && !isArchived && (
           <div className="flex items-center space-x-1 text-[10px] font-bold text-blue-700 pt-0.5">
@@ -415,8 +414,8 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
 
         {/* Meta Row */}
         <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500 font-medium px-0.5">
-          {clubA && clubB ? (
-            <span>{clubA.name} vs {clubB.name}</span>
+          {folderA && folderB ? (
+            <span>{folderA.name} vs {folderB.name}</span>
           ) : (
             <span className="flex items-center space-x-1">
               <Users className="w-3 h-3 text-slate-400" />
@@ -460,7 +459,7 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
             </div>
             <div className="min-w-0">
               <p className="text-[9px] font-black text-amber-400 uppercase tracking-wider">Champion</p>
-              <p className="text-sm font-black truncate">{champion.countryFlag} {champion.name}</p>
+              <p className="text-sm font-black truncate">{champion.name}</p>
             </div>
           </div>
         )}
@@ -573,7 +572,7 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
                         <tr key={row.playerId} className="border-b border-slate-100 last:border-0">
                           <td className="pl-3 pr-1 py-2 font-black text-slate-400">{idx + 1}</td>
                           <td className="px-1 py-2 font-bold text-slate-900 truncate max-w-[120px]">
-                            {p.countryFlag} {p.name}
+                            {p.name}
                           </td>
                           <td className="text-center px-1 py-2 text-slate-600">{row.played}</td>
                           <td className="text-center px-1 py-2 font-bold text-emerald-700">{row.wins}</td>
@@ -674,7 +673,7 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
                               >
                                 <td className="pl-3 pr-1 py-2 font-black text-slate-400">{idx + 1}</td>
                                 <td className="px-1 py-2 font-bold text-slate-900 truncate max-w-[120px]">
-                                  {p.countryFlag} {p.name}
+                                  {p.name}
                                 </td>
                                 <td className="text-center px-1 py-2 text-slate-600">{row.played}</td>
                                 <td className="text-center px-1 py-2 font-bold text-emerald-700">{row.wins}</td>

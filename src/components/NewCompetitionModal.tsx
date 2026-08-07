@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSquash } from '../context/SquashContext';
-import type { CompetitionFormat, Competition, CompetitionFixture, MatchFormat } from '../types/squash';
-import { CLUBS_LIST } from './ClubSelectorModal';
-import { getPlayersForClub } from '../utils/clubUtils';
-import { getGradeRank } from '../utils/gradeUtils';
+import type { CompetitionFormat, Competition, CompetitionFixture, MatchFormat, Player } from '../types/squash';
+import { getPlayersForFolder } from '../utils/folderUtils';
 import {
   generateRoundRobinFixtures,
   generateSingleEliminationBracket,
@@ -17,6 +15,15 @@ import {
 // mobile-first competition detail screen doesn't have room for a much bigger bracket, so
 // this is a hard UI cap, not a rule of squash.
 const BRACKET_MAX_PARTICIPANTS = 16;
+
+// Seeding no longer has a grade to sort by (see REWORK_TODO.md Phase 1 — players are
+// self-added offline, no external rating source). Win rate is the next-best proxy for
+// "who's stronger" from data the app actually has; brand-new players (no matches yet)
+// rank below anyone with a track record rather than being seeded as if average.
+const getSeedScore = (p: Player): number => (p.totalMatches > 0 ? p.wins / p.totalMatches : -1);
+
+const compareBySeed = (a: Player, b: Player): number =>
+  getSeedScore(b) - getSeedScore(a) || b.wins - a.wins || a.name.localeCompare(b.name);
 import {
   X,
   Trophy,
@@ -83,7 +90,7 @@ export const COMPETITION_FORMAT_LABELS: Record<CompetitionFormat, string> = COMP
 type WizardStep = 'FORMAT' | 'RULES';
 
 export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen, onClose, onCreated }) => {
-  const { players, addCompetition } = useSquash();
+  const { players, addCompetition, folders } = useSquash();
 
   const [step, setStep] = useState<WizardStep>('FORMAT');
   const [competitionName, setCompetitionName] = useState('');
@@ -98,9 +105,9 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
   // sides swapped) instead of once.
   const [isDoubleRoundRobin, setIsDoubleRoundRobin] = useState(false);
 
-  // Interclub 4vs4 club selection IDs
-  const [selectedClubAId, setSelectedClubAId] = useState<string>('c2');
-  const [selectedClubBId, setSelectedClubBId] = useState<string>('c3');
+  // Interclub 4vs4 folder selection IDs
+  const [selectedFolderAId, setSelectedFolderAId] = useState<string>(folders[1]?.id ?? folders[0]?.id ?? '');
+  const [selectedFolderBId, setSelectedFolderBId] = useState<string>(folders[2]?.id ?? folders[0]?.id ?? '');
 
   const [isCreatedToast, setIsCreatedToast] = useState(false);
 
@@ -114,35 +121,35 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
       setMatchFormat('BEST_OF_5');
       setTargetPoints(11);
       setSelectedPlayerIds(players.map((p) => p.id));
-      setSelectedClubAId('c2');
-      setSelectedClubBId('c3');
+      setSelectedFolderAId(folders[1]?.id ?? folders[0]?.id ?? '');
+      setSelectedFolderBId(folders[2]?.id ?? folders[0]?.id ?? '');
       setIsDoubleRoundRobin(false);
       setIsCreatedToast(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  const clubA = CLUBS_LIST.find((c) => c.id === selectedClubAId) || CLUBS_LIST[1];
-  const clubB = CLUBS_LIST.find((c) => c.id === selectedClubBId) || CLUBS_LIST[2];
+  const folderA = folders.find((f) => f.id === selectedFolderAId) || folders[1];
+  const folderB = folders.find((f) => f.id === selectedFolderBId) || folders[2];
 
-  const clubAName = clubA ? clubA.name : 'Club A';
-  const clubBName = clubB ? clubB.name : 'Club B';
+  const folderAName = folderA ? folderA.name : 'Folder A';
+  const folderBName = folderB ? folderB.name : 'Folder B';
 
-  // Top 4 players per club by grade, drawn from the real live roster (not a mock snapshot)
-  const teamAPlayers = getPlayersForClub(players, selectedClubAId)
-    .sort((a, b) => getGradeRank(b.skillGrade) - getGradeRank(a.skillGrade))
+  // Top 4 players per folder by win rate, drawn from the real live roster (not a mock snapshot)
+  const teamAPlayers = getPlayersForFolder(players, selectedFolderAId)
+    .sort(compareBySeed)
     .slice(0, 4);
 
-  const teamBPlayers = getPlayersForClub(players, selectedClubBId)
-    .sort((a, b) => getGradeRank(b.skillGrade) - getGradeRank(a.skillGrade))
+  const teamBPlayers = getPlayersForFolder(players, selectedFolderBId)
+    .sort(compareBySeed)
     .slice(0, 4);
 
-  // Auto-generate competition name when Interclub format or club names change
+  // Auto-generate competition name when Interclub format or folder names change
   useEffect(() => {
-    if (selectedFormat === 'INTERCLUB_4VS4' && clubAName && clubBName) {
-      setCompetitionName(`${clubAName} vs ${clubBName}`);
+    if (selectedFormat === 'INTERCLUB_4VS4' && folderAName && folderBName) {
+      setCompetitionName(`${folderAName} vs ${folderBName}`);
     }
-  }, [selectedFormat, selectedClubAId, selectedClubBId, clubAName, clubBName]);
+  }, [selectedFormat, selectedFolderAId, selectedFolderBId, folderAName, folderBName]);
 
   if (!isOpen) return null;
 
@@ -167,12 +174,13 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
     }
   };
 
-  // Seeded best-to-worst by grade, so byes (when the field isn't a power of two) go to the
-  // strongest players — same fix real single-elimination draws use.
+  // Seeded best-to-worst by win rate, so byes (when the field isn't a power of two) go to
+  // the strongest players — same fix real single-elimination draws use.
   const seededPlayerIds = [...selectedPlayerIds].sort((a, b) => {
-    const gradeA = players.find((p) => p.id === a)?.skillGrade;
-    const gradeB = players.find((p) => p.id === b)?.skillGrade;
-    return getGradeRank(gradeB ?? 'C1') - getGradeRank(gradeA ?? 'C1');
+    const playerA = players.find((p) => p.id === a);
+    const playerB = players.find((p) => p.id === b);
+    if (!playerA || !playerB) return 0;
+    return compareBySeed(playerA, playerB);
   });
 
   const executeCreate = () => {
@@ -208,8 +216,8 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
       name: competitionName.trim(),
       format: selectedFormat,
       participantIds,
-      clubAId: selectedFormat === 'INTERCLUB_4VS4' ? selectedClubAId : undefined,
-      clubBId: selectedFormat === 'INTERCLUB_4VS4' ? selectedClubBId : undefined,
+      folderAId: selectedFormat === 'INTERCLUB_4VS4' ? selectedFolderAId : undefined,
+      folderBId: selectedFormat === 'INTERCLUB_4VS4' ? selectedFolderBId : undefined,
       fixtures,
       matchFormat,
       targetPoints,
@@ -230,7 +238,7 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
       return;
     }
     if (selectedFormat === 'INTERCLUB_4VS4' && (teamAPlayers.length === 0 || teamBPlayers.length === 0)) {
-      alert('Both clubs need at least 1 registered player to start an Interclub fixture!');
+      alert('Both folders need at least 1 registered player to start an Interclub fixture!');
       return;
     }
     if (selectedFormat === 'LEAGUE' && selectedPlayerIds.length < 3) {
@@ -401,29 +409,29 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
             {/* ------------------------------------------------------------- */}
             {selectedFormat === 'INTERCLUB_4VS4' ? (
               <div className="space-y-4 pt-2 border-t border-slate-200">
-                {/* Club Select Dropdowns */}
+                {/* Folder Select Dropdowns */}
                 <div className="grid grid-cols-2 gap-2">
-                  {/* Club A Select Dropdown */}
+                  {/* Folder A Select Dropdown */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                      Club A
+                      Folder A
                     </label>
                     <div className="relative">
                       <select
-                        value={selectedClubAId}
+                        value={selectedFolderAId}
                         onChange={(e) => {
                           const newAId = e.target.value;
-                          setSelectedClubAId(newAId);
-                          if (newAId === selectedClubBId) {
-                            const other = CLUBS_LIST.find((c) => c.id !== newAId);
-                            if (other) setSelectedClubBId(other.id);
+                          setSelectedFolderAId(newAId);
+                          if (newAId === selectedFolderBId) {
+                            const other = folders.find((f) => f.id !== newAId);
+                            if (other) setSelectedFolderBId(other.id);
                           }
                         }}
                         className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 appearance-none pr-8 cursor-pointer truncate"
                       >
-                        {CLUBS_LIST.map((club) => (
-                          <option key={club.id} value={club.id}>
-                            {club.countryFlag} {club.name}
+                        {folders.map((folder) => (
+                          <option key={folder.id} value={folder.id}>
+                            {folder.name}
                           </option>
                         ))}
                       </select>
@@ -431,27 +439,27 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                     </div>
                   </div>
 
-                  {/* Club B Select Dropdown */}
+                  {/* Folder B Select Dropdown */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">
-                      Club B
+                      Folder B
                     </label>
                     <div className="relative">
                       <select
-                        value={selectedClubBId}
+                        value={selectedFolderBId}
                         onChange={(e) => {
                           const newBId = e.target.value;
-                          setSelectedClubBId(newBId);
-                          if (newBId === selectedClubAId) {
-                            const other = CLUBS_LIST.find((c) => c.id !== newBId);
-                            if (other) setSelectedClubAId(other.id);
+                          setSelectedFolderBId(newBId);
+                          if (newBId === selectedFolderAId) {
+                            const other = folders.find((f) => f.id !== newBId);
+                            if (other) setSelectedFolderAId(other.id);
                           }
                         }}
                         className="w-full p-2.5 bg-amber-50/60 border border-amber-300 rounded-xl text-xs font-bold text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none pr-8 cursor-pointer truncate"
                       >
-                        {CLUBS_LIST.map((club) => (
-                          <option key={club.id} value={club.id}>
-                            {club.countryFlag} {club.name}
+                        {folders.map((folder) => (
+                          <option key={folder.id} value={folder.id}>
+                            {folder.name}
                           </option>
                         ))}
                       </select>
@@ -460,13 +468,13 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                   </div>
                 </div>
 
-                {/* Team Rosters Overview (4 dedicated independent players per club) */}
+                {/* Team Rosters Overview (4 dedicated independent players per folder) */}
                 <div className="grid grid-cols-2 gap-2">
-                  {/* Club A Roster */}
+                  {/* Folder A Roster */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-slate-700 uppercase truncate max-w-[120px]">
-                        {clubAName}
+                        {folderAName}
                       </span>
                       <span className="text-[10px] font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md">
                         {teamAPlayers.length}/4 Lineup
@@ -476,7 +484,7 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                     <div className="space-y-1 p-1.5 bg-slate-50 border border-slate-200 rounded-xl">
                       {teamAPlayers.length === 0 ? (
                         <div className="p-2 text-[10px] text-slate-400 font-semibold text-center">
-                          No registered players in this club yet
+                          No registered players in this folder yet
                         </div>
                       ) : (
                         teamAPlayers.map((p, idx) => (
@@ -486,10 +494,7 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                           >
                             <span className="truncate text-[11px]">
                               <strong className="text-slate-400 font-mono mr-1">#{idx + 1}</strong>
-                              {p.countryFlag} {p.name}
-                            </span>
-                            <span className="text-[9px] font-mono font-bold text-amber-400 ml-1">
-                              {p.skillGrade}
+                              {p.name}
                             </span>
                           </div>
                         ))
@@ -497,11 +502,11 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                     </div>
                   </div>
 
-                  {/* Club B Roster */}
+                  {/* Folder B Roster */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-amber-700 uppercase truncate max-w-[120px]">
-                        {clubBName}
+                        {folderBName}
                       </span>
                       <span className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200">
                         {teamBPlayers.length}/4 Lineup
@@ -511,7 +516,7 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                     <div className="space-y-1 p-1.5 bg-slate-50 border border-slate-200 rounded-xl">
                       {teamBPlayers.length === 0 ? (
                         <div className="p-2 text-[10px] text-slate-400 font-semibold text-center">
-                          No registered players in this club yet
+                          No registered players in this folder yet
                         </div>
                       ) : (
                         teamBPlayers.map((p, idx) => (
@@ -521,10 +526,7 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                           >
                             <span className="truncate text-[11px]">
                               <strong className="text-slate-900 font-mono mr-1">#{idx + 1}</strong>
-                              {p.countryFlag} {p.name}
-                            </span>
-                            <span className="text-[9px] font-mono font-bold text-slate-900 ml-1">
-                              {p.skillGrade}
+                              {p.name}
                             </span>
                           </div>
                         ))
@@ -535,7 +537,7 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
 
                 {(teamAPlayers.length < 4 || teamBPlayers.length < 4) && (
                   <div className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 font-medium leading-snug">
-                    Interclub 4v4 needs 4 registered players per club — add more players to {teamAPlayers.length < 4 ? clubAName : clubBName} first.
+                    Interclub 4v4 needs 4 registered players per folder — add more players to {teamAPlayers.length < 4 ? folderAName : folderBName} first.
                   </div>
                 )}
 
@@ -567,14 +569,14 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                           <div className="flex items-center justify-between flex-1 px-2 font-mono">
                             {/* Player A */}
                             <span className="font-bold text-white text-xs truncate max-w-[110px]">
-                              {pA ? `${pA.name} (${pA.skillGrade})` : '—'}
+                              {pA ? pA.name : '—'}
                             </span>
 
                             <span className="text-amber-400 font-black text-xs px-1">vs</span>
 
                             {/* Player B */}
                             <span className="font-bold text-amber-400 text-xs truncate max-w-[110px] text-right">
-                              {pB ? `${pB.name} (${pB.skillGrade})` : '—'}
+                              {pB ? pB.name : '—'}
                             </span>
                           </div>
                         </div>
@@ -607,10 +609,8 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                         }`}
                       >
                         <div className="flex items-center space-x-2">
-                          <span>{p.countryFlag}</span>
                           <span>{p.name}</span>
                         </div>
-                        <span className="text-[10px] font-mono text-amber-600 font-bold">{p.skillGrade}</span>
                       </button>
                     );
                   })}

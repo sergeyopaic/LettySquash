@@ -153,8 +153,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
   const { meta: modeMeta, competition } = getMatchMode(match, competitions);
 
-  const player1 = match.player1 || { id: 'p1', name: 'Player 1', countryFlag: '🇳🇿', avatarBgColor: '#0F172A', skillGrade: 'C1' };
-  const player2 = match.player2 || { id: 'p2', name: 'Player 2', countryFlag: '🇳🇿', avatarBgColor: '#0F172A', skillGrade: 'C1' };
+  const player1 = match.player1 || { id: 'p1', name: 'Player 1', avatarBgColor: '#0F172A' };
+  const player2 = match.player2 || { id: 'p2', name: 'Player 2', avatarBgColor: '#0F172A' };
 
   // STRICT CONSISTENT ORDER: Winner is ALWAYS pWinner on TOP, Loser is ALWAYS pLoser on BOTTOM
   const isP1Winner = match.winnerId ? match.winnerId === player1.id : (match.p1GamesWon ?? 0) >= (match.p2GamesWon ?? 0);
@@ -286,12 +286,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="font-black text-white text-sm leading-tight break-words flex items-center space-x-1.5 flex-wrap group-hover:text-amber-400 transition-colors">
-                    <span>{pWinner.countryFlag}</span>
                     <span>{pWinner.name}</span>
                     <User className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   <span className="text-[9px] text-amber-400 font-bold block mt-0.5">
-                    ✓ WINNER • Grade {pWinner.skillGrade}
+                    ✓ WINNER
                   </span>
                 </div>
               </div>
@@ -320,13 +319,9 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-slate-300 text-xs leading-tight break-words flex items-center space-x-1.5 flex-wrap group-hover:text-white transition-colors">
-                    <span>{pLoser.countryFlag}</span>
                     <span>{pLoser.name}</span>
                     <User className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <span className="text-[10px] text-slate-300 font-medium block mt-0.5">
-                    Grade {pLoser.skillGrade}
-                  </span>
                 </div>
               </div>
 
