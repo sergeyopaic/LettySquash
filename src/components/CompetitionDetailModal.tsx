@@ -4,8 +4,8 @@ import { CLUBS_LIST } from './ClubSelectorModal';
 import { COMPETITION_FORMATS, COMPETITION_FORMAT_LABELS } from './NewCompetitionModal';
 import { getMatchWinnerId } from '../utils/matchUtils';
 import { formatMatchDateGroup } from '../utils/dateUtils';
-import { computeLeagueStandings } from '../utils/standingsUtils';
-import { resolveFixturePlayers, getFixtureWinnerId, getEliminationRoundLabel } from '../utils/fixtureUtils';
+import { computeLeagueStandings, computeStandingsForFixtures } from '../utils/standingsUtils';
+import { resolveFixturePlayers, getFixtureWinnerId, getEliminationRoundLabel, findFixtureMatch } from '../utils/fixtureUtils';
 import { X, Trophy, Users, Play, Check, AlertCircle, ListOrdered, LayoutList } from 'lucide-react';
 import type { CompetitionFixture, SquashMatch } from '../types/squash';
 
@@ -16,42 +16,17 @@ interface CompetitionDetailModalProps {
   onSelectMatchDetail?: (matchId: string) => void;
 }
 
-// Finds the completed match (if any) that fulfills this fixture — never stored on the
-// fixture itself, always derived from `matches`, so it can't drift out of sync (see the
-// comment on CompetitionFixture in types/squash.ts).
-const findFixtureMatch = (
-  fixture: CompetitionFixture,
-  competitionId: string,
-  matches: SquashMatch[]
-): SquashMatch | undefined => {
-  return matches.find(
-    (m) =>
-      m.competitionId === competitionId &&
-      m.status === 'COMPLETED' &&
-      ((m.player1.id === fixture.player1Id && m.player2.id === fixture.player2Id) ||
-        (m.player1.id === fixture.player2Id && m.player2.id === fixture.player1Id))
-  );
-};
-
 const isFixturePlayed = (fixture: CompetitionFixture, competitionId: string, matches: SquashMatch[]): boolean =>
-  Boolean(findFixtureMatch(fixture, competitionId, matches));
+  Boolean(findFixtureMatch(fixture, fixture.player1Id, fixture.player2Id, competitionId, matches));
 
-// Same lookup as findFixtureMatch, but for bracket fixtures whose players are only known
-// once resolved (see resolveFixturePlayers) rather than stored directly on the fixture.
-const findMatchForPlayers = (
-  player1Id: string | undefined,
-  player2Id: string | undefined,
-  competitionId: string,
-  matches: SquashMatch[]
-): SquashMatch | undefined => {
-  if (!player1Id || !player2Id) return undefined;
-  return matches.find(
-    (m) =>
-      m.competitionId === competitionId &&
-      m.status === 'COMPLETED' &&
-      ((m.player1.id === player1Id && m.player2.id === player2Id) ||
-        (m.player1.id === player2Id && m.player2.id === player1Id))
-  );
+const groupByRound = (fixtures: CompetitionFixture[]): [number, CompetitionFixture[]][] => {
+  const map = new Map<number, CompetitionFixture[]>();
+  for (const fixture of fixtures) {
+    const round = fixture.round ?? 1;
+    if (!map.has(round)) map.set(round, []);
+    map.get(round)!.push(fixture);
+  }
+  return [...map.entries()].sort((a, b) => a[0] - b[0]);
 };
 
 // Fixed match-card height/gap the bracket's vertical spacing math is built around — each
@@ -72,11 +47,13 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
   // specific round tab. Reset whenever a different competition is opened.
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'FIXTURES' | 'STANDINGS'>('FIXTURES');
+  const [activeGroupIndex, setActiveGroupIndex] = useState(0);
   const activeTabRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setSelectedRound(null);
     setViewMode('FIXTURES');
+    setActiveGroupIndex(0);
   }, [competitionId]);
 
   useEffect(() => {
@@ -128,13 +105,41 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
   const isLeague = competition.format === 'LEAGUE';
   const standings = isLeague ? computeLeagueStandings(competition, matches) : [];
 
-  const isBracket = competition.format === 'SINGLE_ELIMINATION';
-  const finalRoundFixtures = rounds.length > 0 ? rounds[rounds.length - 1][1] : [];
-  const finalFixture = finalRoundFixtures.length === 1 ? finalRoundFixtures[0] : undefined;
-  const championId =
-    isBracket && finalFixture
-      ? getFixtureWinnerId(finalFixture, competition.fixtures ?? [], competition.id, matches)
-      : undefined;
+  const isSingleElim = competition.format === 'SINGLE_ELIMINATION';
+  const isDoubleElim = competition.format === 'DOUBLE_ELIMINATION';
+  const isBracket = isSingleElim || isDoubleElim;
+
+  // Double Elimination fixtures carry a bracketSide tag (WB/LB/GF) since two different
+  // rounds — one per bracket — can share the same round number; Single Elimination has
+  // only one bracket, so the generic `rounds` grouping above already works for it.
+  const wbRounds = isDoubleElim ? groupByRound((competition.fixtures ?? []).filter((f) => f.bracketSide === 'WB')) : [];
+  const lbRounds = isDoubleElim ? groupByRound((competition.fixtures ?? []).filter((f) => f.bracketSide === 'LB')) : [];
+  const gfFixture = isDoubleElim ? (competition.fixtures ?? []).find((f) => f.bracketSide === 'GF') : undefined;
+
+  const seFinalRoundFixtures = isSingleElim && rounds.length > 0 ? rounds[rounds.length - 1][1] : [];
+
+  // Groups + Knockout: group-stage fixtures carry groupIndex (0-based); knockout fixtures
+  // are a separate track (their own round numbering, same as Single Elimination's single
+  // bracket) whose players resolve to "rank R of group G" until that group finishes.
+  const isGroupsFormat = competition.format === 'GROUPS_PLAYOFF';
+  const groupFixturesAll = isGroupsFormat ? (competition.fixtures ?? []).filter((f) => f.stage === 'GROUP') : [];
+  const groupCount = isGroupsFormat ? new Set(groupFixturesAll.map((f) => f.groupIndex)).size : 0;
+  const koFixtures = isGroupsFormat ? (competition.fixtures ?? []).filter((f) => f.stage === 'KNOCKOUT') : [];
+  const koRounds = isGroupsFormat ? groupByRound(koFixtures) : [];
+  const groupsFinalRoundFixtures = koRounds.length > 0 ? koRounds[koRounds.length - 1][1] : [];
+
+  const championFixture = isDoubleElim
+    ? gfFixture
+    : isGroupsFormat
+    ? groupsFinalRoundFixtures.length === 1
+      ? groupsFinalRoundFixtures[0]
+      : undefined
+    : seFinalRoundFixtures.length === 1
+    ? seFinalRoundFixtures[0]
+    : undefined;
+  const championId = championFixture
+    ? getFixtureWinnerId(championFixture, competition.fixtures ?? [], competition.id, matches)
+    : undefined;
   const champion = championId ? getPlayer(championId) : undefined;
 
   const handleStartFixture = (fixture: CompetitionFixture) => {
@@ -152,7 +157,8 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
       'R',
       true,
       competition.id,
-      competition.targetPoints ?? 11
+      competition.targetPoints ?? 11,
+      fixture.slot
     );
     onStartMatch?.();
   };
@@ -172,9 +178,208 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
       'R',
       true,
       competition.id,
-      competition.targetPoints ?? 11
+      competition.targetPoints ?? 11,
+      fixture.slot
     );
     onStartMatch?.();
+  };
+
+  // One bracket column: cards vertically offset so each sits at the midpoint of the two
+  // cards feeding it (see BRACKET_CARD_HEIGHT/BASE_GAP), shared by Single Elimination's
+  // single track and Double Elimination's Winners/Losers tracks.
+  const renderBracketColumn = (fixturesInRound: CompetitionFixture[], roundIdx: number, label: string) => {
+    const unit = BRACKET_CARD_HEIGHT + BRACKET_BASE_GAP;
+    const centerDistance = unit * 2 ** roundIdx;
+    const firstOffset = (centerDistance - BRACKET_CARD_HEIGHT) / 2;
+    const laterGap = centerDistance - BRACKET_CARD_HEIGHT;
+
+    return (
+      <div className="flex flex-col flex-shrink-0 w-36 mr-3 last:mr-0">
+        <div className="text-[9px] font-black text-slate-500 uppercase tracking-wider text-center pb-2">{label}</div>
+        <div className="flex flex-col">
+          {fixturesInRound.map((fixture, idx) => {
+            const { player1Id, player2Id } = resolveFixturePlayers(fixture, competition.fixtures ?? [], competition.id, matches);
+            const p1 = player1Id ? getPlayer(player1Id) : undefined;
+            const p2 = player2Id ? getPlayer(player2Id) : undefined;
+            const playedMatch = findFixtureMatch(fixture, player1Id, player2Id, competition.id, matches);
+            const winnerId = playedMatch ? getMatchWinnerId(playedMatch) : undefined;
+            const bothKnown = Boolean(p1 && p2);
+            const marginTop = idx === 0 ? firstOffset : laterGap;
+
+            return (
+              <div key={fixture.slot} style={{ marginTop }} className="flex items-center">
+                {roundIdx > 0 && <div className="w-3 h-0.5 bg-slate-300 flex-shrink-0" />}
+
+                {fixture.isBye ? (
+                  <div
+                    style={{ height: BRACKET_CARD_HEIGHT }}
+                    className="flex-1 px-2 py-1 rounded-xl border border-dashed border-amber-300 bg-amber-50/60 flex flex-col justify-center"
+                  >
+                    <span className="text-[8px] font-black text-amber-600 uppercase tracking-wider">Bye</span>
+                    <span className="text-[11px] font-bold text-slate-800 truncate">
+                      {p1 ? `${p1.countryFlag} ${p1.name}` : '—'}
+                    </span>
+                  </div>
+                ) : playedMatch ? (
+                  <button
+                    onClick={() => onSelectMatchDetail?.(playedMatch.id)}
+                    style={{ height: BRACKET_CARD_HEIGHT }}
+                    className="flex-1 px-2 py-1 rounded-xl border border-emerald-200 bg-emerald-50/70 flex flex-col justify-center text-left hover:bg-emerald-50 transition-colors cursor-pointer"
+                  >
+                    <span className={`text-[11px] truncate ${winnerId === p1?.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
+                      {p1 ? `${p1.countryFlag} ${p1.name}` : 'TBD'}
+                    </span>
+                    <span className={`text-[11px] truncate ${winnerId === p2?.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
+                      {p2 ? `${p2.countryFlag} ${p2.name}` : 'TBD'}
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => bothKnown && handleStartBracketFixture(fixture)}
+                    disabled={!bothKnown || hasLiveMatch || isArchived}
+                    style={{ height: BRACKET_CARD_HEIGHT }}
+                    className="flex-1 px-2 py-1 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between text-left hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-[11px] font-bold text-slate-900 truncate">
+                        {p1 ? `${p1.countryFlag} ${p1.name}` : 'TBD'}
+                      </span>
+                      <span className="block text-[11px] font-bold text-slate-900 truncate">
+                        {p2 ? `${p2.countryFlag} ${p2.name}` : 'TBD'}
+                      </span>
+                    </span>
+                    {bothKnown && !isArchived && <Play className="w-3 h-3 text-blue-700 fill-current flex-shrink-0 ml-1" />}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // A simple fixture card — direct player1Id/player2Id, no resolution needed — shared by
+  // League/Interclub's fixture grid and a Groups+Knockout group's own round-robin fixtures.
+  const renderSimpleFixtureCard = (fixture: CompetitionFixture, label: string) => {
+    const p1 = getPlayer(fixture.player1Id);
+    const p2 = getPlayer(fixture.player2Id);
+    if (!p1 || !p2) return null;
+    const playedMatch = findFixtureMatch(fixture, fixture.player1Id, fixture.player2Id, competition.id, matches);
+    const winnerId = playedMatch ? getMatchWinnerId(playedMatch) : undefined;
+
+    if (playedMatch) {
+      const p1Games = playedMatch.player1.id === p1.id ? playedMatch.p1GamesWon : playedMatch.p2GamesWon;
+      const p2Games = playedMatch.player1.id === p2.id ? playedMatch.p1GamesWon : playedMatch.p2GamesWon;
+
+      return (
+        <button
+          key={fixture.slot}
+          onClick={() => onSelectMatchDetail?.(playedMatch.id)}
+          className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-left space-y-1.5 hover:bg-emerald-50 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-black text-emerald-700 uppercase tracking-wider flex items-center space-x-1">
+              <Check className="w-3 h-3" />
+              <span>{label} #{fixture.slot} • Played</span>
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className={`truncate ${winnerId === p1.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
+              {p1.countryFlag} {p1.name}
+            </span>
+            <span className={`font-black ${winnerId === p1.id ? 'text-emerald-700' : 'text-slate-400'}`}>{p1Games}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className={`truncate ${winnerId === p2.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
+              {p2.countryFlag} {p2.name}
+            </span>
+            <span className={`font-black ${winnerId === p2.id ? 'text-emerald-700' : 'text-slate-400'}`}>{p2Games}</span>
+          </div>
+        </button>
+      );
+    }
+
+    return (
+      <button
+        key={fixture.slot}
+        onClick={() => handleStartFixture(fixture)}
+        disabled={hasLiveMatch || isArchived}
+        className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-left space-y-1.5 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">
+          {label} #{fixture.slot} • Not played
+        </span>
+        <div className="text-xs font-bold text-slate-900 truncate">
+          {p1.countryFlag} {p1.name}
+        </div>
+        <div className="text-[10px] text-slate-400 font-bold uppercase">vs</div>
+        <div className="text-xs font-bold text-slate-900 truncate">
+          {p2.countryFlag} {p2.name}
+        </div>
+        {!isArchived && (
+          <div className="flex items-center space-x-1 text-[10px] font-bold text-blue-700 pt-0.5">
+            <Play className="w-3 h-3 fill-current" />
+            <span>Start Refereeing</span>
+          </div>
+        )}
+      </button>
+    );
+  };
+
+  // Grand Final: a standalone card (not part of either bracket column) pitting the
+  // Winners- and Losers-bracket champions against each other, shown as soon as one or
+  // both are known — see the "single decisive match" note on generateDoubleEliminationBracket.
+  const renderGrandFinalCard = (fixture: CompetitionFixture) => {
+    const { player1Id, player2Id } = resolveFixturePlayers(fixture, competition.fixtures ?? [], competition.id, matches);
+    const p1 = player1Id ? getPlayer(player1Id) : undefined;
+    const p2 = player2Id ? getPlayer(player2Id) : undefined;
+    const playedMatch = findFixtureMatch(fixture, player1Id, player2Id, competition.id, matches);
+    const winnerId = playedMatch ? getMatchWinnerId(playedMatch) : undefined;
+    const bothKnown = Boolean(p1 && p2);
+
+    if (playedMatch) {
+      return (
+        <button
+          onClick={() => onSelectMatchDetail?.(playedMatch.id)}
+          className="w-full p-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 text-left space-y-1.5 hover:bg-emerald-50 transition-colors cursor-pointer"
+        >
+          <span className="text-[9px] font-black text-emerald-700 uppercase tracking-wider flex items-center space-x-1">
+            <Check className="w-3 h-3" />
+            <span>Grand Final • Played</span>
+          </span>
+          <div className="flex items-center justify-between text-xs">
+            <span className={`truncate ${winnerId === p1?.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
+              {p1 ? `${p1.countryFlag} ${p1.name}` : 'TBD'}
+            </span>
+            <span className={`truncate ${winnerId === p2?.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
+              {p2 ? `${p2.countryFlag} ${p2.name}` : 'TBD'}
+            </span>
+          </div>
+        </button>
+      );
+    }
+
+    return (
+      <button
+        onClick={() => bothKnown && handleStartBracketFixture(fixture)}
+        disabled={!bothKnown || hasLiveMatch || isArchived}
+        className="w-full p-3 rounded-2xl border border-amber-300 bg-amber-50/60 text-left space-y-1.5 hover:bg-amber-50 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        <span className="text-[9px] font-black text-amber-700 uppercase tracking-wider">Grand Final • Not played</span>
+        <div className="flex items-center justify-between text-xs font-bold text-slate-900">
+          <span className="truncate">{p1 ? `${p1.countryFlag} ${p1.name}` : 'TBD'}</span>
+          <span className="text-slate-400 font-black text-[10px] px-1">vs</span>
+          <span className="truncate">{p2 ? `${p2.countryFlag} ${p2.name}` : 'TBD'}</span>
+        </div>
+        {bothKnown && !isArchived && (
+          <div className="flex items-center space-x-1 text-[10px] font-bold text-blue-700 pt-0.5">
+            <Play className="w-3 h-3 fill-current" />
+            <span>Start Refereeing</span>
+          </div>
+        )}
+      </button>
+    );
   };
 
   return (
@@ -260,99 +465,62 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
           </div>
         )}
 
-        {/* Bracket (Single Elimination) */}
-        {isBracket && rounds.length > 0 && (
+        {/* Bracket (Single Elimination: one track. Double Elimination: Winners + Losers
+            tracks, each rendered the same way, plus a standalone Grand Final card.) */}
+        {isSingleElim && rounds.length > 0 && (
           <div className="space-y-2">
             <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider px-0.5">Bracket</h3>
             <div className="overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar">
               <div className="flex items-start" style={{ width: 'max-content' }}>
-                {rounds.map(([roundNum, fixturesInRound], roundIdx) => {
-                  const unit = BRACKET_CARD_HEIGHT + BRACKET_BASE_GAP;
-                  const centerDistance = unit * 2 ** roundIdx;
-                  const firstOffset = (centerDistance - BRACKET_CARD_HEIGHT) / 2;
-                  const laterGap = centerDistance - BRACKET_CARD_HEIGHT;
-
-                  return (
-                    <div key={roundNum} className="flex flex-col flex-shrink-0 w-36 mr-3 last:mr-0">
-                      <div className="text-[9px] font-black text-slate-500 uppercase tracking-wider text-center pb-2">
-                        {getEliminationRoundLabel(fixturesInRound.length)}
-                      </div>
-                      <div className="flex flex-col">
-                        {fixturesInRound.map((fixture, idx) => {
-                          const { player1Id, player2Id } = resolveFixturePlayers(
-                            fixture,
-                            competition.fixtures ?? [],
-                            competition.id,
-                            matches
-                          );
-                          const p1 = player1Id ? getPlayer(player1Id) : undefined;
-                          const p2 = player2Id ? getPlayer(player2Id) : undefined;
-                          const playedMatch = findMatchForPlayers(player1Id, player2Id, competition.id, matches);
-                          const winnerId = playedMatch ? getMatchWinnerId(playedMatch) : undefined;
-                          const bothKnown = Boolean(p1 && p2);
-                          const marginTop = idx === 0 ? firstOffset : laterGap;
-
-                          return (
-                            <div key={fixture.slot} style={{ marginTop }} className="flex items-center">
-                              {roundIdx > 0 && <div className="w-3 h-0.5 bg-slate-300 flex-shrink-0" />}
-
-                              {fixture.isBye ? (
-                                <div
-                                  style={{ height: BRACKET_CARD_HEIGHT }}
-                                  className="flex-1 px-2 py-1 rounded-xl border border-dashed border-amber-300 bg-amber-50/60 flex flex-col justify-center"
-                                >
-                                  <span className="text-[8px] font-black text-amber-600 uppercase tracking-wider">Bye</span>
-                                  <span className="text-[11px] font-bold text-slate-800 truncate">
-                                    {p1 ? `${p1.countryFlag} ${p1.name}` : '—'}
-                                  </span>
-                                </div>
-                              ) : playedMatch ? (
-                                <button
-                                  onClick={() => onSelectMatchDetail?.(playedMatch.id)}
-                                  style={{ height: BRACKET_CARD_HEIGHT }}
-                                  className="flex-1 px-2 py-1 rounded-xl border border-emerald-200 bg-emerald-50/70 flex flex-col justify-center text-left hover:bg-emerald-50 transition-colors cursor-pointer"
-                                >
-                                  <span className={`text-[11px] truncate ${winnerId === p1?.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
-                                    {p1 ? `${p1.countryFlag} ${p1.name}` : 'TBD'}
-                                  </span>
-                                  <span className={`text-[11px] truncate ${winnerId === p2?.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
-                                    {p2 ? `${p2.countryFlag} ${p2.name}` : 'TBD'}
-                                  </span>
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => bothKnown && handleStartBracketFixture(fixture)}
-                                  disabled={!bothKnown || hasLiveMatch || isArchived}
-                                  style={{ height: BRACKET_CARD_HEIGHT }}
-                                  className="flex-1 px-2 py-1 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between text-left hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                                >
-                                  <span className="min-w-0">
-                                    <span className="block text-[11px] font-bold text-slate-900 truncate">
-                                      {p1 ? `${p1.countryFlag} ${p1.name}` : 'TBD'}
-                                    </span>
-                                    <span className="block text-[11px] font-bold text-slate-900 truncate">
-                                      {p2 ? `${p2.countryFlag} ${p2.name}` : 'TBD'}
-                                    </span>
-                                  </span>
-                                  {bothKnown && !isArchived && (
-                                    <Play className="w-3 h-3 text-blue-700 fill-current flex-shrink-0 ml-1" />
-                                  )}
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
+                {rounds.map(([roundNum, fixturesInRound], roundIdx) => (
+                  <React.Fragment key={roundNum}>
+                    {renderBracketColumn(fixturesInRound, roundIdx, getEliminationRoundLabel(fixturesInRound.length))}
+                  </React.Fragment>
+                ))}
               </div>
             </div>
           </div>
         )}
 
+        {isDoubleElim && wbRounds.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider px-0.5">Winners Bracket</h3>
+            <div className="overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar">
+              <div className="flex items-start" style={{ width: 'max-content' }}>
+                {wbRounds.map(([roundNum, fixturesInRound], roundIdx) => (
+                  <React.Fragment key={roundNum}>
+                    {renderBracketColumn(fixturesInRound, roundIdx, getEliminationRoundLabel(fixturesInRound.length))}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isDoubleElim && lbRounds.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider px-0.5">Losers Bracket</h3>
+            <div className="overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar">
+              <div className="flex items-start" style={{ width: 'max-content' }}>
+                {lbRounds.map(([roundNum, fixturesInRound], roundIdx) => (
+                  <React.Fragment key={roundNum}>
+                    {renderBracketColumn(fixturesInRound, roundIdx, `LB Round ${roundNum}`)}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isDoubleElim && gfFixture && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider px-0.5">Grand Final</h3>
+            {renderGrandFinalCard(gfFixture)}
+          </div>
+        )}
+
         {/* Fixtures / Standings */}
-        {!isBracket && rounds.length > 0 ? (
+        {!isBracket && !isGroupsFormat && rounds.length > 0 ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between px-0.5">
               <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
@@ -450,80 +618,102 @@ export const CompetitionDetailModal: React.FC<CompetitionDetailModalProps> = ({
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {activeRoundFixtures.map((fixture) => {
-                const p1 = getPlayer(fixture.player1Id);
-                const p2 = getPlayer(fixture.player2Id);
-                const playedMatch = findFixtureMatch(fixture, competition.id, matches);
-                const winnerId = playedMatch ? getMatchWinnerId(playedMatch) : undefined;
-
-                if (!p1 || !p2) return null;
-
-                if (playedMatch) {
-                  const p1Games = playedMatch.player1.id === p1.id ? playedMatch.p1GamesWon : playedMatch.p2GamesWon;
-                  const p2Games = playedMatch.player1.id === p2.id ? playedMatch.p1GamesWon : playedMatch.p2GamesWon;
-
-                  return (
-                    <button
-                      key={fixture.slot}
-                      onClick={() => onSelectMatchDetail?.(playedMatch.id)}
-                      className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-left space-y-1.5 hover:bg-emerald-50 transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9px] font-black text-emerald-700 uppercase tracking-wider flex items-center space-x-1">
-                          <Check className="w-3 h-3" />
-                          <span>{fixtureLabel} #{fixture.slot} • Played</span>
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className={`truncate ${winnerId === p1.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
-                          {p1.countryFlag} {p1.name}
-                        </span>
-                        <span className={`font-black ${winnerId === p1.id ? 'text-emerald-700' : 'text-slate-400'}`}>{p1Games}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className={`truncate ${winnerId === p2.id ? 'font-black text-slate-900' : 'text-slate-500'}`}>
-                          {p2.countryFlag} {p2.name}
-                        </span>
-                        <span className={`font-black ${winnerId === p2.id ? 'text-emerald-700' : 'text-slate-400'}`}>{p2Games}</span>
-                      </div>
-                    </button>
-                  );
-                }
-
-                return (
-                  <button
-                    key={fixture.slot}
-                    onClick={() => handleStartFixture(fixture)}
-                    disabled={hasLiveMatch || isArchived}
-                    className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-left space-y-1.5 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">
-                      {fixtureLabel} #{fixture.slot} • Not played
-                    </span>
-                    <div className="text-xs font-bold text-slate-900 truncate">
-                      {p1.countryFlag} {p1.name}
-                    </div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">vs</div>
-                    <div className="text-xs font-bold text-slate-900 truncate">
-                      {p2.countryFlag} {p2.name}
-                    </div>
-                    {!isArchived && (
-                      <div className="flex items-center space-x-1 text-[10px] font-bold text-blue-700 pt-0.5">
-                        <Play className="w-3 h-3 fill-current" />
-                        <span>Start Refereeing</span>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
+              {activeRoundFixtures.map((fixture) => renderSimpleFixtureCard(fixture, fixtureLabel))}
             </div>
               </>
             )}
           </div>
-        ) : !isBracket && rounds.length === 0 ? (
+        ) : isGroupsFormat && groupCount > 0 ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider px-0.5">Groups</h3>
+              <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 no-scrollbar">
+                {Array.from({ length: groupCount }, (_, idx) => idx).map((idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveGroupIndex(idx)}
+                    className={`flex-shrink-0 px-2.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+                      activeGroupIndex === idx
+                        ? 'bg-slate-900 text-amber-400 shadow-sm'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    Group {String.fromCharCode(65 + idx)}
+                  </button>
+                ))}
+              </div>
+
+              {(() => {
+                const activeGroupFixtures = groupFixturesAll.filter((f) => f.groupIndex === activeGroupIndex);
+                const groupParticipantIds = [...new Set(activeGroupFixtures.flatMap((f) => [f.player1Id, f.player2Id]))];
+                const groupStandings = computeStandingsForFixtures(groupParticipantIds, competition.id, matches);
+
+                return (
+                  <div className="space-y-2">
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                      <table className="w-full text-[11px]">
+                        <thead>
+                          <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+                            <th className="text-left pl-3 pr-1 py-2 w-6">#</th>
+                            <th className="text-left px-1 py-2">Player</th>
+                            <th className="text-center px-1 py-2 w-8">P</th>
+                            <th className="text-center px-1 py-2 w-8">W</th>
+                            <th className="text-center px-1 py-2 w-8">L</th>
+                            <th className="text-center pl-1 pr-3 py-2 w-14">Games</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {groupStandings.map((row, idx) => {
+                            const p = getPlayer(row.playerId);
+                            if (!p) return null;
+                            const qualifies = groupCount === 1 ? idx < Math.min(4, groupParticipantIds.length) : idx < 2;
+                            return (
+                              <tr
+                                key={row.playerId}
+                                className={`border-b border-slate-100 last:border-0 ${qualifies ? 'bg-emerald-50/40' : ''}`}
+                              >
+                                <td className="pl-3 pr-1 py-2 font-black text-slate-400">{idx + 1}</td>
+                                <td className="px-1 py-2 font-bold text-slate-900 truncate max-w-[120px]">
+                                  {p.countryFlag} {p.name}
+                                </td>
+                                <td className="text-center px-1 py-2 text-slate-600">{row.played}</td>
+                                <td className="text-center px-1 py-2 font-bold text-emerald-700">{row.wins}</td>
+                                <td className="text-center px-1 py-2 font-bold text-red-600">{row.losses}</td>
+                                <td className="text-center pl-1 pr-3 py-2 text-slate-500 font-semibold">
+                                  {row.gamesWon}-{row.gamesLost}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {activeGroupFixtures.map((fixture) => renderSimpleFixtureCard(fixture, 'Match'))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {koRounds.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider px-0.5">Knockout</h3>
+                <div className="overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar">
+                  <div className="flex items-start" style={{ width: 'max-content' }}>
+                    {koRounds.map(([roundNum, fixturesInRound], roundIdx) => (
+                      <React.Fragment key={roundNum}>
+                        {renderBracketColumn(fixturesInRound, roundIdx, getEliminationRoundLabel(fixturesInRound.length))}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : !isBracket && !isGroupsFormat && rounds.length === 0 ? (
           <div className="p-6 bg-slate-50 rounded-2xl text-center text-xs text-slate-400 font-semibold border border-dashed border-slate-200">
-            Fixture generation for {COMPETITION_FORMAT_LABELS[competition.format] || 'this format'} isn't built yet —
-            only Interclub 4v4, League and Single Elimination auto-generate matches today.
+No fixtures have been generated for this competition yet.
           </div>
         ) : null}
       </div>

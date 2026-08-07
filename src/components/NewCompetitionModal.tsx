@@ -4,7 +4,19 @@ import type { CompetitionFormat, Competition, CompetitionFixture, MatchFormat } 
 import { CLUBS_LIST } from './ClubSelectorModal';
 import { getPlayersForClub } from '../utils/clubUtils';
 import { getGradeRank } from '../utils/gradeUtils';
-import { generateRoundRobinFixtures, generateSingleEliminationBracket, nextPowerOfTwo } from '../utils/fixtureUtils';
+import {
+  generateRoundRobinFixtures,
+  generateSingleEliminationBracket,
+  generateDoubleEliminationBracket,
+  generateGroupsPlayoffBracket,
+  computeGroupCount,
+  nextPowerOfTwo,
+} from '../utils/fixtureUtils';
+
+// Applies to every bracket-based format (Single/Double Elimination, Groups+Knockout) — a
+// mobile-first competition detail screen doesn't have room for a much bigger bracket, so
+// this is a hard UI cap, not a rule of squash.
+const BRACKET_MAX_PARTICIPANTS = 16;
 import {
   X,
   Trophy,
@@ -136,6 +148,9 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
 
   const selectedFormatMeta = COMPETITION_FORMATS.find((f) => f.id === selectedFormat);
 
+  const isBracketFormat =
+    selectedFormat === 'SINGLE_ELIMINATION' || selectedFormat === 'DOUBLE_ELIMINATION' || selectedFormat === 'GROUPS_PLAYOFF';
+
   const handleToggleStandardPlayer = (id: string) => {
     if (selectedPlayerIds.includes(id)) {
       if (selectedPlayerIds.length > 2) {
@@ -144,6 +159,10 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
         alert('Competition requires at least 2 players!');
       }
     } else {
+      if (isBracketFormat && selectedPlayerIds.length >= BRACKET_MAX_PARTICIPANTS) {
+        alert(`This format supports at most ${BRACKET_MAX_PARTICIPANTS} participants!`);
+        return;
+      }
       setSelectedPlayerIds([...selectedPlayerIds, id]);
     }
   };
@@ -163,10 +182,10 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
         : selectedPlayerIds;
 
     // Interclub: rank #1 plays rank #1, #2 plays #2, etc. League: full round-robin, every
-    // participant plays every other once. Single Elimination: seeded knockout bracket,
-    // padded to the next power of two with byes for the top seeds. Groups+Playoff/Double
-    // Elimination need real scheduling logic that doesn't exist yet, so they're still
-    // created with no fixtures for now.
+    // participant plays every other once. Single/Double Elimination: seeded knockout
+    // bracket(s), padded to the next power of two with byes for the top seeds. Groups+
+    // Knockout: seeded into groups, round-robin per group, top finishers advance to a
+    // knockout bracket built the same way.
     const fixtures: CompetitionFixture[] | undefined =
       selectedFormat === 'INTERCLUB_4VS4'
         ? teamAPlayers
@@ -179,6 +198,10 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
         ? generateRoundRobinFixtures(selectedPlayerIds, { doubleRound: isDoubleRoundRobin })
         : selectedFormat === 'SINGLE_ELIMINATION'
         ? generateSingleEliminationBracket(seededPlayerIds)
+        : selectedFormat === 'DOUBLE_ELIMINATION'
+        ? generateDoubleEliminationBracket(seededPlayerIds)
+        : selectedFormat === 'GROUPS_PLAYOFF'
+        ? generateGroupsPlayoffBracket(seededPlayerIds)
         : undefined;
 
     const created = addCompetition({
@@ -212,6 +235,19 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
     }
     if (selectedFormat === 'LEAGUE' && selectedPlayerIds.length < 3) {
       alert('A League needs at least 3 participants — there\'s no point in a round-robin of 2!');
+      return;
+    }
+    if (selectedFormat === 'GROUPS_PLAYOFF' && selectedPlayerIds.length < 4) {
+      alert('Groups + Knockout needs at least 4 participants — enough for one real group!');
+      return;
+    }
+    if (
+      (selectedFormat === 'SINGLE_ELIMINATION' ||
+        selectedFormat === 'DOUBLE_ELIMINATION' ||
+        selectedFormat === 'GROUPS_PLAYOFF') &&
+      selectedPlayerIds.length > BRACKET_MAX_PARTICIPANTS
+    ) {
+      alert(`This format supports at most ${BRACKET_MAX_PARTICIPANTS} participants — deselect a few first!`);
       return;
     }
     executeCreate();
@@ -618,15 +654,39 @@ export const NewCompetitionModal: React.FC<NewCompetitionModalProps> = ({ isOpen
                   </>
                 )}
 
-                {selectedFormat === 'SINGLE_ELIMINATION' && selectedPlayerIds.length >= 2 && (
+                {(selectedFormat === 'SINGLE_ELIMINATION' || selectedFormat === 'DOUBLE_ELIMINATION') &&
+                  selectedPlayerIds.length >= 2 && (
+                    <p className="text-[10px] text-slate-500 font-medium px-0.5">
+                      {(() => {
+                        const n = selectedPlayerIds.length;
+                        const bracketSize = nextPowerOfTwo(n);
+                        const byes = bracketSize - n;
+                        const byeNote =
+                          byes > 0
+                            ? `${n} players don't fill a bracket of ${bracketSize} — top ${byes} seed${byes === 1 ? '' : 's'} get a bye into round 2.`
+                            : `${n} players — a clean bracket of ${bracketSize}, no byes needed.`;
+                        return selectedFormat === 'DOUBLE_ELIMINATION'
+                          ? `${byeNote} A single loss drops you to the Losers bracket instead of eliminating you — the Grand Final is one decisive match.`
+                          : byeNote;
+                      })()}
+                    </p>
+                  )}
+
+                {selectedFormat === 'GROUPS_PLAYOFF' && selectedPlayerIds.length >= 4 && (
                   <p className="text-[10px] text-slate-500 font-medium px-0.5">
                     {(() => {
                       const n = selectedPlayerIds.length;
-                      const bracketSize = nextPowerOfTwo(n);
-                      const byes = bracketSize - n;
-                      return byes > 0
-                        ? `${n} players don't fill a bracket of ${bracketSize} — top ${byes} seed${byes === 1 ? '' : 's'} get a bye into round 2.`
-                        : `${n} players — a clean bracket of ${bracketSize}, no byes needed.`;
+                      const groupCount = computeGroupCount(n);
+                      const base = Math.floor(n / groupCount);
+                      const remainder = n % groupCount;
+                      const sizes = Array.from({ length: groupCount }, (_, i) => base + (i < remainder ? 1 : 0));
+                      const qualifiersPerGroup = groupCount === 1 ? Math.min(4, n) : 2;
+                      const qualifiers = qualifiersPerGroup * groupCount;
+                      const bracketSize = nextPowerOfTwo(qualifiers);
+                      const groupWord = groupCount === 1 ? 'group' : 'groups';
+                      return `${n} players → ${groupCount} ${groupWord} of ${sizes.join('+')} → top ${
+                        groupCount === 1 ? qualifiersPerGroup : 2
+                      } per group advance to a bracket of ${bracketSize}.`;
                     })()}
                   </p>
                 )}

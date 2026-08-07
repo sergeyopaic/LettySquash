@@ -13,16 +13,26 @@ export interface StandingRow {
 }
 
 /**
- * League table computed from completed matches, never stored — same "derive, don't
- * duplicate" pattern as fixture-played status. Every participant gets a row (even 0
- * played), so the table doesn't shrink as the tour progresses.
+ * Round-robin table computed from completed matches, never stored — same "derive, don't
+ * duplicate" pattern as fixture-played status. Every listed participant gets a row (even 0
+ * played), so the table doesn't shrink as the round-robin progresses.
  *
  * Sort: wins desc, then game difference desc, then point difference desc — the standard
  * round-robin tiebreak order (games/points only matter once win counts are equal).
+ *
+ * Scoped by an explicit participant list rather than a full Competition so it can serve
+ * both a League's whole roster (computeLeagueStandings) and a single Groups+Knockout
+ * group's roster (computeGroupStandings) — a match only accumulates into a row for a
+ * player actually in that list, so mixing a group's matches into the full competition's
+ * `matches` array is safe without filtering by fixture first.
  */
-export const computeLeagueStandings = (competition: Competition, matches: SquashMatch[]): StandingRow[] => {
+export const computeStandingsForFixtures = (
+  participantIds: string[],
+  competitionId: string,
+  matches: SquashMatch[]
+): StandingRow[] => {
   const rows = new Map<string, StandingRow>();
-  for (const playerId of competition.participantIds) {
+  for (const playerId of participantIds) {
     rows.set(playerId, {
       playerId,
       played: 0,
@@ -35,7 +45,7 @@ export const computeLeagueStandings = (competition: Competition, matches: Squash
     });
   }
 
-  const relevantMatches = matches.filter((m) => m.competitionId === competition.id && m.status === 'COMPLETED');
+  const relevantMatches = matches.filter((m) => m.competitionId === competitionId && m.status === 'COMPLETED');
 
   for (const match of relevantMatches) {
     const winnerId = getMatchWinnerId(match);
@@ -77,3 +87,6 @@ export const computeLeagueStandings = (competition: Competition, matches: Squash
     return pointDiffB - pointDiffA;
   });
 };
+
+export const computeLeagueStandings = (competition: Competition, matches: SquashMatch[]): StandingRow[] =>
+  computeStandingsForFixtures(competition.participantIds, competition.id, matches);

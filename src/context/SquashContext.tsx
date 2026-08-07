@@ -49,7 +49,8 @@ interface SquashContextType {
     serveSide: ServeSide,
     isRated?: boolean,
     competitionId?: string,
-    targetPoints?: number
+    targetPoints?: number,
+    fixtureSlot?: number
   ) => void;
   recordPoint: (scoringPlayerId: string) => void;
   recordDecision: (requestingPlayerId: string, decision: DecisionType) => void;
@@ -263,7 +264,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     serveSide: ServeSide,
     isRated: boolean = false,
     competitionId?: string,
-    targetPoints: number = 11
+    targetPoints: number = 11,
+    fixtureSlot?: number
   ) => {
     const p1 = players.find((p) => p.id === player1Id) || players[0];
     const p2 = players.find((p) => p.id === player2Id) || players.find((p) => p.id !== p1?.id) || players[1];
@@ -291,6 +293,7 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       totalDurationSeconds: 0,
       isRated,
       competitionId,
+      fixtureSlot,
     };
 
     setActiveMatchState({
