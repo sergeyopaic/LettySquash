@@ -55,7 +55,13 @@ interface SquashContextType {
     competitionId?: string,
     targetPoints?: number,
     fixtureSlot?: number,
-    twoPointGap?: boolean
+    twoPointGap?: boolean,
+    // Per-match jersey-color overrides. Only this match's player1/player2 snapshot uses
+    // them (SquashMatch stores a full copy, not a reference) — the roster Player's own
+    // avatarBgColor, shown everywhere else, is never touched. Next time this player is
+    // picked, their own default color is back.
+    player1Color?: string,
+    player2Color?: string
   ) => void;
   recordPoint: (scoringPlayerId: string) => void;
   recordDecision: (requestingPlayerId: string, decision: DecisionType) => void;
@@ -298,15 +304,22 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     competitionId?: string,
     targetPoints: number = 11,
     fixtureSlot?: number,
-    twoPointGap: boolean = true
+    twoPointGap: boolean = true,
+    player1Color?: string,
+    player2Color?: string
   ) => {
-    const p1 = players.find((p) => p.id === player1Id) || players[0];
-    const p2 = players.find((p) => p.id === player2Id) || players.find((p) => p.id !== p1?.id) || players[1];
+    const foundP1 = players.find((p) => p.id === player1Id) || players[0];
+    const foundP2 = players.find((p) => p.id === player2Id) || players.find((p) => p.id !== foundP1?.id) || players[1];
 
-    if (!p1 || !p2) {
+    if (!foundP1 || !foundP2) {
       alert('Please add at least 2 players before starting a match!');
       return;
     }
+
+    // Match-only jersey-color override: applied to this match's player snapshot, never to
+    // the roster record (foundP1/foundP2 in `players` stay exactly as they were).
+    const p1 = player1Color ? { ...foundP1, avatarBgColor: player1Color } : foundP1;
+    const p2 = player2Color ? { ...foundP2, avatarBgColor: player2Color } : foundP2;
 
     const serverId = initialServerId && (initialServerId === p1.id || initialServerId === p2.id) ? initialServerId : p1.id;
 

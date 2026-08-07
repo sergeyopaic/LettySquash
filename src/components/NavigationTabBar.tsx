@@ -7,14 +7,16 @@ interface NavigationTabBarProps {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
   hasActiveMatch: boolean;
-  openNewMatchModal: () => void;
+  // Quick Match lives inline on the Home tab (see DashboardView -> QuickMatchCard) — this
+  // just navigates there, it doesn't open anything itself.
+  goToNewMatch: () => void;
 }
 
 export const NavigationTabBar: React.FC<NavigationTabBarProps> = ({
   activeTab,
   setActiveTab,
   hasActiveMatch,
-  openNewMatchModal,
+  goToNewMatch,
 }) => {
   return (
     <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200/80 px-4 py-2 flex justify-around items-center shadow-lg">
@@ -34,7 +36,7 @@ export const NavigationTabBar: React.FC<NavigationTabBarProps> = ({
           if (hasActiveMatch) {
             setActiveTab('match');
           } else {
-            openNewMatchModal();
+            goToNewMatch();
           }
         }}
         className="relative group -mt-5"

@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
 import { FolderSelectorModal } from './FolderSelectorModal';
+import { QuickMatchCard } from './QuickMatchCard';
 import type { Folder, Player } from '../types/squash';
-import { Play, Plus, Activity, ChevronRight, ChevronDown, Clock, Settings, Trophy, MapPin, Check, SlidersHorizontal } from 'lucide-react';
+import { Plus, Activity, ChevronRight, ChevronDown, Clock, Settings, Trophy, MapPin, Check } from 'lucide-react';
 import { formatMatchDateGroup } from '../utils/dateUtils';
 import { getPlayersForFolder, getMatchesForFolder } from '../utils/folderUtils';
 import { getMatchWinnerId, sortMatchesByDateDesc } from '../utils/matchUtils';
@@ -12,7 +13,6 @@ import { getMatchMode } from '../utils/matchModeUtils';
 import { COMPETITION_FORMAT_LABELS } from './NewCompetitionModal';
 
 interface DashboardViewProps {
-  openNewMatchModal: (mode?: 'quick' | 'custom') => void;
   openNewCompetitionModal: () => void;
   openAddPlayerModal: () => void;
   openSettingsModal: () => void;
@@ -37,7 +37,6 @@ export const SquashBallIcon: React.FC<{ className?: string }> = ({ className = '
 );
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
-  openNewMatchModal,
   openNewCompetitionModal,
   openAddPlayerModal,
   openSettingsModal,
@@ -142,36 +141,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onOpenHowToUseApp={openHowToUseAppModal}
       />
 
-      {/* Centered Main Actions Section — Quick Match is the primary path (start refereeing
-          in a few taps using saved defaults); Custom Match and Competitions are secondary,
-          deliberately half the size so they don't compete with the main CTA. */}
-      <div className="flex flex-col items-center justify-center space-y-2 text-center pt-0 pb-1">
-        <button
-          onClick={() => openNewMatchModal('quick')}
-          className="w-full min-h-[56px] py-4 bg-slate-900 hover:bg-slate-800 text-amber-400 font-black text-base rounded-2xl shadow-md flex items-center justify-center space-x-2 transition-transform active:scale-98 border border-slate-800"
-        >
-          <Play className="w-5 h-5 fill-current" />
-          <span>Quick Match</span>
-        </button>
+      {/* Quick Match lives directly on the dashboard now — no modal, no "Custom Match"
+          twin button. The one-off format override that used to be a separate entry point
+          is just a disclosure row inside the card (see QuickMatchCard). */}
+      <QuickMatchCard onStart={() => setActiveTab('match')} openSettingsModal={openSettingsModal} />
 
-        <div className="w-full grid grid-cols-2 gap-2">
-          <button
-            onClick={() => openNewMatchModal('custom')}
-            className="min-h-[40px] py-2.5 bg-white hover:bg-slate-50 text-slate-900 font-bold text-xs rounded-xl shadow-2xs border border-slate-200 flex items-center justify-center space-x-1.5 transition-all active:scale-98"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-500" />
-            <span>Custom Match</span>
-          </button>
-
-          <button
-            onClick={openNewCompetitionModal}
-            className="min-h-[40px] py-2.5 bg-white hover:bg-slate-50 text-slate-900 font-bold text-xs rounded-xl shadow-2xs border border-slate-200 flex items-center justify-center space-x-1.5 transition-all active:scale-98"
-          >
-            <Trophy className="w-3.5 h-3.5 text-amber-500" />
-            <span>New Competition</span>
-          </button>
-        </div>
-      </div>
+      <button
+        onClick={openNewCompetitionModal}
+        className="w-full min-h-[40px] py-2.5 bg-white hover:bg-slate-50 text-slate-900 font-bold text-xs rounded-xl shadow-2xs border border-slate-200 flex items-center justify-center space-x-1.5 transition-all active:scale-98"
+      >
+        <Trophy className="w-3.5 h-3.5 text-amber-500" />
+        <span>New Competition</span>
+      </button>
 
       {/* Active Game Alert Banner (if match in progress).
           Deliberately NOT using the shared .ios-card class here — it sets a near-opaque

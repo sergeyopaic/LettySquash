@@ -107,7 +107,7 @@ export interface SquashMatch {
   pointLog?: PointEvent[];
   // Whether this match counts toward each player's Club Rating (see utils/ratingUtils.ts).
   // Independent of matchType — a rated match can still be a "friendly" in context; casual
-  // quick matches recorded via NewMatchModal never set this.
+  // quick matches recorded via QuickMatchCard never set this.
   isRated?: boolean;
   // Links this match to the Competition it's a fixture of (see utils/matchModeUtils.ts).
   // Nothing currently auto-generates fixtures from a Competition — this is only set on
@@ -161,7 +161,7 @@ export interface LiveMatchState {
   pointLog: PointEvent[];
 }
 
-// Defaults applied to every Quick Match (see NewMatchModal) until changed in Settings.
+// Defaults applied to every Quick Match (see QuickMatchCard) until changed in Settings.
 // Custom Match reads these as its starting point but never writes back to them — a
 // one-off different format there shouldn't silently change the user's standing default.
 export interface AppSettings {

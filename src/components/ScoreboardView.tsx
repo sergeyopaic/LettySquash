@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 
 interface ScoreboardViewProps {
-  openNewMatchModal?: () => void;
   // Called with the finished/abandoned match's competitionId when it belongs to a
   // competition fixture, so the app can drop the user back on that competition's page
   // instead of plain Home.
