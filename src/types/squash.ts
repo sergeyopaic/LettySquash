@@ -139,6 +139,29 @@ export interface RallyEventLog {
   timestamp: string;
 }
 
+// A single undoable step. POINT covers a scored point (including a STROKE decision,
+// which is just a point awarded via referee call — see recordDecision) and carries
+// everything needed to roll the score/server/game state back to just before it.
+// DECISION covers a YES_LET/NO_LET call, which doesn't touch the score at all — undoing
+// one only needs to pop it back off match.decisions, nothing else changes.
+export interface PointHistoryEntry {
+  type: 'POINT';
+  p1Score: number;
+  p2Score: number;
+  serverId: string;
+  serveSide: ServeSide;
+  p1GamesWon: number;
+  p2GamesWon: number;
+  currentGameIndex: number;
+  lastRallyLog: RallyEventLog | null;
+}
+
+export interface DecisionHistoryEntry {
+  type: 'DECISION';
+}
+
+export type HistoryEntry = PointHistoryEntry | DecisionHistoryEntry;
+
 export interface LiveMatchState {
   match: SquashMatch;
   currentGameIndex: number;
@@ -156,7 +179,10 @@ export interface LiveMatchState {
   lastGameWon?: GameWonInfo | null;
   lastRallyLog?: RallyEventLog | null;
   isHandout?: boolean;
-  history: any[];
+  // One universal Undo pops the most recent entry regardless of kind — a point, a
+  // STROKE (also a point), or a LET/NO_LET call — so there's a single trustworthy
+  // "take that back" action instead of separate undo mechanisms per action type.
+  history: HistoryEntry[];
   decisions: RefereeDecision[];
   pointLog: PointEvent[];
 }

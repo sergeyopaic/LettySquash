@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
 import { MatchDetailModal } from './MatchDetailModal';
@@ -54,6 +54,12 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState<boolean>(false);
   const [confirmActionType, setConfirmActionType] = useState<DestructiveActionType>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
+  // Brief confirmation of what the one universal Undo button just rolled back — points
+  // and game/match completions already show up as an obvious score change, but a LET/NO
+  // LET call has zero other visual footprint during a live match, so without this a
+  // referee undoing a decision would have no way to tell it actually did anything.
+  const [undoToast, setUndoToast] = useState<string | null>(null);
+  const undoToastTimerRef = useRef<number | null>(null);
 
   // If active match ends or is cancelled, automatically return to main Home screen
   useEffect(() => {
@@ -61,6 +67,12 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
       onExitToHome();
     }
   }, [activeMatchState, onExitToHome]);
+
+  useEffect(() => {
+    return () => {
+      if (undoToastTimerRef.current) window.clearTimeout(undoToastTimerRef.current);
+    };
+  }, []);
 
   if (!activeMatchState) {
     return null;
@@ -91,6 +103,34 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
     const mins = Math.floor(totalSec / 60);
     const secs = totalSec % 60;
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  const handleUndo = () => {
+    const history = activeMatchState.history;
+    const lastEntry = history[history.length - 1];
+    if (!lastEntry) return;
+
+    let message: string;
+    if (lastEntry.type === 'DECISION') {
+      const lastDecision = match.decisions[match.decisions.length - 1];
+      const label = lastDecision?.decision === 'NO_LET' ? 'NO LET' : lastDecision?.decision === 'YES_LET' ? 'LET' : 'Decision';
+      message = `${label} call undone`;
+    } else {
+      const gamesWonBeforeThisPoint = lastEntry.p1GamesWon + lastEntry.p2GamesWon;
+      const gamesWonNow = match.p1GamesWon + match.p2GamesWon;
+      if (isMatchCompleted) {
+        message = 'Match result undone';
+      } else if (gamesWonNow > gamesWonBeforeThisPoint) {
+        message = 'Game-winning point undone';
+      } else {
+        message = 'Point undone';
+      }
+    }
+
+    undoLastAction();
+    setUndoToast(message);
+    if (undoToastTimerRef.current) window.clearTimeout(undoToastTimerRef.current);
+    undoToastTimerRef.current = window.setTimeout(() => setUndoToast(null), 2600);
   };
 
   const handleDecisionClick = (playerId: string) => {
@@ -312,23 +352,14 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
             <h3 className="font-bold text-slate-900 text-xs line-clamp-1 mt-1">{match.player1.name}</h3>
           </div>
 
-          {/* GIANT SCORE NUMBER */}
-          <div className="my-3 py-1 px-4 rounded-2xl bg-white/70 border border-slate-100 shadow-2xs min-w-[90px]">
-            <span className="text-7xl font-black text-slate-900 tracking-tighter leading-none drop-shadow-2xs">
+          {/* GIANT SCORE NUMBER — the Appeal button used to live right here, cramping
+              this into a small card; it now lives in a shared row below the grid
+              (see Appeal Decision Row) so the score digit gets the full card to itself. */}
+          <div className="my-3 py-2 px-4 rounded-2xl bg-white/70 border border-slate-100 shadow-2xs min-w-[100px]">
+            <span className="text-8xl font-black text-slate-900 tracking-tighter leading-none drop-shadow-2xs">
               {p1CurrentScore}
             </span>
           </div>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDecisionClick(match.player1.id);
-            }}
-            className="w-full py-1.5 bg-slate-100/90 hover:bg-slate-200 text-slate-700 font-bold text-[10px] rounded-xl flex items-center justify-center space-x-1 border border-slate-200/60 transition-colors"
-          >
-            <ShieldAlert className="w-3 h-3 text-amber-600" />
-            <span>Appeal LET / STROKE</span>
-          </button>
         </div>
 
         {/* Player 2 Card */}
@@ -369,50 +400,71 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
           </div>
 
           {/* GIANT SCORE NUMBER */}
-          <div className="my-3 py-1 px-4 rounded-2xl bg-white/70 border border-slate-100 shadow-2xs min-w-[90px]">
-            <span className="text-7xl font-black text-slate-900 tracking-tighter leading-none drop-shadow-2xs">
+          <div className="my-3 py-2 px-4 rounded-2xl bg-white/70 border border-slate-100 shadow-2xs min-w-[100px]">
+            <span className="text-8xl font-black text-slate-900 tracking-tighter leading-none drop-shadow-2xs">
               {p2CurrentScore}
             </span>
           </div>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDecisionClick(match.player2.id);
-            }}
-            className="w-full py-1.5 bg-slate-100/90 hover:bg-slate-200 text-slate-700 font-bold text-[10px] rounded-xl flex items-center justify-center space-x-1 border border-slate-200/60 transition-colors"
-          >
-            <ShieldAlert className="w-3 h-3 text-amber-600" />
-            <span>Appeal LET / STROKE</span>
-          </button>
         </div>
       </div>
 
-      {/* Referee Controls Footer Toolbar (Clean & Safe: ONLY Undo and Finish Match) */}
-      <div className="ios-glass-card rounded-2xl p-2.5 flex items-center justify-between shadow-xs">
+      {/* Appeal Decision Row — one row shared below both score cards, columns still line
+          up with the player above them, so it reads as "this player's appeal button"
+          without eating into either card's own vertical space. */}
+      <div className="grid grid-cols-2 gap-3">
         <button
-          onClick={undoLastAction}
-          disabled={activeMatchState.history.length === 0}
-          className="flex items-center space-x-1.5 text-xs font-bold text-slate-700 disabled:opacity-40 hover:text-slate-900 px-3 py-2 rounded-xl hover:bg-slate-100 transition-colors"
+          onClick={() => handleDecisionClick(match.player1.id)}
+          className="py-2 bg-white/90 hover:bg-slate-100 text-slate-700 font-bold text-[11px] rounded-xl flex items-center justify-center space-x-1.5 border border-slate-200/80 shadow-2xs transition-colors"
         >
-          <RotateCcw className="w-4 h-4" />
-          <span>Undo Point</span>
+          <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+          <span>Appeal LET / STROKE</span>
+        </button>
+        <button
+          onClick={() => handleDecisionClick(match.player2.id)}
+          className="py-2 bg-white/90 hover:bg-slate-100 text-slate-700 font-bold text-[11px] rounded-xl flex items-center justify-center space-x-1.5 border border-slate-200/80 shadow-2xs transition-colors"
+        >
+          <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+          <span>Appeal LET / STROKE</span>
+        </button>
+      </div>
+
+      {/* Referee Controls Footer Toolbar. There's deliberately no "exit early" button
+          here anymore — leaving a match that isn't actually finished yet only happens
+          through the ••• menu's "Abandon & Exit to Home", which has its own confirmation
+          dialog. A one-tap, no-confirmation exit sitting right under the score cards was
+          too easy to hit by accident and would silently save the match as COMPLETED
+          mid-game. Save & Exit only appears once the match has genuinely finished. */}
+      <div className="ios-glass-card rounded-2xl p-2.5 space-y-2 shadow-xs relative">
+        {/* absolute + bottom-full so this floats above the card instead of sitting in
+            normal flow — a toast that pushed the Undo button down would make a second,
+            immediate tap (undoing two things back-to-back) land on the wrong spot. */}
+        {undoToast && (
+          <div className="absolute bottom-full left-0 right-0 mb-2 flex items-center justify-center space-x-1.5 text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl py-1.5 shadow-md animate-in fade-in slide-in-from-bottom-1 duration-200 pointer-events-none">
+            <RotateCcw className="w-3 h-3" />
+            <span>{undoToast}</span>
+          </div>
+        )}
+
+        {/* One universal Undo — covers points, STROKE calls (a point under the hood),
+            LET/NO LET calls, and game/match completions, all through the same history
+            stack (see SquashContext.undoLastAction). No separate undo mechanism per
+            action type. */}
+        <button
+          onClick={handleUndo}
+          disabled={activeMatchState.history.length === 0}
+          className="w-full flex items-center justify-center space-x-2 text-sm font-bold text-slate-700 disabled:opacity-40 hover:text-slate-900 px-4 py-3 rounded-xl hover:bg-slate-100 transition-colors"
+        >
+          <RotateCcw className="w-5 h-5" />
+          <span>Undo</span>
         </button>
 
-        {isMatchCompleted ? (
+        {isMatchCompleted && (
           <button
             onClick={handleSaveAndExit}
-            className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-extrabold text-xs px-4 py-2 rounded-xl shadow-sm flex items-center space-x-1.5 transition-transform active:scale-95 border border-slate-800"
+            className="w-full bg-slate-900 hover:bg-slate-800 text-amber-400 font-extrabold text-sm px-4 py-3 rounded-xl shadow-sm flex items-center justify-center space-x-2 transition-transform active:scale-95 border border-slate-800"
           >
-            <CheckCircle2 className="w-4 h-4 text-amber-400" />
+            <CheckCircle2 className="w-5 h-5 text-amber-400" />
             <span>Save & Exit to Home</span>
-          </button>
-        ) : (
-          <button
-            onClick={handleSaveAndExit}
-            className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-extrabold text-xs px-4 py-2 rounded-xl shadow-sm flex items-center space-x-1.5 transition-transform active:scale-95 border border-slate-800"
-          >
-            <span>Finish & Exit to Home</span>
           </button>
         )}
       </div>

@@ -8,7 +8,7 @@ interface HowToUseAppModalProps {
 }
 
 export const HowToUseAppModal: React.FC<HowToUseAppModalProps> = ({ isOpen, onClose, openNewMatch }) => {
-  const [activeTab, setActiveTab] = useState<'SCORING' | 'SERVE' | 'RESETS' | 'DECISIONS'>('SCORING');
+  const [activeTab, setActiveTab] = useState<'STARTING' | 'SCORING' | 'RESETS' | 'DECISIONS'>('STARTING');
 
   if (!isOpen) return null;
 
@@ -56,6 +56,17 @@ export const HowToUseAppModal: React.FC<HowToUseAppModalProps> = ({ isOpen, onCl
         {/* Tab Selection */}
         <div className="grid grid-cols-4 gap-1 bg-slate-100 p-1 rounded-2xl text-[10px] font-bold text-slate-600">
           <button
+            onClick={() => setActiveTab('STARTING')}
+            className={`py-2 rounded-xl flex items-center justify-center space-x-0.5 transition-all ${
+              activeTab === 'STARTING'
+                ? 'bg-white text-slate-900 shadow-xs font-black'
+                : 'hover:text-slate-900'
+            }`}
+          >
+            <span>Start Match</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('SCORING')}
             className={`py-2 rounded-xl flex items-center justify-center space-x-0.5 transition-all ${
               activeTab === 'SCORING'
@@ -64,17 +75,6 @@ export const HowToUseAppModal: React.FC<HowToUseAppModalProps> = ({ isOpen, onCl
             }`}
           >
             <span>Scoring</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('SERVE')}
-            className={`py-2 rounded-xl flex items-center justify-center space-x-0.5 transition-all ${
-              activeTab === 'SERVE'
-                ? 'bg-white text-slate-900 shadow-xs font-black'
-                : 'hover:text-slate-900'
-            }`}
-          >
-            <span>Serve Box</span>
           </button>
 
           <button
@@ -100,7 +100,52 @@ export const HowToUseAppModal: React.FC<HowToUseAppModalProps> = ({ isOpen, onCl
           </button>
         </div>
 
-        {/* TAB 1: SCORING */}
+        {/* TAB 1: STARTING A MATCH */}
+        {activeTab === 'STARTING' && (
+          <div className="space-y-3 animate-in fade-in duration-150">
+            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+              <div className="flex items-center space-x-2">
+                <span className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center">1</span>
+                <h3 className="font-bold text-slate-900 text-sm">Search or Create a Player</h3>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed pl-8">
+                Type a name in the Quick Match box on Home. Tap a match to select them, or tap <strong className="text-amber-800">Create</strong> to add a brand-new player instantly.
+              </p>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+              <div className="flex items-center space-x-2">
+                <span className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center">2</span>
+                <h3 className="font-bold text-slate-900 text-sm">Set Who Serves First</h3>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed pl-8">
+                Tap the racket icon on either player's chip — it jumps between them to show who's serving first.
+              </p>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+              <div className="flex items-center space-x-2">
+                <span className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center">3</span>
+                <h3 className="font-bold text-slate-900 text-sm">Pick a Jersey Color (Optional)</h3>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed pl-8">
+                Tap the color dot next to a selected player to give them a distinct color just for this match — their profile color stays the same next time.
+              </p>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+              <div className="flex items-center space-x-2">
+                <span className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center">4</span>
+                <h3 className="font-bold text-slate-900 text-sm">Adjust the Format (Optional)</h3>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed pl-8">
+                Tap the small format line (e.g. "Best of 3 • PARS-11") to change games, points, or the two-point-gap rule — just for this match.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: SCORING */}
         {activeTab === 'SCORING' && (
           <div className="space-y-3 animate-in fade-in duration-150">
             <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
@@ -109,7 +154,7 @@ export const HowToUseAppModal: React.FC<HowToUseAppModalProps> = ({ isOpen, onCl
                 <h3 className="font-bold text-slate-900 text-sm">Tap Player Card to Score</h3>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed pl-8">
-                Simply tap anywhere on Player 1 or Player 2's card (or giant 77pt score number) to record +1 point under WSF PARS 11 rules.
+                Simply tap anywhere on Player 1 or Player 2's card (or giant 77pt score number) to record +1 point under PARS rules (11 or 15, depending on your match settings).
               </p>
             </div>
 
@@ -122,12 +167,7 @@ export const HowToUseAppModal: React.FC<HowToUseAppModalProps> = ({ isOpen, onCl
                 When a receiver wins a rally, the app automatically switches service (<strong className="text-rose-600">hand-out 🔄</strong>) and logs the outcome in the Rally Ticker.
               </p>
             </div>
-          </div>
-        )}
 
-        {/* TAB 2: SERVE BOX */}
-        {activeTab === 'SERVE' && (
-          <div className="space-y-3 animate-in fade-in duration-150">
             <div className="p-3.5 bg-amber-50/70 rounded-2xl border border-amber-200/80 space-y-2">
               <div className="flex items-center space-x-2">
                 <RefreshCw className="w-5 h-5 text-amber-600" />

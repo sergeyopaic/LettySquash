@@ -17,6 +17,8 @@ import type {
   CompetitionFixture,
   PointEvent,
   Folder,
+  PointHistoryEntry,
+  DecisionHistoryEntry,
 } from '../types/squash';
 import { INITIAL_PLAYERS, INITIAL_MATCHES, INITIAL_COMPETITIONS, INITIAL_FOLDERS } from '../data/mockData';
 import { computePlayerStats } from '../utils/folderUtils';
@@ -386,7 +388,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const { match, currentGameIndex, p1CurrentScore, p2CurrentScore, currentServerId, currentServeSide } = activeMatchState;
 
-    const historyEntry = {
+    const historyEntry: PointHistoryEntry = {
+      type: 'POINT',
       p1Score: p1CurrentScore,
       p2Score: p2CurrentScore,
       serverId: currentServerId,
@@ -555,12 +558,18 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
+    // YES_LET / NO_LET don't touch the score, but a referee call is still worth being
+    // able to take back — push a marker onto the same undo stack points use, so the one
+    // Undo button covers this too instead of only ever affecting scores.
+    const decisionEntry: DecisionHistoryEntry = { type: 'DECISION' };
+
     setActiveMatchState({
       ...activeMatchState,
       match: {
         ...activeMatchState.match,
         decisions: updatedDecisions,
       },
+      history: [...activeMatchState.history, decisionEntry],
     });
   };
 
@@ -568,9 +577,24 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!activeMatchState || activeMatchState.history.length === 0) return;
 
     const previousHistory = [...activeMatchState.history];
-    const lastState = previousHistory.pop();
+    const lastEntry = previousHistory.pop();
 
-    if (!lastState) return;
+    if (!lastEntry) return;
+
+    if (lastEntry.type === 'DECISION') {
+      // No score/server/game state to restore — just drop the most recent referee call.
+      setActiveMatchState({
+        ...activeMatchState,
+        history: previousHistory,
+        match: {
+          ...activeMatchState.match,
+          decisions: activeMatchState.match.decisions.slice(0, -1),
+        },
+      });
+      return;
+    }
+
+    const lastState = lastEntry;
 
     const previousPointLog = [...activeMatchState.pointLog];
     previousPointLog.pop();
@@ -601,6 +625,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         p1GamesWon: lastState.p1GamesWon,
         p2GamesWon: lastState.p2GamesWon,
         games: restoredGames,
+        // Undoing a match- or game-winning point un-completes the match — its status was
+        // only ever COMPLETED because that specific point pushed it there.
         status: 'IN_PROGRESS',
         winnerId: undefined,
       },
