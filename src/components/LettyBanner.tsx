@@ -10,6 +10,12 @@ interface LettyBannerProps {
   onOpenHowToUseApp?: () => void;
 }
 
+// Settings > About > "Restore Welcome Banner" needs to bring this banner back without a
+// full page reload — this component only reads localStorage once, on mount, so a plain
+// localStorage.removeItem() from elsewhere wouldn't be noticed by an already-mounted
+// instance. Broadcasting this event lets it react live instead.
+export const WELCOME_BANNER_RESTORED_EVENT = 'letty:welcome-banner-restored';
+
 export const LettyBanner: React.FC<LettyBannerProps> = ({
   customMessage,
   variant = 'home',
@@ -25,6 +31,10 @@ export const LettyBanner: React.FC<LettyBannerProps> = ({
     if (dismissed === 'true') {
       setIsDismissed(true);
     }
+
+    const handleRestore = () => setIsDismissed(false);
+    window.addEventListener(WELCOME_BANNER_RESTORED_EVENT, handleRestore);
+    return () => window.removeEventListener(WELCOME_BANNER_RESTORED_EVENT, handleRestore);
   }, []);
 
   const handleDismiss = () => {

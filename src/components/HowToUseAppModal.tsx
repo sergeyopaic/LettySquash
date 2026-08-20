@@ -154,7 +154,7 @@ export const HowToUseAppModal: React.FC<HowToUseAppModalProps> = ({ isOpen, onCl
                 <h3 className="font-bold text-slate-900 text-sm">Tap Player Card to Score</h3>
               </div>
               <p className="text-xs text-slate-600 leading-relaxed pl-8">
-                Simply tap anywhere on Player 1 or Player 2's card (or giant 77pt score number) to record +1 point under PARS rules (11 or 15, depending on your match settings).
+                Simply tap anywhere on Player 1 or Player 2's card (or the giant score number) to record +1 point under PARS rules (11 or 15, depending on your match settings).
               </p>
             </div>
 
@@ -199,7 +199,7 @@ export const HowToUseAppModal: React.FC<HowToUseAppModalProps> = ({ isOpen, onCl
                 <h3 className="font-bold text-sm">Top-Right Overflow Menu (•••)</h3>
               </div>
               <p className="text-xs text-rose-900 leading-relaxed">
-                Destructive actions are isolated in the top-right <strong className="text-slate-900">•••</strong> menu. Choose between <strong className="text-amber-800">Reset Current Game (0-0)</strong>, <strong className="text-rose-700">Reset Whole Match</strong>, or <strong className="text-slate-700">Abandon & Exit</strong> with mandatory confirmation dialogs.
+                Destructive actions are isolated in the top-right <strong className="text-slate-900">•••</strong> menu. Choose between <strong className="text-amber-800">Reset Current Game</strong> (back to the starting score — 0-0, or your handicap head start if one's set), <strong className="text-rose-700">Reset Whole Match</strong>, or <strong className="text-slate-700">Abandon & Exit</strong> with mandatory confirmation dialogs.
               </p>
             </div>
           </div>

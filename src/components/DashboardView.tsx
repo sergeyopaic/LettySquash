@@ -64,18 +64,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const [isFolderSelectorOpen, setIsFolderSelectorOpen] = useState<boolean>(false);
 
-  // Retrieve players and matches belonging to active folder
+  // Retrieve players and matches belonging to active folder — used only by the explicitly
+  // folder-labeled "Active Folder Statistics" card further down (heading literally reads
+  // "{folder name} Stats"), including its nested Spotlight card. Everything else on this
+  // screen shows the same silent-trap problem History had: a player who was never filed
+  // into a folder would just vanish from "Recent Matches" / "Court Leaders" with zero
+  // indication why, since activeFolder itself defaults to an arbitrary first folder the
+  // user never consciously chose.
   const activePlayers = activeFolder ? getPlayersForFolder(players, activeFolder.id) : [];
   const folderMatches = activeFolder ? getMatchesForFolder(matches, activeFolder.id) : [];
 
-  const recentMatches = sortMatchesByDateDesc(folderMatches).slice(0, 3);
+  const recentMatches = sortMatchesByDateDesc(matches).slice(0, 3);
 
-  // Rating (see utils/ratingUtils.ts) is the single ranking used everywhere on this
-  // screen — Court Leaders and the Spotlight card used to rank by two different metrics
-  // (win count vs. win rate) and could disagree on who's "best"; now both agree.
-  const ratings = computeClubRatings(activePlayers, folderMatches);
-  const topPlayers = [...activePlayers]
-    .sort((a, b) => (ratings[b.id]?.rating ?? 0) - (ratings[a.id]?.rating ?? 0))
+  // Rating (see utils/ratingUtils.ts) — global ranking for the standalone Court Leaders
+  // section below.
+  const globalRatings = computeClubRatings(players, matches);
+  const topPlayers = [...players]
+    .sort((a, b) => (globalRatings[b.id]?.rating ?? 0) - (globalRatings[a.id]?.rating ?? 0))
     .slice(0, 3);
 
   // Calculate average match duration in minutes for active folder
@@ -86,12 +91,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )
       : 32;
 
-  const spotlightLeader = topPlayers.length > 0
+  // Folder-scoped rating, used only by the Spotlight card nested inside the folder-labeled
+  // Stats card below — kept separate from the global topPlayers above so that card doesn't
+  // show a folder leader that contradicts its own "{folder name} Stats" heading.
+  const folderRatings = computeClubRatings(activePlayers, folderMatches);
+  const folderTopPlayer = [...activePlayers].sort(
+    (a, b) => (folderRatings[b.id]?.rating ?? 0) - (folderRatings[a.id]?.rating ?? 0)
+  )[0];
+
+  const spotlightLeader = folderTopPlayer
     ? {
-        fullName: topPlayers[0].name,
-        subtitle: `Rating Leader (${Math.round(ratings[topPlayers[0].id]?.rating ?? 0)})`,
+        fullName: folderTopPlayer.name,
+        subtitle: `Rating Leader (${Math.round(folderRatings[folderTopPlayer.id]?.rating ?? 0)})`,
         icon: '👑',
-        playerObj: topPlayers[0],
+        playerObj: folderTopPlayer,
       }
     : null;
 
@@ -141,10 +154,82 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onOpenHowToUseApp={openHowToUseAppModal}
       />
 
-      {/* Quick Match lives directly on the dashboard now — no modal, no "Custom Match"
-          twin button. The one-off format override that used to be a separate entry point
-          is just a disclosure row inside the card (see QuickMatchCard). */}
-      <QuickMatchCard onStart={() => setActiveTab('match')} openSettingsModal={openSettingsModal} />
+      {/* Quick Match and "a match is already live" are mutually exclusive — the app only
+          ever tracks one activeMatchState at a time, so letting the Quick Match card sit
+          there while a match is live meant a stray tap on its Start button would silently
+          overwrite (and lose) whatever was in progress. The live banner takes its place
+          instead, and leads with it — this is unfinished business the user needs to see
+          before anything else on the page, not something they might scroll past.
+          Deliberately NOT using the shared .ios-card class here — it sets a near-opaque
+          white `background` in app.css that (being equal CSS specificity to a single
+          Tailwind class) was winning over `bg-slate-900` and silently painting this
+          banner white, making the white/light-gray text on it unreadable. */}
+      {activeMatchState ? (
+        (() => {
+          const { meta: liveModeMeta, competition: liveCompetition } = getMatchMode(activeMatchState.match, competitions);
+          return (
+            <div className="rounded-2xl bg-slate-900 text-white p-4 relative overflow-hidden shadow-lg border border-slate-800">
+              <div className="absolute right-0 bottom-0 opacity-15 translate-x-4 translate-y-4">
+                <Activity className="w-36 h-36" />
+              </div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center flex-wrap gap-1.5">
+                    <span className="bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg">
+                      Match Live • Game {activeMatchState.currentGameIndex || 1}
+                    </span>
+                    <span
+                      className="bg-white/10 text-white text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-lg border border-white/15"
+                      title={liveCompetition ? `Fixture of ${liveCompetition.name}` : liveModeMeta.label}
+                    >
+                      {liveModeMeta.shortLabel}
+                    </span>
+                  </div>
+                  <span className="text-xs font-mono text-slate-300">
+                    {Math.floor(activeMatchState.timerSeconds / 60)}:
+                    {String(activeMatchState.timerSeconds % 60).padStart(2, '0')}
+                  </span>
+                </div>
+                {liveCompetition && (
+                  <p className="text-[11px] font-bold text-amber-400/90 -mt-1 mb-2 truncate">
+                    {liveCompetition.name}
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between my-3">
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-slate-100">
+                      {activeMatchState.match.player1.name}
+                    </p>
+                    <p className="text-2xl font-black text-amber-400">{activeMatchState.p1CurrentScore}</p>
+                  </div>
+
+                  <div className="px-3 py-1 bg-white/10 rounded-xl text-xs font-bold text-slate-300">
+                    {activeMatchState.match.p1GamesWon} : {activeMatchState.match.p2GamesWon}
+                  </div>
+
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-slate-100">
+                      {activeMatchState.match.player2.name}
+                    </p>
+                    <p className="text-2xl font-black text-amber-400">{activeMatchState.p2CurrentScore}</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setActiveTab('match')}
+                  className="w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-xl text-sm flex items-center justify-center space-x-2 transition-transform active:scale-98 shadow-sm"
+                >
+                  <span>Resume Refereeing</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          );
+        })()
+      ) : (
+        <QuickMatchCard onStart={() => setActiveTab('match')} openSettingsModal={openSettingsModal} />
+      )}
 
       <button
         onClick={openNewCompetitionModal}
@@ -153,74 +238,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <Trophy className="w-3.5 h-3.5 text-amber-500" />
         <span>New Competition</span>
       </button>
-
-      {/* Active Game Alert Banner (if match in progress).
-          Deliberately NOT using the shared .ios-card class here — it sets a near-opaque
-          white `background` in app.css that (being equal CSS specificity to a single
-          Tailwind class) was winning over `bg-slate-900` and silently painting this
-          banner white, making the white/light-gray text on it unreadable. */}
-      {activeMatchState && (() => {
-        const { meta: liveModeMeta, competition: liveCompetition } = getMatchMode(activeMatchState.match, competitions);
-        return (
-        <div className="rounded-2xl bg-slate-900 text-white p-4 relative overflow-hidden shadow-lg border border-slate-800">
-          <div className="absolute right-0 bottom-0 opacity-15 translate-x-4 translate-y-4">
-            <Activity className="w-36 h-36" />
-          </div>
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center flex-wrap gap-1.5">
-                <span className="bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg">
-                  Match Live • Game {activeMatchState.currentGameIndex || 1}
-                </span>
-                <span
-                  className="bg-white/10 text-white text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-lg border border-white/15"
-                  title={liveCompetition ? `Fixture of ${liveCompetition.name}` : liveModeMeta.label}
-                >
-                  {liveModeMeta.shortLabel}
-                </span>
-              </div>
-              <span className="text-xs font-mono text-slate-300">
-                {Math.floor(activeMatchState.timerSeconds / 60)}:
-                {String(activeMatchState.timerSeconds % 60).padStart(2, '0')}
-              </span>
-            </div>
-            {liveCompetition && (
-              <p className="text-[11px] font-bold text-amber-400/90 -mt-1 mb-2 truncate">
-                {liveCompetition.name}
-              </p>
-            )}
-
-            <div className="flex items-center justify-between my-3">
-              <div className="text-left">
-                <p className="text-sm font-bold text-slate-100">
-                  {activeMatchState.match.player1.name}
-                </p>
-                <p className="text-2xl font-black text-amber-400">{activeMatchState.p1CurrentScore}</p>
-              </div>
-
-              <div className="px-3 py-1 bg-white/10 rounded-xl text-xs font-bold text-slate-300">
-                {activeMatchState.match.p1GamesWon} : {activeMatchState.match.p2GamesWon}
-              </div>
-
-              <div className="text-right">
-                <p className="text-sm font-bold text-slate-100">
-                  {activeMatchState.match.player2.name}
-                </p>
-                <p className="text-2xl font-black text-amber-400">{activeMatchState.p2CurrentScore}</p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setActiveTab('match')}
-              className="w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-xl text-sm flex items-center justify-center space-x-2 transition-transform active:scale-98 shadow-sm"
-            >
-              <span>Resume Refereeing</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-        );
-      })()}
 
       {/* Active Competitions Preview */}
       <div className="space-y-2">
@@ -402,7 +419,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div className="ios-card rounded-2xl divide-y divide-slate-100 p-0 overflow-hidden">
           {topPlayers.map((player) => {
-            const rating = ratings[player.id];
+            const rating = globalRatings[player.id];
 
             return (
               <div

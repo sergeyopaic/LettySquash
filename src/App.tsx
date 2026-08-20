@@ -18,14 +18,20 @@ import { HowToPlayModal } from './components/HowToPlayModal';
 import { HowToUseAppModal } from './components/HowToUseAppModal';
 import { PlayerProfileModal } from './components/PlayerProfileModal';
 import type { Player } from './types/squash';
-import { Smartphone, Monitor, Wifi, Signal, BatteryMedium } from 'lucide-react';
+import { Smartphone, Monitor, Wifi, Signal, BatteryMedium, Activity } from 'lucide-react';
 
 const MainContainer: React.FC = () => {
-  const { activeMatchState, getMatchById, folders } = useSquash();
+  const { activeMatchState, getMatchById, folders, cancelActiveMatch } = useSquash();
 
   const [activeFolderId, setActiveFolderId] = useState<string>(() => folders[0]?.id ?? '');
   const activeFolder = folders.find((f) => f.id === activeFolderId) ?? folders[0];
   const [activeTab, setActiveTab] = useState<TabType>('home');
+  // A match survives an app restart via localStorage (see SquashContext — every point,
+  // decision, and even the timer tick persists it immediately). This only needs to ask
+  // once, right at launch, whether there actually was one sitting in storage — it must
+  // NOT re-open every time activeMatchState changes during normal play, so it's seeded
+  // once from a lazy initializer instead of reacting to the live value.
+  const [showResumePrompt, setShowResumePrompt] = useState<boolean>(() => Boolean(activeMatchState));
   // Quick Match lives inline on the Home tab (see DashboardView -> QuickMatchCard) for the
   // fast path. Every other "start a match" entry point — nav bar, How to Play/Use guides —
   // is reachable from ANY tab, so it opens the global NewMatchModal instead (same form,
@@ -143,12 +149,50 @@ const MainContainer: React.FC = () => {
 
           {activeTab === 'history' && (
             <MatchHistoryView
-              activeFolder={activeFolder}
               selectMatchDetail={(id) => setSelectedMatchId(id)}
               openCompetitionDetail={(id) => setOpenCompetitionId(id)}
             />
           )}
         </div>
+
+        {/* Resume-match prompt — only ever shown once, right at launch, if a live match
+            was restored from storage (see showResumePrompt above). */}
+        {showResumePrompt && activeMatchState && (
+          <div className="fixed inset-0 z-[60] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-5 max-w-xs w-full shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 text-center">
+              <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
+                <Activity className="w-7 h-7" />
+              </div>
+              <div>
+                <h2 className="text-base font-black text-slate-900">Resume Match?</h2>
+                <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed">
+                  {activeMatchState.match.player1.name} vs {activeMatchState.match.player2.name} — Game{' '}
+                  {activeMatchState.currentGameIndex}, {activeMatchState.p1CurrentScore}-{activeMatchState.p2CurrentScore}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    setShowResumePrompt(false);
+                    setActiveTab('match');
+                  }}
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-sm rounded-xl shadow-sm transition-transform active:scale-98 border border-slate-800"
+                >
+                  Resume Match
+                </button>
+                <button
+                  onClick={() => {
+                    cancelActiveMatch();
+                    setShowResumePrompt(false);
+                  }}
+                  className="w-full py-2.5 text-xs font-semibold text-slate-400 hover:text-rose-600 transition-colors"
+                >
+                  Discard This Match
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modals Container inside Phone Frame */}
         <NewMatchModal
@@ -206,6 +250,7 @@ const MainContainer: React.FC = () => {
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
           onOpenHowToPlay={() => setIsHowToPlayOpen(true)}
+          onOpenHowToUseApp={() => setIsHowToUseAppOpen(true)}
         />
 
         <AdvancedStatsModal

@@ -97,6 +97,12 @@ export interface SquashMatch {
   // recorded before this field existed — those default to true (the universal PARS rule)
   // at every read site, since that's what the engine always enforced back then.
   twoPointGap?: boolean;
+  // Handicap start: how many points player1/player2 begin each game with, ahead of the
+  // usual 0. Lets an unequal pairing (club players of different levels) still be a
+  // meaningful contest — the weaker player's deficit is offset before the first rally.
+  // Absent (or 0) on any non-handicap match, which is the vast majority.
+  p1HandicapStart?: number;
+  p2HandicapStart?: number;
   status: MatchStatus;
   winnerId?: string;
   totalDurationSeconds: number;
@@ -154,6 +160,16 @@ export interface PointHistoryEntry {
   p2GamesWon: number;
   currentGameIndex: number;
   lastRallyLog: RallyEventLog | null;
+  // match.decisions.length right before this point was recorded. A STROKE call awards a
+  // point through this same POINT entry (see recordDecision) rather than a separate
+  // DECISION one, so undoing it must also drop the STROKE it carried — comparing against
+  // this count tells undoLastAction whether one was appended and needs to come back off.
+  decisionsCountBefore: number;
+  // Whether the match timer was running right before this point. A point that finishes a
+  // game or the match always pauses the timer (see recordPoint) — undoing that point needs
+  // to put the timer back exactly how it was, not leave it silently paused just because
+  // that's what it became after the point being undone.
+  isTimerRunningBefore: boolean;
 }
 
 export interface DecisionHistoryEntry {

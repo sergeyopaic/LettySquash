@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSquash } from '../context/SquashContext';
 import type { MatchFormat, Player, ServeSide } from '../types/squash';
-import { Search, Plus, X, ChevronDown, Play, Settings as SettingsIcon } from 'lucide-react';
+import { Search, Plus, Minus, X, ChevronDown, Play, Settings as SettingsIcon } from 'lucide-react';
 import { SquashBallIcon } from './DashboardView';
 
 interface MatchStarterFormProps {
@@ -94,6 +94,39 @@ const ColorSwatchButton: React.FC<{ color: string; onChange: (c: string) => void
     </div>
   );
 };
+
+// One player's starting-points stepper for a handicap match. Capped at targetPoints - 1 —
+// a head start that reaches (or passes) the target would win the game before a single
+// rally's played, which stops being a handicap and starts being a walkover.
+const HandicapStepper: React.FC<{ label: string; value: number; max: number; onChange: (v: number) => void }> = ({
+  label,
+  value,
+  max,
+  onChange,
+}) => (
+  <div className="flex items-center justify-between p-2 rounded-xl border border-slate-200 bg-slate-50/70">
+    <span className="text-[11px] font-bold text-slate-700 truncate pr-2">{label}</span>
+    <div className="flex items-center space-x-2 flex-shrink-0">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(0, value - 1))}
+        disabled={value <= 0}
+        className="w-6 h-6 rounded-full bg-white border border-slate-200 text-slate-600 flex items-center justify-center disabled:opacity-30 hover:bg-slate-100"
+      >
+        <Minus className="w-3 h-3" />
+      </button>
+      <span className="w-6 text-center text-sm font-black text-amber-700 tabular-nums">+{value}</span>
+      <button
+        type="button"
+        onClick={() => onChange(Math.min(max, value + 1))}
+        disabled={value >= max}
+        className="w-6 h-6 rounded-full bg-white border border-slate-200 text-slate-600 flex items-center justify-center disabled:opacity-30 hover:bg-slate-100"
+      >
+        <Plus className="w-3 h-3" />
+      </button>
+    </div>
+  </div>
+);
 
 const MatchPlayerSlot: React.FC<{
   label: string;
@@ -279,6 +312,23 @@ export const MatchStarterForm: React.FC<MatchStarterFormProps> = ({
   const [format, setFormat] = useState<MatchFormat>(settings.quickMatchFormat);
   const [targetPoints, setTargetPoints] = useState<number>(settings.quickMatchTargetPoints);
   const [twoPointGap, setTwoPointGap] = useState<boolean>(settings.quickMatchTwoPointGap);
+  // Fora/handicap start: an unequal pairing (club players of different levels) is still a
+  // meaningful contest if the weaker side starts each game already ahead — this is a
+  // one-off override for this match only, never written back to settings the way the
+  // format/points defaults are.
+  const [handicapEnabled, setHandicapEnabled] = useState(false);
+  const [p1Handicap, setP1Handicap] = useState(0);
+  const [p2Handicap, setP2Handicap] = useState(0);
+  const maxHandicap = targetPoints - 1;
+
+  // A head start has to stay below the winning target — otherwise the "handicapped"
+  // player would start the game already won. Re-clamp whenever targetPoints drops (e.g.
+  // switching PARS-15 down to PARS-11 with a +12 handicap already dialed in) instead of
+  // just capping future stepper taps, so the stored value is never silently invalid.
+  useEffect(() => {
+    setP1Handicap((v) => Math.min(v, maxHandicap));
+    setP2Handicap((v) => Math.min(v, maxHandicap));
+  }, [maxHandicap]);
 
   const p1 = players.find((p) => p.id === p1Id);
   const p2 = players.find((p) => p.id === p2Id);
@@ -296,6 +346,9 @@ export const MatchStarterForm: React.FC<MatchStarterFormProps> = ({
     setP2ColorOverride(undefined);
     setInitialServerId('');
     setServeSide('R');
+    setHandicapEnabled(false);
+    setP1Handicap(0);
+    setP2Handicap(0);
   };
 
   const handleStart = () => {
@@ -314,7 +367,9 @@ export const MatchStarterForm: React.FC<MatchStarterFormProps> = ({
       undefined,
       twoPointGap,
       p1ColorOverride,
-      p2ColorOverride
+      p2ColorOverride,
+      handicapEnabled ? p1Handicap : undefined,
+      handicapEnabled ? p2Handicap : undefined
     );
     resetForm();
     onStart();
@@ -379,6 +434,7 @@ export const MatchStarterForm: React.FC<MatchStarterFormProps> = ({
             <span>
               {FORMAT_SHORT_LABEL[format]} • PARS-{targetPoints}
               {twoPointGap ? ' • 2-point gap' : ''}
+              {handicapEnabled && (p1Handicap || p2Handicap) ? ` • Handicap +${p1Handicap}/+${p2Handicap}` : ''}
             </span>
           </span>
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isFormatExpanded ? 'rotate-180' : ''}`} />
@@ -437,6 +493,40 @@ export const MatchStarterForm: React.FC<MatchStarterFormProps> = ({
                 <div className="w-4 h-4 rounded-full bg-white shadow-2xs" />
               </div>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setHandicapEnabled((h) => !h)}
+              className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition-all ${
+                handicapEnabled ? 'border-blue-900 bg-blue-50/80' : 'border-slate-200 bg-slate-50/70'
+              }`}
+            >
+              <span className="text-xs font-bold text-slate-900">Handicap start</span>
+              <div
+                className={`w-9 h-5 rounded-full flex-shrink-0 flex items-center px-0.5 transition-colors ${
+                  handicapEnabled ? 'bg-blue-900 justify-end' : 'bg-slate-300 justify-start'
+                }`}
+              >
+                <div className="w-4 h-4 rounded-full bg-white shadow-2xs" />
+              </div>
+            </button>
+
+            {handicapEnabled && (
+              <div className="space-y-1.5">
+                <HandicapStepper
+                  label={p1?.name ?? 'Player 1'}
+                  value={p1Handicap}
+                  max={maxHandicap}
+                  onChange={setP1Handicap}
+                />
+                <HandicapStepper
+                  label={p2?.name ?? 'Player 2'}
+                  value={p2Handicap}
+                  max={maxHandicap}
+                  onChange={setP2Handicap}
+                />
+              </div>
+            )}
 
             {openSettingsModal && (
               <button

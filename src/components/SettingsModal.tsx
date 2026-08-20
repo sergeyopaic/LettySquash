@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
 import type { MatchFormat } from '../types/squash';
-import { X, Sparkles, Zap, Info, BookOpen, RotateCcw } from 'lucide-react';
+import { X, Sparkles, Zap, Info, BookOpen, Smartphone, RotateCcw } from 'lucide-react';
+import { WELCOME_BANNER_RESTORED_EVENT } from './LettyBanner';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenHowToPlay?: () => void;
+  onOpenHowToUseApp?: () => void;
 }
 
 type SettingsTab = 'MASCOT' | 'QUICK_MATCH' | 'ABOUT';
@@ -17,7 +19,12 @@ const FORMAT_OPTIONS: { id: MatchFormat; label: string; desc: string }[] = [
   { id: 'SINGLE_GAME', label: 'Single Game', desc: 'One game decides it' },
 ];
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onOpenHowToPlay }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({
+  isOpen,
+  onClose,
+  onOpenHowToPlay,
+  onOpenHowToUseApp,
+}) => {
   const { settings, updateSettings } = useSquash();
   // Quick Match is the tab people actually get sent here for (from the "Manage my
   // default format" link in the match starter) — it's the default and leads the tab
@@ -28,7 +35,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
 
   const handleResetWelcomeBanner = () => {
     localStorage.removeItem('welcomeBannerDismissed');
-    alert('Welcome Onboarding Banner restored!');
+    // Any already-mounted LettyBanner only read localStorage once, on mount — without
+    // this, the flag is cleared but the banner stays hidden until the next full reload.
+    window.dispatchEvent(new Event(WELCOME_BANNER_RESTORED_EVENT));
   };
 
   const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
@@ -186,6 +195,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                     onOpenHowToPlay();
                   }}
                   className="text-xs font-black text-slate-950 bg-amber-400 px-3 py-1.5 rounded-xl hover:bg-amber-300 transition-colors shadow-2xs"
+                >
+                  Open Guide
+                </button>
+              </div>
+            )}
+
+            {onOpenHowToUseApp && (
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">How to Use Letty App</p>
+                    <p className="text-[10px] text-slate-500">Referee scorekeeper & match features guide</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenHowToUseApp();
+                  }}
+                  className="text-xs font-black text-white bg-slate-900 px-3 py-1.5 rounded-xl hover:bg-slate-800 transition-colors shadow-2xs"
                 >
                   Open Guide
                 </button>

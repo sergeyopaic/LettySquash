@@ -97,6 +97,10 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
 
   const isP1Serving = currentServerId === match.player1.id;
   const isMatchCompleted = match.status === 'COMPLETED' && Boolean(match.winnerId);
+  // What a game/match reset actually lands on — the handicap head start, if this match has
+  // one, not always literally "0-0". Used in the destructive-action confirm dialog so it
+  // doesn't promise a score the reset won't actually produce.
+  const resetScoreLabel = `${match.p1HandicapStart ?? 0}-${match.p2HandicapStart ?? 0}`;
   const matchWinnerName = match.winnerId === match.player1.id ? match.player1.name : match.player2.name;
 
   const formatTimer = (totalSec: number) => {
@@ -170,15 +174,37 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
     if (isMatchCompleted) {
       return `🎉 Match Victory! ${matchWinnerName} won the match!`;
     }
-    if (p1CurrentScore >= 10 && p2CurrentScore >= 10) {
-      return '🔥 Tie-break! Win by 2 points!';
+
+    // One point below the target — not always 10, matches can be played to PARS-15 (or any
+    // other targetPoints). Whether that's actually "game ball" also depends on whether this
+    // match plays a two-point-gap decider (deuce) or ends the instant someone hits target.
+    const gameBallThreshold = match.targetPoints - 1;
+    const requiresTwoPointGap = match.twoPointGap ?? true;
+
+    if (requiresTwoPointGap) {
+      if (p1CurrentScore >= gameBallThreshold && p2CurrentScore >= gameBallThreshold) {
+        return '🔥 Tie-break! Win by 2 points!';
+      }
+      if (p1CurrentScore >= gameBallThreshold && p1CurrentScore - p2CurrentScore === 1) {
+        return `⚡ Game ball for ${match.player1.name}!`;
+      }
+      if (p2CurrentScore >= gameBallThreshold && p2CurrentScore - p1CurrentScore === 1) {
+        return `⚡ Game ball for ${match.player2.name}!`;
+      }
+    } else {
+      // No two-point-gap rule: hitting the target wins the game outright, so sitting one
+      // point below it is already game ball regardless of how far behind the opponent is.
+      if (p1CurrentScore === gameBallThreshold && p2CurrentScore === gameBallThreshold) {
+        return '🔥 Match point both ways — next rally wins the game!';
+      }
+      if (p1CurrentScore === gameBallThreshold) {
+        return `⚡ Game ball for ${match.player1.name}!`;
+      }
+      if (p2CurrentScore === gameBallThreshold) {
+        return `⚡ Game ball for ${match.player2.name}!`;
+      }
     }
-    if (p1CurrentScore >= 10 && p1CurrentScore - p2CurrentScore === 1) {
-      return `⚡ Game ball for ${match.player1.name}!`;
-    }
-    if (p2CurrentScore >= 10 && p2CurrentScore - p1CurrentScore === 1) {
-      return `⚡ Game ball for ${match.player2.name}!`;
-    }
+
     const serverName = isP1Serving ? match.player1.name : match.player2.name;
     const sideName = currentServeSide === 'L' ? 'Left' : 'Right';
     return `${serverName} serving from ${sideName} box.`;
@@ -195,6 +221,18 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
           <span className="text-xs font-semibold text-slate-600">
             {match.matchFormat === 'BEST_OF_5' ? 'Best of 5 Games' : match.matchFormat === 'BEST_OF_3' ? 'Best of 3 Games' : 'Single Game'}
           </span>
+          {/* Handicap start isn't visible anywhere else on this screen — the score cards
+              just show the live number, which already includes it — so without this badge
+              a referee glancing mid-game has no way to tell a non-zero score is a handicap
+              head start rather than points already scored. */}
+          {(match.p1HandicapStart || match.p2HandicapStart) ? (
+            <span
+              className="px-1.5 py-0.5 bg-amber-100 text-amber-800 font-black text-[9px] rounded-md uppercase tracking-wider"
+              title={`${match.player1.name} starts +${match.p1HandicapStart ?? 0}, ${match.player2.name} starts +${match.p2HandicapStart ?? 0}`}
+            >
+              Handicap
+            </span>
+          ) : null}
         </div>
 
         {/* Timer & Safe Overflow Menu Button */}
@@ -243,7 +281,9 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
                 className="w-full text-left px-2.5 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-amber-50 hover:text-amber-900 flex items-center space-x-2 transition-colors"
               >
                 <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
-                <span>Reset Current Game (0-0)</span>
+                <span>
+                  Reset Current Game ({match.p1HandicapStart ?? 0}-{match.p2HandicapStart ?? 0})
+                </span>
               </button>
 
               <button
@@ -515,9 +555,9 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
 
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
                 {confirmActionType === 'RESET_GAME' &&
-                  `Current game score (${p1CurrentScore} - ${p2CurrentScore}) will be reset back to 0-0. Completed games will remain saved.`}
+                  `Current game score (${p1CurrentScore} - ${p2CurrentScore}) will be reset back to ${resetScoreLabel}. Completed games will remain saved.`}
                 {confirmActionType === 'RESET_MATCH' &&
-                  'All completed games and current scores will be completely cleared back to Game 1 (0-0).'}
+                  `All completed games and current scores will be completely cleared back to Game 1 (${resetScoreLabel}).`}
                 {confirmActionType === 'ABANDON_MATCH' &&
                   'The referee session will exit immediately and you will return to the main Home screen.'}
               </p>
@@ -529,7 +569,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
                 className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-transform active:scale-98"
               >
                 {confirmActionType === 'RESET_GAME'
-                  ? 'Yes, Reset Game (0-0)'
+                  ? `Yes, Reset Game (${resetScoreLabel})`
                   : confirmActionType === 'RESET_MATCH'
                   ? 'Yes, Reset Entire Match'
                   : 'Yes, Abandon & Return Home'}

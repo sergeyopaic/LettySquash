@@ -63,7 +63,9 @@ interface SquashContextType {
     // avatarBgColor, shown everywhere else, is never touched. Next time this player is
     // picked, their own default color is back.
     player1Color?: string,
-    player2Color?: string
+    player2Color?: string,
+    p1HandicapStart?: number,
+    p2HandicapStart?: number
   ) => void;
   recordPoint: (scoringPlayerId: string) => void;
   recordDecision: (requestingPlayerId: string, decision: DecisionType) => void;
@@ -308,7 +310,9 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     fixtureSlot?: number,
     twoPointGap: boolean = true,
     player1Color?: string,
-    player2Color?: string
+    player2Color?: string,
+    p1HandicapStart: number = 0,
+    p2HandicapStart: number = 0
   ) => {
     const foundP1 = players.find((p) => p.id === player1Id) || players[0];
     const foundP2 = players.find((p) => p.id === player2Id) || players.find((p) => p.id !== foundP1?.id) || players[1];
@@ -338,6 +342,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       matchType: matchType,
       targetPoints,
       twoPointGap,
+      p1HandicapStart: p1HandicapStart || undefined,
+      p2HandicapStart: p2HandicapStart || undefined,
       status: 'IN_PROGRESS',
       totalDurationSeconds: 0,
       isRated,
@@ -348,8 +354,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setActiveMatchState({
       match: newMatch,
       currentGameIndex: 1,
-      p1CurrentScore: 0,
-      p2CurrentScore: 0,
+      p1CurrentScore: p1HandicapStart,
+      p2CurrentScore: p2HandicapStart,
       currentServerId: serverId,
       currentServeSide: serveSide,
       isPaused: false,
@@ -398,6 +404,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       p2GamesWon: match.p2GamesWon,
       currentGameIndex,
       lastRallyLog: activeMatchState.lastRallyLog || null,
+      decisionsCountBefore: match.decisions.length,
+      isTimerRunningBefore: activeMatchState.isTimerRunning ?? true,
     };
 
     let newP1Score = p1CurrentScore;
@@ -484,8 +492,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         isMatchCompleted = true;
       } else {
         nextGameIndex += 1;
-        newP1Score = 0;
-        newP2Score = 0;
+        newP1Score = match.p1HandicapStart ?? 0;
+        newP2Score = match.p2HandicapStart ?? 0;
         shouldOpenGameWonModal = true;
       }
     }
@@ -617,6 +625,11 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       currentServeSide: lastState.serveSide,
       currentGameIndex: lastState.currentGameIndex,
       lastRallyLog: lastState.lastRallyLog || null,
+      // A point that finished a game/match always pauses the timer (recordPoint) — restore
+      // whatever it actually was right before that point, instead of leaving it silently
+      // paused now that the match is back to IN_PROGRESS with nothing on screen to explain
+      // why the clock isn't running.
+      isTimerRunning: lastState.isTimerRunningBefore,
       isGameWonModalOpen: false,
       isGameBreakActive: false,
       isGameBreakPaused: false,
@@ -625,6 +638,11 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         p1GamesWon: lastState.p1GamesWon,
         p2GamesWon: lastState.p2GamesWon,
         games: restoredGames,
+        // A STROKE call awards its point through this same POINT entry (see
+        // recordDecision) instead of a separate DECISION one, so undoing the point must
+        // also drop the STROKE record it carried — otherwise it lingers in the final
+        // scorecard's stroke count even though the point that came with it was undone.
+        decisions: activeMatchState.match.decisions.slice(0, lastState.decisionsCountBefore),
         // Undoing a match- or game-winning point un-completes the match — its status was
         // only ever COMPLETED because that specific point pushed it there.
         status: 'IN_PROGRESS',
@@ -694,8 +712,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!activeMatchState) return;
     setActiveMatchState({
       ...activeMatchState,
-      p1CurrentScore: 0,
-      p2CurrentScore: 0,
+      p1CurrentScore: activeMatchState.match.p1HandicapStart ?? 0,
+      p2CurrentScore: activeMatchState.match.p2HandicapStart ?? 0,
       currentServeSide: 'R',
       isHandout: false,
       isGameWonModalOpen: false,
@@ -709,8 +727,8 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setActiveMatchState({
       ...activeMatchState,
       currentGameIndex: 1,
-      p1CurrentScore: 0,
-      p2CurrentScore: 0,
+      p1CurrentScore: activeMatchState.match.p1HandicapStart ?? 0,
+      p2CurrentScore: activeMatchState.match.p2HandicapStart ?? 0,
       currentServeSide: 'R',
       timerSeconds: 0,
       isHandout: false,

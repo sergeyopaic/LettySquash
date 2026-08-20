@@ -156,8 +156,15 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const player1 = match.player1 || { id: 'p1', name: 'Player 1', avatarBgColor: '#0F172A' };
   const player2 = match.player2 || { id: 'p2', name: 'Player 2', avatarBgColor: '#0F172A' };
 
-  // STRICT CONSISTENT ORDER: Winner is ALWAYS pWinner on TOP, Loser is ALWAYS pLoser on BOTTOM
+  // STRICT CONSISTENT ORDER: Winner is ALWAYS pWinner on TOP, Loser is ALWAYS pLoser on BOTTOM.
+  // isP1Winner is only a display-ordering tie-break (player1 goes on top by default) — it
+  // does NOT mean "player1 actually won". Whether the match has a real result at all is
+  // isDecided, below; nothing should render pWinner as an actual winner unless that's true.
   const isP1Winner = match.winnerId ? match.winnerId === player1.id : (match.p1GamesWon ?? 0) >= (match.p2GamesWon ?? 0);
+  // No winnerId and level games (e.g. saved early via "Save & Exit") means no decided
+  // outcome — same rule PlayerProfileModal uses so a match doesn't show a winner in one
+  // screen and "no result" in another.
+  const isDecided = Boolean(match.winnerId) || (match.p1GamesWon ?? 0) !== (match.p2GamesWon ?? 0);
   const pWinner = isP1Winner ? player1 : player2;
   const pLoser = isP1Winner ? player2 : player1;
 
@@ -175,7 +182,10 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const noLetsCount = decisions.filter((d) => d.decision === 'NO_LET').length;
 
   const handleCopySummary = () => {
-    const summaryText = `Squash Match Scorecard\n${pWinner.name} def. ${pLoser.name} (${winnerGames}-${loserGames})\nDuration: ${durationText} | Rallies: ${totalRallies}\nDate: ${formatFullDateTime(match.date)}`;
+    const resultLine = isDecided
+      ? `${pWinner.name} def. ${pLoser.name} (${winnerGames}-${loserGames})`
+      : `${pWinner.name} vs ${pLoser.name} (${winnerGames}-${loserGames}) — no result`;
+    const summaryText = `Squash Match Scorecard\n${resultLine}\nDuration: ${durationText} | Rallies: ${totalRallies}\nDate: ${formatFullDateTime(match.date)}`;
     navigator.clipboard.writeText(summaryText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -234,6 +244,22 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               >
                 <span>{modeMeta.shortLabel}</span>
               </span>
+              {(match.p1HandicapStart || match.p2HandicapStart) ? (
+                <span
+                  className="bg-amber-400/15 text-amber-400 border border-amber-400/40 rounded-md px-1.5 py-0.5 font-extrabold uppercase tracking-wider font-mono text-[9px]"
+                  title={`${match.player1.name} started +${match.p1HandicapStart ?? 0}, ${match.player2.name} started +${match.p2HandicapStart ?? 0}`}
+                >
+                  Handicap
+                </span>
+              ) : null}
+              {!isDecided && (
+                <span
+                  className="bg-slate-700/60 text-slate-300 border border-slate-600/60 rounded-md px-1.5 py-0.5 font-extrabold uppercase tracking-wider font-mono text-[9px]"
+                  title="Saved without a winner and level on games — no decided outcome, not a loss for either player"
+                >
+                  No Result
+                </span>
+              )}
             </div>
 
             <button
@@ -279,24 +305,32 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
             >
               <div className="flex items-center space-x-2.5 min-w-0 flex-1 pr-2">
                 <div
-                  className="w-8 h-8 rounded-full text-white font-bold flex items-center justify-center text-xs shadow-xs ring-2 ring-amber-400 flex-shrink-0 group-hover:scale-105 transition-transform"
+                  className={`w-8 h-8 rounded-full text-white font-bold flex items-center justify-center text-xs shadow-xs flex-shrink-0 group-hover:scale-105 transition-transform ${
+                    isDecided ? 'ring-2 ring-amber-400' : 'ring-2 ring-slate-600'
+                  }`}
                   style={{ backgroundColor: pWinner.avatarBgColor || '#0F172A' }}
                 >
                   {pWinner.name ? pWinner.name.charAt(0) : 'P'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-black text-white text-sm leading-tight break-words flex items-center space-x-1.5 flex-wrap group-hover:text-amber-400 transition-colors">
+                  <div
+                    className={`font-black text-white text-sm leading-tight break-words flex items-center space-x-1.5 flex-wrap transition-colors ${
+                      isDecided ? 'group-hover:text-amber-400' : 'group-hover:text-slate-300'
+                    }`}
+                  >
                     <span>{pWinner.name}</span>
                     <User className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <span className="text-[9px] text-amber-400 font-bold block mt-0.5">
-                    ✓ WINNER
-                  </span>
+                  {/* Only ever labels THIS player as the winner — never rendered when the
+                      match isn't decided, so it can't read as "this one has a result and
+                      the other doesn't" (that status is match-level, shown once in the
+                      header tags above, not attached to either player's row). */}
+                  {isDecided && <span className="text-[9px] font-bold block mt-0.5 text-amber-400">✓ WINNER</span>}
                 </div>
               </div>
 
               {/* Winner Score */}
-              <span className="text-3xl font-sans font-black text-amber-400 flex-shrink-0 pl-2">
+              <span className={`text-3xl font-sans font-black flex-shrink-0 pl-2 ${isDecided ? 'text-amber-400' : 'text-slate-300'}`}>
                 {winnerGames}
               </span>
             </div>

@@ -2,14 +2,12 @@ import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
 import { Clock, Trash2, Trophy, Calendar, Check } from 'lucide-react';
 import { formatMatchDateGroup, formatMatchTime } from '../utils/dateUtils';
-import type { Folder, SquashMatch } from '../types/squash';
-import { getMatchesForFolder } from '../utils/folderUtils';
+import type { SquashMatch } from '../types/squash';
 import { sortMatchesByDateDesc } from '../utils/matchUtils';
 import { MATCH_MODE_META, getMatchMode, type MatchModeKey } from '../utils/matchModeUtils';
 
 interface MatchHistoryViewProps {
   selectMatchDetail: (matchId: string) => void;
-  activeFolder?: Folder;
   openCompetitionDetail?: (competitionId: string) => void;
 }
 
@@ -25,15 +23,17 @@ const FILTER_CHIPS: { id: 'ALL' | MatchModeKey; label: string }[] = [
 
 export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
   selectMatchDetail,
-  activeFolder,
   openCompetitionDetail,
 }) => {
   const { matches, competitions, deleteMatch } = useSquash();
   const [filterType, setFilterType] = useState<string>('ALL');
 
-  const folderMatches = activeFolder ? getMatchesForFolder(matches, activeFolder.id) : matches;
-
-  const filteredMatches = sortMatchesByDateDesc(folderMatches).filter(
+  // History is a complete, trustworthy log of every match ever refereed — not scoped to
+  // whichever folder happens to be "active" (itself just an arbitrary default, not
+  // something the user consciously chose). A match involving a player who was never
+  // filed into a folder would otherwise vanish here with zero indication why. Folders
+  // stay useful for browsing/organizing Players; History always shows everything.
+  const filteredMatches = sortMatchesByDateDesc(matches).filter(
     (m) => filterType === 'ALL' || getMatchMode(m, competitions).meta.key === filterType
   );
 
@@ -54,7 +54,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
     <div className="pb-24 pt-2 px-4 space-y-4">
       <div>
         <h1 className="text-xl font-black text-slate-900 tracking-tight">History</h1>
-        <p className="text-xs text-slate-500">{folderMatches.length} recorded matches</p>
+        <p className="text-xs text-slate-500">{matches.length} recorded matches</p>
       </div>
 
       {/* Filter Chips */}
