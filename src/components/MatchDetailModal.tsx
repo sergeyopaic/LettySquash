@@ -234,7 +234,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-1.5">
               <span className="font-extrabold text-amber-400 uppercase tracking-wider font-mono text-[10px]">
-                {match.matchFormat === 'BEST_OF_5' ? 'Best of 5 (PARS-11)' : match.matchFormat === 'BEST_OF_3' ? 'Best of 3 (PARS-11)' : 'Single Game'}
+                {match.matchFormat === 'BEST_OF_5'
+                  ? `Best of 5 (PARS-${match.targetPoints})`
+                  : match.matchFormat === 'BEST_OF_3'
+                  ? `Best of 3 (PARS-${match.targetPoints})`
+                  : `Single Game (PARS-${match.targetPoints})`}
               </span>
               {/* One of the 7 match modes (see utils/matchModeUtils.ts) — always shown here,
                   styled consistently against the navy header regardless of which mode. */}

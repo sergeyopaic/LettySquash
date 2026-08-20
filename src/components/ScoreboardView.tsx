@@ -349,7 +349,7 @@ export const ScoreboardView: React.FC<ScoreboardViewProps> = ({ onExitToHome, on
       {/* Games Won Score Bar */}
       <div className="flex items-center justify-between px-2 text-[11px] font-bold text-slate-500">
         <span>Games Won: {match.p1GamesWon}</span>
-        <span className="text-amber-600 font-extrabold">PARS 11</span>
+        <span className="text-amber-600 font-extrabold">PARS {match.targetPoints}</span>
         <span>Games Won: {match.p2GamesWon}</span>
       </div>
 
