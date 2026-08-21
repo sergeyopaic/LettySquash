@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
-import { Clock, Trash2, Trophy, Calendar, Check } from 'lucide-react';
+import { Clock, Trash2, Trophy, Calendar, Check, ImageDown, Loader2 } from 'lucide-react';
 import { formatMatchDateGroup, formatMatchTime } from '../utils/dateUtils';
 import type { SquashMatch } from '../types/squash';
 import { sortMatchesByDateDesc } from '../utils/matchUtils';
 import { MATCH_MODE_META, getMatchMode, type MatchModeKey } from '../utils/matchModeUtils';
+import { exportMatchAsImage } from '../utils/matchExportUtils';
 
 interface MatchHistoryViewProps {
   selectMatchDetail: (matchId: string) => void;
@@ -27,6 +28,20 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
 }) => {
   const { matches, competitions, deleteMatch } = useSquash();
   const [filterType, setFilterType] = useState<string>('ALL');
+  const [exportingMatchId, setExportingMatchId] = useState<string | null>(null);
+
+  const handleExportPhoto = async (match: SquashMatch) => {
+    if (exportingMatchId) return;
+    setExportingMatchId(match.id);
+    try {
+      await exportMatchAsImage(match, competitions);
+    } catch (err) {
+      console.error('Failed to export match photo', err);
+      alert('Could not generate the match photo. Please try again.');
+    } finally {
+      setExportingMatchId(null);
+    }
+  };
 
   // History is a complete, trustworthy log of every match ever refereed — not scoped to
   // whichever folder happens to be "active" (itself just an arbitrary default, not
@@ -132,6 +147,21 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
                               <Clock className="w-3 h-3 text-slate-400" />
                               <span>{formatDuration(match.totalDurationSeconds || 0)}</span>
                             </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleExportPhoto(match);
+                              }}
+                              disabled={exportingMatchId === match.id}
+                              className="text-slate-300 hover:text-amber-600 p-1 rounded transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+                              title="Export match photo"
+                            >
+                              {exportingMatchId === match.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <ImageDown className="w-3.5 h-3.5" />
+                              )}
+                            </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
