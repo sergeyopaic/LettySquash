@@ -41,6 +41,7 @@ const MainContainer: React.FC = () => {
   const [isCompetitionsListOpen, setIsCompetitionsListOpen] = useState<boolean>(false);
   const [openCompetitionId, setOpenCompetitionId] = useState<string | null>(null);
   const [isAddPlayerOpen, setIsAddPlayerOpen] = useState<boolean>(false);
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isAdvancedStatsOpen, setIsAdvancedStatsOpen] = useState<boolean>(false);
   const [isHowToPlayOpen, setIsHowToPlayOpen] = useState<boolean>(false);
@@ -143,6 +144,7 @@ const MainContainer: React.FC = () => {
             <PlayersView
               activeFolder={activeFolder}
               openAddPlayerModal={() => setIsAddPlayerOpen(true)}
+              openEditPlayerModal={(p) => setEditingPlayer(p)}
               onSelectPlayerProfile={(p) => setSelectedPlayerProfile(p)}
             />
           )}
@@ -228,9 +230,13 @@ const MainContainer: React.FC = () => {
         />
 
         <AddPlayerModal
-          isOpen={isAddPlayerOpen}
-          onClose={() => setIsAddPlayerOpen(false)}
+          isOpen={isAddPlayerOpen || Boolean(editingPlayer)}
+          onClose={() => {
+            setIsAddPlayerOpen(false);
+            setEditingPlayer(null);
+          }}
           activeFolder={activeFolder}
+          editingPlayer={editingPlayer}
         />
 
         <MatchDetailModal
@@ -244,6 +250,10 @@ const MainContainer: React.FC = () => {
           player={selectedPlayerProfile}
           onClose={() => setSelectedPlayerProfile(null)}
           onSelectMatchDetail={(id) => setSelectedMatchId(id)}
+          onEditPlayer={(p) => {
+            setSelectedPlayerProfile(null);
+            setEditingPlayer(p);
+          }}
         />
 
         <SettingsModal

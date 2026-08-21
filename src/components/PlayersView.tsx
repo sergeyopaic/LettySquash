@@ -1,17 +1,23 @@
 import React from 'react';
 import { useSquash } from '../context/SquashContext';
 import type { Player, Folder } from '../types/squash';
-import { Plus, Trash2, ChevronRight, MapPin } from 'lucide-react';
+import { Plus, Trash2, Pencil, ChevronRight, MapPin } from 'lucide-react';
 import { getPlayersForFolder, getMatchesForFolder, getPlayerFolderId } from '../utils/folderUtils';
 import { computeClubRatings } from '../utils/ratingUtils';
 
 interface PlayersViewProps {
   openAddPlayerModal: () => void;
+  openEditPlayerModal: (player: Player) => void;
   onSelectPlayerProfile?: (player: Player) => void;
   activeFolder?: Folder;
 }
 
-export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, onSelectPlayerProfile, activeFolder }) => {
+export const PlayersView: React.FC<PlayersViewProps> = ({
+  openAddPlayerModal,
+  openEditPlayerModal,
+  onSelectPlayerProfile,
+  activeFolder,
+}) => {
   const { players, matches, deletePlayer, updatePlayerFolder, folders } = useSquash();
 
   const folderPlayers = activeFolder ? getPlayersForFolder(players, activeFolder.id) : players;
@@ -91,6 +97,16 @@ export const PlayersView: React.FC<PlayersViewProps> = ({ openAddPlayerModal, on
                 </div>
 
                 <div className="flex items-center space-x-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditPlayerModal(player);
+                    }}
+                    className="text-slate-300 hover:text-blue-700 p-1.5 rounded-lg transition-colors"
+                    title="Edit profile"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

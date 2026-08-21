@@ -1,16 +1,21 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSquash } from '../context/SquashContext';
-import type { Handedness, Folder } from '../types/squash';
-import { X, UserPlus } from 'lucide-react';
+import type { Handedness, Folder, Player } from '../types/squash';
+import { X, UserPlus, Pencil } from 'lucide-react';
 
 interface AddPlayerModalProps {
   isOpen: boolean;
   onClose: () => void;
   activeFolder?: Folder;
+  // When set, the modal edits this existing profile instead of creating a new one — same
+  // form, pre-filled, and the save also backfills the name/avatar into every match this
+  // player already played (see updatePlayer in SquashContext).
+  editingPlayer?: Player | null;
 }
 
-export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose, activeFolder }) => {
-  const { addPlayer, folders } = useSquash();
+export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose, activeFolder, editingPlayer }) => {
+  const { addPlayer, updatePlayer, folders } = useSquash();
+  const isEditMode = Boolean(editingPlayer);
 
   const [name, setName] = useState('');
   const [nickname, setNickname] = useState('');
@@ -18,6 +23,28 @@ export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose,
   const [handedness, setHandedness] = useState<Handedness>('Right');
   const [folderId, setFolderId] = useState<string>(activeFolder?.id ?? '');
   const [selectedColor, setSelectedColor] = useState('#3B82F6');
+
+  // Re-seed the form fields every time a different profile is opened for editing (or the
+  // modal is reopened in "add" mode) — the form's own state otherwise carries over stale
+  // values from whatever was open before.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (editingPlayer) {
+      setName(editingPlayer.name);
+      setNickname(editingPlayer.nickname ?? '');
+      setNotes(editingPlayer.notes ?? '');
+      setHandedness(editingPlayer.handedness ?? 'Right');
+      setFolderId(editingPlayer.folderId ?? '');
+      setSelectedColor(editingPlayer.avatarBgColor || '#3B82F6');
+    } else {
+      setName('');
+      setNickname('');
+      setNotes('');
+      setHandedness('Right');
+      setFolderId(activeFolder?.id ?? '');
+      setSelectedColor('#3B82F6');
+    }
+  }, [isOpen, editingPlayer, activeFolder]);
 
   if (!isOpen) return null;
 
@@ -29,16 +56,18 @@ export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose,
       alert('Please enter player name!');
       return;
     }
-    addPlayer(name.trim(), {
+    const options = {
       nickname: nickname.trim() || undefined,
       notes: notes.trim() || undefined,
       handedness,
       avatarBgColor: selectedColor,
       folderId: folderId || undefined,
-    });
-    setName('');
-    setNickname('');
-    setNotes('');
+    };
+    if (editingPlayer) {
+      updatePlayer(editingPlayer.id, { name: name.trim(), ...options });
+    } else {
+      addPlayer(name.trim(), options);
+    }
     onClose();
   };
 
@@ -48,9 +77,11 @@ export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose,
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-full bg-amber-500 text-blue-950 flex items-center justify-center font-bold">
-              <UserPlus className="w-4 h-4" />
+              {isEditMode ? <Pencil className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
             </div>
-            <h2 className="text-lg font-black text-slate-900">New Player Profile</h2>
+            <h2 className="text-lg font-black text-slate-900">
+              {isEditMode ? 'Edit Player Profile' : 'New Player Profile'}
+            </h2>
           </div>
           <button
             onClick={onClose}
@@ -165,7 +196,7 @@ export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose,
             type="submit"
             className="w-full py-3.5 bg-blue-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl shadow-md transition-transform active:scale-98"
           >
-            Save Player Profile
+            {isEditMode ? 'Save Changes' : 'Save Player Profile'}
           </button>
         </form>
       </div>

@@ -41,6 +41,7 @@ interface SquashContextType {
   settings: AppSettings;
   updateSettings: (newSettings: Partial<AppSettings>) => void;
   addPlayer: (name: string, options?: AddPlayerInput) => Player;
+  updatePlayer: (playerId: string, updates: AddPlayerInput & { name: string; avatarBgColor: string }) => void;
   deletePlayer: (id: string) => void;
   updatePlayerFolder: (playerId: string, folderId: string) => void;
   addFolder: (name: string) => Folder;
@@ -261,6 +262,34 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
     setPlayers((prev) => [newPlayer, ...prev]);
     return newPlayer;
+  };
+
+  // Edits the roster profile AND backfills every already-played match's player1/player2
+  // snapshot (SquashMatch stores a full Player copy at match-creation time, not a live
+  // reference — see startMatch — so without this, a rename would only show up going
+  // forward and every past match would keep displaying the old name/avatar forever).
+  const updatePlayer = (playerId: string, updates: AddPlayerInput & { name: string; avatarBgColor: string }) => {
+    const patch = {
+      name: updates.name,
+      nickname: updates.nickname,
+      handedness: updates.handedness,
+      notes: updates.notes,
+      avatarBgColor: updates.avatarBgColor,
+      folderId: updates.folderId,
+    };
+    setPlayers((prev) => prev.map((p) => (p.id === playerId ? { ...p, ...patch } : p)));
+    setMatches((prev) =>
+      prev.map((m) => {
+        const isP1 = m.player1 && m.player1.id === playerId;
+        const isP2 = m.player2 && m.player2.id === playerId;
+        if (!isP1 && !isP2) return m;
+        return {
+          ...m,
+          player1: isP1 ? { ...m.player1, ...patch } : m.player1,
+          player2: isP2 ? { ...m.player2, ...patch } : m.player2,
+        };
+      })
+    );
   };
 
   const deletePlayer = (id: string) => {
@@ -839,6 +868,7 @@ export const SquashProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         settings,
         updateSettings,
         addPlayer,
+        updatePlayer,
         deletePlayer,
         updatePlayerFolder,
         addFolder,

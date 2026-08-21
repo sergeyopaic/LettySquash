@@ -4,18 +4,20 @@ import { useSquash } from '../context/SquashContext';
 import { getPlayerFolderId, getPlayersForFolder, getMatchesForFolder } from '../utils/folderUtils';
 import { sortMatchesByDateDesc } from '../utils/matchUtils';
 import { computeClubRatings } from '../utils/ratingUtils';
-import { X, Trophy, Flame, Activity, Clock, MapPin, TrendingUp } from 'lucide-react';
+import { X, Trophy, Flame, Activity, Clock, MapPin, TrendingUp, Pencil } from 'lucide-react';
 
 interface PlayerProfileModalProps {
   player: Player | null;
   onClose: () => void;
   onSelectMatchDetail?: (matchId: string) => void;
+  onEditPlayer?: (player: Player) => void;
 }
 
 export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   player,
   onClose,
   onSelectMatchDetail,
+  onEditPlayer,
 }) => {
   const { players, matches, folders } = useSquash();
 
@@ -110,6 +112,16 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
               </p>
             )}
           </div>
+
+          {onEditPlayer && (
+            <button
+              onClick={() => onEditPlayer(player)}
+              className="flex-shrink-0 w-9 h-9 rounded-full text-slate-400 hover:text-blue-700 hover:bg-white flex items-center justify-center transition-colors cursor-pointer"
+              title="Edit profile"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Player Performance Stats Grid */}

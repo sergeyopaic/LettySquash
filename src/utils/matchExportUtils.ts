@@ -177,41 +177,34 @@ const drawStatBox = (
   }
 };
 
+export type MatchExportLayout = 'horizontal' | 'vertical';
+
 export interface MatchExportOptions {
   match: SquashMatch;
   competitions: Competition[];
+  // 'horizontal' (default) puts both names on one row, left/right of a fixed half-width
+  // each — a very long name has to shrink to fit. 'vertical' stacks name 1 above name 2,
+  // each getting the panel's full width, so long names stay legible without shrinking.
+  layout?: MatchExportLayout;
 }
 
-export const renderMatchExportCanvas = async ({
-  match,
-  competitions,
-}: MatchExportOptions): Promise<HTMLCanvasElement> => {
-  const template = await loadTemplate();
-
-  const canvas = document.createElement('canvas');
-  canvas.width = CANVAS_W;
-  canvas.height = CANVAS_H;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas 2D context unavailable');
-
-  ctx.drawImage(template, 0, 0, CANVAS_W, CANVAS_H);
-
-  const p1 = match.player1 || { id: 'p1', name: 'Player 1' };
-  const p2 = match.player2 || { id: 'p2', name: 'Player 2' };
-  const p1Games = match.p1GamesWon ?? 0;
-  const p2Games = match.p2GamesWon ?? 0;
-  const winnerId = match.winnerId ?? (p1Games > p2Games ? p1.id : p2Games > p1Games ? p2.id : undefined);
-  const isP1Winner = winnerId === p1.id;
-  const isP2Winner = winnerId === p2.id;
-
-  const { meta } = getMatchMode(match, competitions);
+// Names side by side on one row, score below. Each name only gets half the panel width,
+// so a long name (see fitFontSize) shrinks to fit rather than colliding with its opponent.
+const drawCreamBoxHorizontal = (
+  ctx: CanvasRenderingContext2D,
+  match: SquashMatch,
+  meta: ReturnType<typeof getMatchMode>['meta'],
+  p1: { name: string },
+  p2: { name: string },
+  isP1Winner: boolean,
+  isP2Winner: boolean,
+  p1Games: number,
+  p2Games: number
+) => {
   const centerX = CREAM_BOX.x + CREAM_BOX.w / 2;
 
-  // --- Eyebrow: match type is context, drawn quiet and small ---
   drawEyebrow(ctx, meta.label.toUpperCase(), centerX, CREAM_BOX.y + 61);
 
-  // --- Player names: identical weight and color on both sides — this is a left/right
-  // slot in the score, not a ranking. The only "who won" signal is the small dot below. ---
   const nameY = CREAM_BOX.y + 113;
   const nameMaxWidth = CREAM_BOX.w / 2 - 44;
   ctx.textBaseline = 'alphabetic';
@@ -234,8 +227,6 @@ export const renderMatchExportCanvas = async ({
   if (isP1Winner) drawWinnerDot(ctx, CREAM_BOX.x + 32 + p1Width + 12, dotY);
   if (isP2Winner) drawWinnerDot(ctx, CREAM_BOX.x + CREAM_BOX.w - 32 - p2Width - 12, dotY);
 
-  // --- Score: the hero element — largest thing on the panel, flat fill with only a
-  // whisper of a shadow so it still reads as part of the flat cream card, not floating. ---
   const scoreY = CREAM_BOX.y + 236;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
@@ -251,13 +242,11 @@ export const renderMatchExportCanvas = async ({
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
 
-  // --- Per-game breakdown as small chips, not a plain comma-list ---
   const games = match.games || [];
   if (games.length > 0) {
     drawGameChips(ctx, games, centerX, CREAM_BOX.y + 288, CREAM_BOX.w - 64);
   }
 
-  // --- Footer: date / format, the smallest and quietest text on the panel ---
   const formatLabel =
     match.matchFormat === 'BEST_OF_5'
       ? `Best of 5 · PARS-${match.targetPoints}`
@@ -268,6 +257,117 @@ export const renderMatchExportCanvas = async ({
   ctx.font = `600 15px ${FONT_STACK}`;
   ctx.fillStyle = SLATE_500;
   ctx.fillText(`${formatFullDateTime(match.date)}   ·   ${formatLabel}`, centerX, CREAM_BOX.y + 341);
+};
+
+// Name 1 stacked above name 2, both centered and each using the panel's full width —
+// solves the long-name problem outright instead of shrinking text to fight for space.
+const drawCreamBoxVertical = (
+  ctx: CanvasRenderingContext2D,
+  match: SquashMatch,
+  meta: ReturnType<typeof getMatchMode>['meta'],
+  p1: { name: string },
+  p2: { name: string },
+  isP1Winner: boolean,
+  isP2Winner: boolean,
+  p1Games: number,
+  p2Games: number
+) => {
+  const centerX = CREAM_BOX.x + CREAM_BOX.w / 2;
+
+  drawEyebrow(ctx, meta.label.toUpperCase(), centerX, CREAM_BOX.y + 37);
+
+  const nameMaxWidth = CREAM_BOX.w - 90;
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'center';
+
+  const p1RawSize = fitFontSize(ctx, p1.name, nameMaxWidth, 32, 20, '800');
+  const p2RawSize = fitFontSize(ctx, p2.name, nameMaxWidth, 32, 20, '800');
+  // Both names share one size — even when one is much longer than the other, this keeps
+  // the pair reading as a matched set rather than two mismatched headlines.
+  const nameSize = Math.min(p1RawSize, p2RawSize);
+  ctx.font = `800 ${nameSize}px ${FONT_STACK}`;
+  ctx.fillStyle = NAVY;
+
+  // Name 1, then the score, then name 2 — the score sits between the two names instead
+  // of the names sitting flush on top of each other, which read as cramped.
+  const name1Y = CREAM_BOX.y + 85;
+  ctx.fillText(p1.name, centerX, name1Y);
+  const p1Width = ctx.measureText(p1.name).width;
+
+  const dotOffsetY = nameSize * 0.34;
+  if (isP1Winner) drawWinnerDot(ctx, centerX + p1Width / 2 + 12, name1Y - dotOffsetY);
+
+  const scoreY = CREAM_BOX.y + 196;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  const scoreSize = fitFontSize(ctx, `${p1Games} : ${p2Games}`, CREAM_BOX.w - 80, 108, 60, '900');
+  ctx.font = `900 ${scoreSize}px ${FONT_STACK}`;
+
+  ctx.shadowColor = 'rgba(15, 23, 42, 0.15)';
+  ctx.shadowBlur = 2;
+  ctx.shadowOffsetY = 1;
+  ctx.fillStyle = NAVY;
+  ctx.fillText(`${p1Games} : ${p2Games}`, centerX, scoreY);
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+
+  ctx.font = `800 ${nameSize}px ${FONT_STACK}`;
+  const name2Y = CREAM_BOX.y + 250;
+  ctx.fillStyle = NAVY;
+  ctx.fillText(p2.name, centerX, name2Y);
+  const p2Width = ctx.measureText(p2.name).width;
+  if (isP2Winner) drawWinnerDot(ctx, centerX + p2Width / 2 + 12, name2Y - dotOffsetY);
+
+  const games = match.games || [];
+  if (games.length > 0) {
+    drawGameChips(ctx, games, centerX, CREAM_BOX.y + 302, CREAM_BOX.w - 64);
+  }
+
+  const formatLabel =
+    match.matchFormat === 'BEST_OF_5'
+      ? `Best of 5 · PARS-${match.targetPoints}`
+      : match.matchFormat === 'BEST_OF_3'
+      ? `Best of 3 · PARS-${match.targetPoints}`
+      : `Single Game · PARS-${match.targetPoints}`;
+  ctx.textAlign = 'center';
+  ctx.font = `600 15px ${FONT_STACK}`;
+  ctx.fillStyle = SLATE_500;
+  ctx.fillText(`${formatFullDateTime(match.date)}   ·   ${formatLabel}`, centerX, CREAM_BOX.y + 359);
+};
+
+export const renderMatchExportCanvas = async ({
+  match,
+  competitions,
+  layout = 'horizontal',
+}: MatchExportOptions): Promise<HTMLCanvasElement> => {
+  const template = await loadTemplate();
+
+  const canvas = document.createElement('canvas');
+  canvas.width = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D context unavailable');
+
+  ctx.drawImage(template, 0, 0, CANVAS_W, CANVAS_H);
+
+  const p1 = match.player1 || { id: 'p1', name: 'Player 1' };
+  const p2 = match.player2 || { id: 'p2', name: 'Player 2' };
+  const p1Games = match.p1GamesWon ?? 0;
+  const p2Games = match.p2GamesWon ?? 0;
+  const winnerId = match.winnerId ?? (p1Games > p2Games ? p1.id : p2Games > p1Games ? p2.id : undefined);
+  const isP1Winner = winnerId === p1.id;
+  const isP2Winner = winnerId === p2.id;
+
+  const { meta } = getMatchMode(match, competitions);
+
+  if (layout === 'vertical') {
+    drawCreamBoxVertical(ctx, match, meta, p1, p2, isP1Winner, isP2Winner, p1Games, p2Games);
+  } else {
+    drawCreamBoxHorizontal(ctx, match, meta, p1, p2, isP1Winner, isP2Winner, p1Games, p2Games);
+  }
+
+  const games = match.games || [];
 
   // --- Stat boxes ---
   const totalRallies = games.reduce((acc, g) => acc + (g.p1Score ?? 0) + (g.p2Score ?? 0), 0);
