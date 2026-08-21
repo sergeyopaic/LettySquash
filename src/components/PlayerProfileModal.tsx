@@ -1,10 +1,13 @@
 import React, { useEffect } from 'react';
 import type { Player } from '../types/squash';
 import { useSquash } from '../context/SquashContext';
-import { getPlayerFolderId, getPlayersForFolder, getMatchesForFolder } from '../utils/folderUtils';
+// Folder system disabled for now — roster is unified. See the matching note in
+// DashboardView.tsx to re-enable (folder-scoped rating pool and the folder badge below
+// both come back together).
+// import { getPlayerFolderId, getPlayersForFolder, getMatchesForFolder } from '../utils/folderUtils';
 import { sortMatchesByDateDesc } from '../utils/matchUtils';
 import { computeClubRatings } from '../utils/ratingUtils';
-import { X, Trophy, Flame, Activity, Clock, MapPin, TrendingUp, Pencil } from 'lucide-react';
+import { X, Trophy, Flame, Activity, Clock, TrendingUp, Pencil } from 'lucide-react';
 
 interface PlayerProfileModalProps {
   player: Player | null;
@@ -19,7 +22,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   onSelectMatchDetail,
   onEditPlayer,
 }) => {
-  const { players, matches, folders } = useSquash();
+  const { players, matches } = useSquash();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -40,15 +43,9 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
       ? Math.round((player.wins / player.totalMatches) * 100)
       : 0;
 
-  const playerFolderId = getPlayerFolderId(player);
-  const folder = folders.find((f) => f.id === playerFolderId);
-
-  // Rating is relative to the rest of the folder (if any), so it's computed from the
-  // folder's full roster/match history, not just this one player. Unfiled players are
-  // rated against the whole player pool instead.
-  const ratingPoolPlayers = playerFolderId ? getPlayersForFolder(players, playerFolderId) : players;
-  const ratingPoolMatches = playerFolderId ? getMatchesForFolder(matches, playerFolderId) : matches;
-  const ratings = computeClubRatings(ratingPoolPlayers, ratingPoolMatches);
+  // Roster is unified for now — rating is always computed against the whole player pool
+  // (see the disabled folder-scoped version above).
+  const ratings = computeClubRatings(players, matches);
   const rating = ratings[player.id];
 
   // Filter completed matches involving this player, most recent first
@@ -105,12 +102,15 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                 {player.handedness}-handed Player
               </p>
             )}
+            {/* Folder badge — disabled along with the rest of the folder system (see the
+                note near the imports above).
             {folder && (
               <p className="text-[11px] font-semibold text-slate-400 flex items-center space-x-1 pt-0.5">
                 <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
                 <span className="truncate">{folder.name}</span>
               </p>
             )}
+            */}
           </div>
 
           {onEditPlayer && (

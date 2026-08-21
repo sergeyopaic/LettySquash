@@ -1,27 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { useSquash } from '../context/SquashContext';
-import type { Handedness, Folder, Player } from '../types/squash';
+import type { Handedness, Player } from '../types/squash';
 import { X, UserPlus, Pencil } from 'lucide-react';
 
 interface AddPlayerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  activeFolder?: Folder;
+  // Folder system disabled for now — roster is unified. See the matching note in
+  // DashboardView.tsx to re-enable (this prop, the folderId form state below, and the
+  // "Folder (optional)" field further down all come back together).
+  // activeFolder?: Folder;
   // When set, the modal edits this existing profile instead of creating a new one — same
   // form, pre-filled, and the save also backfills the name/avatar into every match this
   // player already played (see updatePlayer in SquashContext).
   editingPlayer?: Player | null;
 }
 
-export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose, activeFolder, editingPlayer }) => {
-  const { addPlayer, updatePlayer, folders } = useSquash();
+export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose, editingPlayer }) => {
+  const { addPlayer, updatePlayer } = useSquash();
   const isEditMode = Boolean(editingPlayer);
 
   const [name, setName] = useState('');
   const [nickname, setNickname] = useState('');
   const [notes, setNotes] = useState('');
   const [handedness, setHandedness] = useState<Handedness>('Right');
-  const [folderId, setFolderId] = useState<string>(activeFolder?.id ?? '');
+  // const [folderId, setFolderId] = useState<string>(activeFolder?.id ?? '');
   const [selectedColor, setSelectedColor] = useState('#3B82F6');
 
   // Re-seed the form fields every time a different profile is opened for editing (or the
@@ -34,17 +37,17 @@ export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose,
       setNickname(editingPlayer.nickname ?? '');
       setNotes(editingPlayer.notes ?? '');
       setHandedness(editingPlayer.handedness ?? 'Right');
-      setFolderId(editingPlayer.folderId ?? '');
+      // setFolderId(editingPlayer.folderId ?? '');
       setSelectedColor(editingPlayer.avatarBgColor || '#3B82F6');
     } else {
       setName('');
       setNickname('');
       setNotes('');
       setHandedness('Right');
-      setFolderId(activeFolder?.id ?? '');
+      // setFolderId(activeFolder?.id ?? '');
       setSelectedColor('#3B82F6');
     }
-  }, [isOpen, editingPlayer, activeFolder]);
+  }, [isOpen, editingPlayer]);
 
   if (!isOpen) return null;
 
@@ -61,7 +64,10 @@ export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose,
       notes: notes.trim() || undefined,
       handedness,
       avatarBgColor: selectedColor,
-      folderId: folderId || undefined,
+      // Folder system disabled for now — preserve whatever folderId an existing player
+      // already had (rather than silently clearing it) instead of reading it from a
+      // form field that no longer exists. New players simply get none.
+      folderId: editingPlayer?.folderId,
     };
     if (editingPlayer) {
       updatePlayer(editingPlayer.id, { name: name.trim(), ...options });
@@ -145,7 +151,8 @@ export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose,
             </div>
           </div>
 
-          {/* Folder */}
+          {/* Folder — disabled along with the rest of the folder system (see the note
+              near the activeFolder prop above).
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-600 block">Folder (optional)</label>
             <select
@@ -161,6 +168,7 @@ export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({ isOpen, onClose,
               ))}
             </select>
           </div>
+          */}
 
           {/* Notes */}
           <div className="space-y-1">

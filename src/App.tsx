@@ -21,10 +21,13 @@ import type { Player } from './types/squash';
 import { Smartphone, Monitor, Wifi, Signal, BatteryMedium, Activity } from 'lucide-react';
 
 const MainContainer: React.FC = () => {
-  const { activeMatchState, getMatchById, folders, cancelActiveMatch } = useSquash();
+  const { activeMatchState, getMatchById, cancelActiveMatch } = useSquash();
 
-  const [activeFolderId, setActiveFolderId] = useState<string>(() => folders[0]?.id ?? '');
-  const activeFolder = folders.find((f) => f.id === activeFolderId) ?? folders[0];
+  // Folder system disabled for now — roster is unified across the app. See the matching
+  // note in DashboardView.tsx to re-enable (this state, and every activeFolder prop pass
+  // below, all come back together).
+  // const [activeFolderId, setActiveFolderId] = useState<string>(() => folders[0]?.id ?? '');
+  // const activeFolder = folders.find((f) => f.id === activeFolderId) ?? folders[0];
   const [activeTab, setActiveTab] = useState<TabType>('home');
   // A match survives an app restart via localStorage (see SquashContext — every point,
   // decision, and even the timer tick persists it immediately). This only needs to ask
@@ -114,8 +117,8 @@ const MainContainer: React.FC = () => {
         <div className="flex-1 overflow-y-auto app-bg-gradient relative">
           {activeTab === 'home' && (
             <DashboardView
-              activeFolder={activeFolder}
-              onSelectFolder={(f) => setActiveFolderId(f.id)}
+              // activeFolder={activeFolder}
+              // onSelectFolder={(f) => setActiveFolderId(f.id)}
               openNewCompetitionModal={() => setIsNewCompetitionOpen(true)}
               openAddPlayerModal={() => setIsAddPlayerOpen(true)}
               openSettingsModal={() => setIsSettingsOpen(true)}
@@ -142,7 +145,7 @@ const MainContainer: React.FC = () => {
 
           {activeTab === 'players' && (
             <PlayersView
-              activeFolder={activeFolder}
+              // activeFolder={activeFolder}
               openAddPlayerModal={() => setIsAddPlayerOpen(true)}
               openEditPlayerModal={(p) => setEditingPlayer(p)}
               onSelectPlayerProfile={(p) => setSelectedPlayerProfile(p)}
@@ -235,7 +238,7 @@ const MainContainer: React.FC = () => {
             setIsAddPlayerOpen(false);
             setEditingPlayer(null);
           }}
-          activeFolder={activeFolder}
+          // activeFolder={activeFolder}
           editingPlayer={editingPlayer}
         />
 
@@ -266,7 +269,7 @@ const MainContainer: React.FC = () => {
         <AdvancedStatsModal
           isOpen={isAdvancedStatsOpen}
           onClose={() => setIsAdvancedStatsOpen(false)}
-          activeFolder={activeFolder}
+          // activeFolder={activeFolder}
         />
 
         <HowToPlayModal

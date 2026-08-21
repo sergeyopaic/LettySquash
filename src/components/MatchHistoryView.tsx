@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useSquash } from '../context/SquashContext';
-import { Clock, Trash2, Trophy, Calendar, Check, ImageDown, Loader2 } from 'lucide-react';
+import { Clock, Trash2, Trophy, Calendar, Check, ImageDown } from 'lucide-react';
 import { formatMatchDateGroup, formatMatchTime } from '../utils/dateUtils';
 import type { SquashMatch } from '../types/squash';
 import { sortMatchesByDateDesc } from '../utils/matchUtils';
 import { MATCH_MODE_META, getMatchMode, type MatchModeKey } from '../utils/matchModeUtils';
-import { exportMatchAsImage } from '../utils/matchExportUtils';
+import { ExportPhotoPickerModal } from './ExportPhotoPickerModal';
 
 interface MatchHistoryViewProps {
   selectMatchDetail: (matchId: string) => void;
@@ -28,20 +28,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
 }) => {
   const { matches, competitions, deleteMatch } = useSquash();
   const [filterType, setFilterType] = useState<string>('ALL');
-  const [exportingMatchId, setExportingMatchId] = useState<string | null>(null);
-
-  const handleExportPhoto = async (match: SquashMatch) => {
-    if (exportingMatchId) return;
-    setExportingMatchId(match.id);
-    try {
-      await exportMatchAsImage(match, competitions);
-    } catch (err) {
-      console.error('Failed to export match photo', err);
-      alert('Could not generate the match photo. Please try again.');
-    } finally {
-      setExportingMatchId(null);
-    }
-  };
+  const [exportPreviewMatch, setExportPreviewMatch] = useState<SquashMatch | null>(null);
 
   // History is a complete, trustworthy log of every match ever refereed — not scoped to
   // whichever folder happens to be "active" (itself just an arbitrary default, not
@@ -66,6 +53,7 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
   }, {});
 
   return (
+    <>
     <div className="pb-24 pt-2 px-4 space-y-4">
       <div>
         <h1 className="text-xl font-black text-slate-900 tracking-tight">History</h1>
@@ -150,17 +138,12 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleExportPhoto(match);
+                                setExportPreviewMatch(match);
                               }}
-                              disabled={exportingMatchId === match.id}
-                              className="text-slate-300 hover:text-amber-600 p-1 rounded transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+                              className="text-slate-300 hover:text-amber-600 p-1 rounded transition-colors cursor-pointer"
                               title="Export match photo"
                             >
-                              {exportingMatchId === match.id ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <ImageDown className="w-3.5 h-3.5" />
-                              )}
+                              <ImageDown className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={(e) => {
@@ -245,5 +228,12 @@ export const MatchHistoryView: React.FC<MatchHistoryViewProps> = ({
         </div>
       )}
     </div>
+
+    <ExportPhotoPickerModal
+      match={exportPreviewMatch}
+      competitions={competitions}
+      onClose={() => setExportPreviewMatch(null)}
+    />
+    </>
   );
 };

@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import type { SquashMatch, GameResult, Player } from '../types/squash';
 import { useSquash } from '../context/SquashContext';
 import { getMatchMode } from '../utils/matchModeUtils';
-import { X, ShieldAlert, Calendar, Share2, Printer, Check, User, AlertTriangle, Trophy } from 'lucide-react';
+import { X, ShieldAlert, Calendar, Share2, Printer, Check, User, AlertTriangle, Trophy, ImageDown } from 'lucide-react';
 import { formatFullDateTime, formatMatchDuration, getMatchDurationParts } from '../utils/dateUtils';
+import { ExportPhotoPickerModal } from './ExportPhotoPickerModal';
 
 interface MatchDetailModalProps {
   match: SquashMatch | null;
@@ -136,6 +137,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const [copied, setCopied] = useState<boolean>(false);
   const [showRallyFlow, setShowRallyFlow] = useState<boolean>(false);
   const [activeRallyKey, setActiveRallyKey] = useState<string | null>(null);
+  const [isExportPickerOpen, setIsExportPickerOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -220,6 +222,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   });
 
   return (
+    <>
     <div
       onClick={onClose}
       className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 cursor-pointer"
@@ -668,6 +671,14 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
           {/* 7. Action Footer Toolbar */}
           <div className="pt-2 space-y-2">
+            <button
+              onClick={() => setIsExportPickerOpen(true)}
+              className="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl shadow-md flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
+            >
+              <ImageDown className="w-4 h-4" />
+              <span>Export Match Photo</span>
+            </button>
+
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={handleCopySummary}
@@ -679,10 +690,10 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
               <button
                 onClick={handlePrint}
-                className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl shadow-md flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
+                className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200/80 flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
               >
-                <Printer className="w-4 h-4 text-amber-400" />
-                <span>Print / Export</span>
+                <Printer className="w-4 h-4 text-slate-500" />
+                <span>Print</span>
               </button>
             </div>
 
@@ -696,5 +707,14 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
         </div>
       </div>
     </div>
+
+    {isExportPickerOpen && (
+      <ExportPhotoPickerModal
+        match={match}
+        competitions={competitions}
+        onClose={() => setIsExportPickerOpen(false)}
+      />
+    )}
+    </>
   );
 };

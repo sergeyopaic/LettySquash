@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useSquash } from '../context/SquashContext';
 import { LettyBanner } from './LettyBanner';
-import { FolderSelectorModal } from './FolderSelectorModal';
+// Folder system disabled for now — roster is unified (see plain `players`/`matches`
+// below instead of the folder-scoped variants). Re-enable by restoring the commented
+// blocks in this file (and in PlayersView.tsx / PlayerProfileModal.tsx / App.tsx).
+// import { FolderSelectorModal } from './FolderSelectorModal';
 import { QuickMatchCard } from './QuickMatchCard';
-import type { Folder, Player } from '../types/squash';
-import { Plus, Activity, ChevronRight, ChevronDown, Clock, Settings, Trophy, MapPin, Check } from 'lucide-react';
+import type { Player } from '../types/squash';
+import { Plus, Activity, ChevronRight, Clock, Settings, Trophy, Check } from 'lucide-react';
 import { formatMatchDateGroup } from '../utils/dateUtils';
-import { getPlayersForFolder, getMatchesForFolder } from '../utils/folderUtils';
+// import { getPlayersForFolder, getMatchesForFolder } from '../utils/folderUtils';
 import { getMatchWinnerId, sortMatchesByDateDesc } from '../utils/matchUtils';
 import { computeClubRatings } from '../utils/ratingUtils';
 import { getMatchMode } from '../utils/matchModeUtils';
@@ -24,8 +27,11 @@ interface DashboardViewProps {
   onSelectPlayerProfile: (player: Player) => void;
   setActiveTab: (tab: 'home' | 'match' | 'players' | 'history') => void;
   selectMatchDetail: (matchId: string) => void;
-  activeFolder?: Folder;
-  onSelectFolder?: (folder: Folder) => void;
+  // Folder system disabled for now — see the note near the FolderSelectorModal import
+  // above. Kept here (commented) so re-enabling is a matter of uncommenting, not
+  // re-designing the prop contract.
+  // activeFolder?: Folder;
+  // onSelectFolder?: (folder: Folder) => void;
 }
 
 export const SquashBallIcon: React.FC<{ className?: string }> = ({ className = 'w-6 h-6' }) => (
@@ -48,31 +54,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSelectPlayerProfile,
   setActiveTab,
   selectMatchDetail,
-  activeFolder: propActiveFolder,
-  onSelectFolder,
+  // activeFolder: propActiveFolder,
+  // onSelectFolder,
 }) => {
-  const { matches, players, competitions, activeMatchState, folders, addFolder } = useSquash();
+  const { matches, players, competitions, activeMatchState } = useSquash();
   const activeCompetitions = competitions.filter((c) => c.status === 'ACTIVE');
 
-  const [internalFolder, setInternalFolder] = useState<Folder | undefined>(folders[0]);
-  const activeFolder = propActiveFolder || internalFolder || folders[0];
+  // Folder system disabled for now — see the note near the FolderSelectorModal import
+  // above. This whole switcher block (state, handler, and the modal render further down)
+  // is commented out rather than deleted so re-enabling is a straightforward uncomment.
+  // const [internalFolder, setInternalFolder] = useState<Folder | undefined>(folders[0]);
+  // const activeFolder = propActiveFolder || internalFolder || folders[0];
+  //
+  // const handleSelectFolder = (folder: Folder) => {
+  //   setInternalFolder(folder);
+  //   if (onSelectFolder) onSelectFolder(folder);
+  // };
+  //
+  // const [isFolderSelectorOpen, setIsFolderSelectorOpen] = useState<boolean>(false);
 
-  const handleSelectFolder = (folder: Folder) => {
-    setInternalFolder(folder);
-    if (onSelectFolder) onSelectFolder(folder);
-  };
-
-  const [isFolderSelectorOpen, setIsFolderSelectorOpen] = useState<boolean>(false);
-
-  // Retrieve players and matches belonging to active folder — used only by the explicitly
-  // folder-labeled "Active Folder Statistics" card further down (heading literally reads
-  // "{folder name} Stats"), including its nested Spotlight card. Everything else on this
-  // screen shows the same silent-trap problem History had: a player who was never filed
-  // into a folder would just vanish from "Recent Matches" / "Court Leaders" with zero
-  // indication why, since activeFolder itself defaults to an arbitrary first folder the
-  // user never consciously chose.
-  const activePlayers = activeFolder ? getPlayersForFolder(players, activeFolder.id) : [];
-  const folderMatches = activeFolder ? getMatchesForFolder(matches, activeFolder.id) : [];
+  // Roster is unified for now — every player/match counts toward the stats card below,
+  // not just whichever folder happened to be active (see the disabled block above).
+  const activePlayers = players;
+  const folderMatches = matches;
 
   const recentMatches = sortMatchesByDateDesc(matches).slice(0, 3);
 
@@ -123,7 +127,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <SquashBallIcon className="w-6 h-6 inline-block" />
           </h1>
 
-          {/* Clickable Folder Selector */}
+          {/* Clickable Folder Selector — disabled for now, roster is unified. See the
+              note near the FolderSelectorModal import above to re-enable.
           <button
             onClick={() => setIsFolderSelectorOpen(true)}
             className="group flex items-center space-x-1 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors pt-0.5"
@@ -135,6 +140,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 transition-transform flex-shrink-0" />
           </button>
+          */}
         </div>
 
         {/* Settings Button */}
@@ -458,12 +464,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 3. Active Folder Statistics */}
+      {/* 3. Club Statistics — unified roster (was "Active Folder Statistics" when the
+          folder system was live; see the disabled block near the top of this component). */}
       <div className="ios-card rounded-2xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="min-w-0 pr-2">
             <h3 className="text-sm font-black text-slate-900 tracking-tight truncate">
-              {activeFolder?.name ?? 'Folder'} Stats
+              Club Stats
             </h3>
           </div>
 
@@ -536,7 +543,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </button>
       </div>
 
-      {/* Folder Selector Modal */}
+      {/* Folder Selector Modal — disabled for now, see the note near the
+          FolderSelectorModal import above to re-enable.
       <FolderSelectorModal
         isOpen={isFolderSelectorOpen}
         folders={folders}
@@ -545,6 +553,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onCreateFolder={addFolder}
         onClose={() => setIsFolderSelectorOpen(false)}
       />
+      */}
     </div>
   );
 };

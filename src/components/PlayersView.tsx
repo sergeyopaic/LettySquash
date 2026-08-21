@@ -1,27 +1,30 @@
 import React from 'react';
 import { useSquash } from '../context/SquashContext';
-import type { Player, Folder } from '../types/squash';
-import { Plus, Trash2, Pencil, ChevronRight, MapPin } from 'lucide-react';
-import { getPlayersForFolder, getMatchesForFolder, getPlayerFolderId } from '../utils/folderUtils';
+import type { Player } from '../types/squash';
+import { Plus, Trash2, Pencil, ChevronRight } from 'lucide-react';
 import { computeClubRatings } from '../utils/ratingUtils';
 
 interface PlayersViewProps {
   openAddPlayerModal: () => void;
   openEditPlayerModal: (player: Player) => void;
   onSelectPlayerProfile?: (player: Player) => void;
-  activeFolder?: Folder;
+  // Folder system disabled for now — roster is unified. See the matching note in
+  // DashboardView.tsx to re-enable (this prop, and the per-player folder <select>
+  // further down, both come back together).
+  // activeFolder?: Folder;
 }
 
 export const PlayersView: React.FC<PlayersViewProps> = ({
   openAddPlayerModal,
   openEditPlayerModal,
   onSelectPlayerProfile,
-  activeFolder,
 }) => {
-  const { players, matches, deletePlayer, updatePlayerFolder, folders } = useSquash();
+  const { players, matches, deletePlayer } = useSquash();
 
-  const folderPlayers = activeFolder ? getPlayersForFolder(players, activeFolder.id) : players;
-  const folderMatches = activeFolder ? getMatchesForFolder(matches, activeFolder.id) : matches;
+  // Roster is unified for now — every player counts, not just whichever folder happened
+  // to be active (see the disabled activeFolder prop above).
+  const folderPlayers = players;
+  const folderMatches = matches;
   const ratings = computeClubRatings(folderPlayers, folderMatches);
 
   const getWinRate = (wins: number, total: number) => {
@@ -77,6 +80,8 @@ export const PlayersView: React.FC<PlayersViewProps> = ({
                       </div>
                     )}
 
+                    {/* Per-player folder reassignment — disabled along with the rest of
+                        the folder system (see the note near the activeFolder prop above).
                     <div className="flex items-center space-x-1 mt-1" onClick={(e) => e.stopPropagation()}>
                       <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" />
                       <select
@@ -93,6 +98,7 @@ export const PlayersView: React.FC<PlayersViewProps> = ({
                         ))}
                       </select>
                     </div>
+                    */}
                   </div>
                 </div>
 
