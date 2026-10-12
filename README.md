@@ -68,7 +68,5 @@ Then open the address Vite prints (http://localhost:5173 by default).
 
 ## Project notes
 
-- [PROJECT_ANALYSIS.md](PROJECT_ANALYSIS.md) — what is built and what to simplify
-- [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md) — plan for moving to a real
-  backend (in Russian)
-- [TODO.md](TODO.md) and [REWORK_TODO.md](REWORK_TODO.md) — open work (in Russian)
+Working notes — the audit, the backend plan and the to-do lists — are in
+[docs/notes/](docs/notes/). Most of them are in Russian.
