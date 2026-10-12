@@ -1,32 +1,74 @@
-# React + TypeScript + Vite
+# Letty Squash
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A squash scoring app for players who referee their own matches. Score a match
+point by point on your phone, let the app keep track of the serve and the score,
+and share a result card when it's over. Letty the otter keeps you company.
 
-Currently, two official plugins are available:
+**Live demo:** https://letty-squash.vercel.app
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Home | Live scoreboard | Match scorecard |
+| --- | --- | --- |
+| <img src="docs/screenshots/home.png" alt="Home screen with Quick Match, competitions and recent matches" width="250"> | <img src="docs/screenshots/scoreboard.png" alt="Live scoreboard at 7–5 with serve side, rally log and appeal buttons" width="250"> | <img src="docs/screenshots/scorecard.png" alt="Match scorecard with duration, rallies and a game-by-game breakdown" width="250"> |
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Live scoreboard** — tap a player to give them the point. The app tracks the
+  server, the service box and hand-outs, keeps a rally log and a match timer, and
+  lets you undo a mistake.
+- **Referee decisions** — handle an appeal as a let, a stroke or no let.
+- **Match formats** — best of 3, best of 5 or a single game; PARS to 11 or 15;
+  optional two-point gap at deuce and handicap starts.
+- **Quick Match** — pick two players on the home screen and start refereeing.
+- **Competitions** — leagues (round-robin), interclub 4v4, groups with knockout,
+  single and double elimination.
+- **Match history** — every match with its duration, rally count, appeals and a
+  game-by-game breakdown, plus a rally-flow view of how the points went.
+- **Match photo** — export a result card to share: four mascot backgrounds, a plain
+  navy one, or your own photo behind the score.
+- **Players** — profiles with handedness, matches played, win/loss record, win rate
+  and rating. Group players into folders.
+- **Built-in guides** — how to play squash and how to use the app.
+- **Works offline** — everything is stored in the browser, with no account and no
+  server.
 
-## Expanding the Oxlint configuration
+| Match photo styles | History | Players |
+| --- | --- | --- |
+| <img src="docs/screenshots/match-photo.png" alt="Choosing a background for the match photo" width="250"> | <img src="docs/screenshots/history.png" alt="Match history with filters by competition type" width="250"> | <img src="docs/screenshots/players.png" alt="Player profiles with match counts, win rate and rating" width="250"> |
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+The screenshots show the demo data the app starts with.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+## Tech
+
+- React 19 and TypeScript, built with Vite
+- Tailwind CSS
+- `lucide-react` for icons, `canvas-confetti` for the winner's moment
+- `localStorage` for persistence
+- Oxlint for linting
+
+On a desktop the app is shown inside an iPhone frame; a switch at the top changes
+it to fullscreen.
+
+The `ios/` folder holds a SwiftUI version of the app.
+
+## Run it locally
+
+```bash
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Then open the address Vite prints (http://localhost:5173 by default).
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run build` | Type-check and build to `dist/` |
+| `npm run preview` | Serve the production build locally |
+| `npm run lint` | Run Oxlint |
+
+## Project notes
+
+- [PROJECT_ANALYSIS.md](PROJECT_ANALYSIS.md) — what is built and what to simplify
+- [BACKEND_ARCHITECTURE.md](BACKEND_ARCHITECTURE.md) — plan for moving to a real
+  backend (in Russian)
+- [TODO.md](TODO.md) and [REWORK_TODO.md](REWORK_TODO.md) — open work (in Russian)
